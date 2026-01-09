@@ -31,7 +31,7 @@ psico_backend:
 ```yaml
 psico_backend:
   build:
-    context: https://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@github.com/AndersonSilver/webcycle-back-v2.git#main
+    context: https://GITHUB_TOKEN@github.com/AndersonSilver/webcycle-back-v2.git#main
     dockerfile: Dockerfile
     target: production
 ```
@@ -42,10 +42,10 @@ Se não souber qual branch usar, teste:
 
 ```bash
 # Testar branch main
-curl -L "https://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@github.com/AndersonSilver/webcycle-back-v2/raw/main/Dockerfile"
+curl -L "https://GITHUB_TOKEN@github.com/AndersonSilver/webcycle-back-v2/raw/main/Dockerfile"
 
 # Se retornar erro, testar master
-curl -L "https://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@github.com/AndersonSilver/webcycle-back-v2/raw/master/Dockerfile"
+curl -L "https://GITHUB_TOKEN@github.com/AndersonSilver/webcycle-back-v2/raw/master/Dockerfile"
 ```
 
 ### 4. Se Usar Outra Branch

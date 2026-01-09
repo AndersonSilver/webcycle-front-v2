@@ -31,7 +31,7 @@ psico_backend:
 ```yaml
 psico_backend:
   build:
-    context: https://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@github.com/AndersonSilver/TB-PSICO-BACK.git#main
+    context: https://GITHUB_TOKEN@github.com/AndersonSilver/TB-PSICO-BACK.git#main
     dockerfile: Dockerfile
     target: production
 ```
@@ -42,7 +42,7 @@ psico_backend:
 ```yaml
 psico_frontend:
   build:
-    context: https://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@github.com/AndersonSilver/TB-PSICO-FRONT.git#main
+    context: https://GITHUB_TOKEN@github.com/AndersonSilver/TB-PSICO-FRONT.git#main
     dockerfile: Dockerfile
 ```
 

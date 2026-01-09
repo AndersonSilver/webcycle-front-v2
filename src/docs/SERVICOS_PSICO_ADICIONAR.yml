@@ -12,7 +12,7 @@
     restart: always
     build:
       # SUBSTITUA pela URL do seu repositório GitHub do frontend PSICO
-      context: https://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@github.com/AndersonSilver/TB-PSICO-FRONT.git#main
+      context: https://GITHUB_TOKEN@github.com/AndersonSilver/TB-PSICO-FRONT.git#main
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${PSICO_VITE_API_URL:-https://api.psico.com.br/api}
@@ -41,7 +41,7 @@
     restart: always
     # SUBSTITUA pela URL do seu repositório GitHub do backend PSICO
     build:
-      context: https://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@github.com/AndersonSilver/TB-PSICO-BACK.git#main
+      context: https://GITHUB_TOKEN@github.com/AndersonSilver/TB-PSICO-BACK.git#main
       dockerfile: Dockerfile
       target: production
     environment:

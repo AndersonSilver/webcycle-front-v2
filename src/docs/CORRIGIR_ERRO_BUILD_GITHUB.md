@@ -123,7 +123,7 @@ psico_frontend:
   container_name: psico_frontend
   restart: always
   build:
-    context: https://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@github.com/AndersonSilver/TB-PSICO-FRONT.git#main
+    context: https://GITHUB_TOKEN@github.com/AndersonSilver/TB-PSICO-FRONT.git#main
     dockerfile: Dockerfile
     args:
       - VITE_API_URL=${PSICO_VITE_API_URL:-https://api.psico.com.br/api}
@@ -134,7 +134,7 @@ psico_backend:
   container_name: psico_backend
   restart: always
   build:
-    context: https://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@github.com/AndersonSilver/TB-PSICO-BACK.git#main
+    context: https://GITHUB_TOKEN@github.com/AndersonSilver/TB-PSICO-BACK.git#main
     dockerfile: Dockerfile
     target: production
 ```
