@@ -4,7 +4,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Aceitar build args para variáveis de ambiente VITE
-# Valores devem ser passados via docker-compose.yml (não hardcoded aqui por segurança)
+# TODAS as variáveis DEVEM ser passadas via docker-compose.yml (não hardcoded aqui por segurança)
 ARG VITE_API_URL
 ARG VITE_MERCADOPAGO_PUBLIC_KEY
 ARG VITE_GOOGLE_CLIENT_ID
