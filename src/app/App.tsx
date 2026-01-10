@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { apiClient } from "../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 
-type View = "home" | "detail" | "checkout" | "my-courses" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe";
+type View = "home" | "detail" | "checkout" | "my-courses" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending";
 
 interface UserData {
   name: string;
@@ -47,6 +47,9 @@ export default function App() {
     if (path === "/checkout") return "checkout";
     if (path === "/meus-cursos") return "my-courses";
     if (path === "/admin") return "admin";
+    if (path === "/purchase/success") return "purchase-success";
+    if (path === "/purchase/failure") return "purchase-failure";
+    if (path === "/purchase/pending") return "purchase-pending";
     if (path.startsWith("/curso/") && path.endsWith("/assistir")) return "player";
     if (path.startsWith("/curso/")) return "detail";
     if (path.startsWith("/podcast/") && path.endsWith("/assistir")) return "podcast-player";
@@ -114,39 +117,70 @@ export default function App() {
   }, [location.pathname, params.id]); // Removido location.search para evitar loops infinitos
 
   // Verificar retorno do Mercado Pago (Checkout Pro)
+  // Suporta tanto query params quanto rotas específicas
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment_status');
     const prefId = urlParams.get('pref_id') || urlParams.get('preference_id');
     const paymentId = urlParams.get('payment_id');
     
-    if (paymentStatus && (prefId || paymentId)) {
-      console.log('🔔 Retorno do Mercado Pago:', { paymentStatus, prefId, paymentId });
+    // Verificar se está em uma rota de retorno do pagamento
+    const isPurchaseRoute = location.pathname.startsWith('/purchase/');
+    
+    // Se está em rota de purchase, extrair status da rota
+    let finalPaymentStatus = paymentStatus;
+    if (isPurchaseRoute && !paymentStatus) {
+      if (location.pathname === '/purchase/success') {
+        finalPaymentStatus = 'success';
+      } else if (location.pathname === '/purchase/failure') {
+        finalPaymentStatus = 'failure';
+      } else if (location.pathname === '/purchase/pending') {
+        finalPaymentStatus = 'pending';
+      }
+    }
+    
+    if (finalPaymentStatus && (prefId || paymentId || isPurchaseRoute)) {
+      console.log('🔔 Retorno do Mercado Pago:', { 
+        paymentStatus: finalPaymentStatus, 
+        prefId, 
+        paymentId,
+        route: location.pathname 
+      });
       
-      // Remover parâmetros da URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Remover parâmetros da URL se existirem
+      if (paymentStatus) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
       
-      if (paymentStatus === 'success' || paymentStatus === 'approved') {
+      if (finalPaymentStatus === 'success' || finalPaymentStatus === 'approved') {
         toast.success("Pagamento aprovado!", {
           description: "Redirecionando para seus cursos...",
         });
         // Recarregar cursos comprados
         handlePurchaseComplete();
-      } else if (paymentStatus === 'failure' || paymentStatus === 'rejected') {
+        // Redirecionar para meus cursos após 2 segundos
+        setTimeout(() => {
+          navigate("/meus-cursos");
+        }, 2000);
+      } else if (finalPaymentStatus === 'failure' || finalPaymentStatus === 'rejected') {
         toast.error("Pagamento não aprovado", {
           description: "Tente novamente ou escolha outra forma de pagamento.",
         });
-        // Voltar para home ou checkout
-        navigate("/");
-      } else if (paymentStatus === 'pending') {
+        // Redirecionar para home após 3 segundos
+        setTimeout(() => {
+          navigate("/");
+        }, 3000);
+      } else if (finalPaymentStatus === 'pending') {
         toast.info("Pagamento pendente", {
-          description: "Aguardando confirmação do pagamento...",
+          description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
         });
-        // Verificar status periodicamente ou aguardar webhook
-        navigate("/meus-cursos");
+        // Redirecionar para meus cursos após 2 segundos
+        setTimeout(() => {
+          navigate("/meus-cursos");
+        }, 2000);
       }
     }
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   // Verificar token na URL (callback do Google OAuth)
   useEffect(() => {
@@ -1209,6 +1243,69 @@ export default function App() {
 
         {currentView === "admin" && (
           <AdminPanel onBack={handleBackToHome} />
+        )}
+
+        {currentView === "purchase-success" && (
+          <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-12">
+            <div className="max-w-md w-full">
+              <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Pagamento Aprovado!</h2>
+                <p className="text-gray-600 mb-6">
+                  Seu pagamento foi processado com sucesso. Você será redirecionado para seus cursos em instantes.
+                </p>
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentView === "purchase-failure" && (
+          <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-50 flex items-center justify-center px-4 py-12">
+            <div className="max-w-md w-full">
+              <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Pagamento Não Aprovado</h2>
+                <p className="text-gray-600 mb-6">
+                  Não foi possível processar seu pagamento. Tente novamente ou escolha outra forma de pagamento.
+                </p>
+                <div className="space-y-3">
+                  <Button onClick={handleBackToHome} className="w-full">
+                    Voltar para a página inicial
+                  </Button>
+                  <Button onClick={() => navigate("/checkout")} variant="outline" className="w-full">
+                    Tentar novamente
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentView === "purchase-pending" && (
+          <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-amber-50 flex items-center justify-center px-4 py-12">
+            <div className="max-w-md w-full">
+              <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Loader2 className="w-8 h-8 text-yellow-600 animate-spin" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Pagamento Pendente</h2>
+                <p className="text-gray-600 mb-6">
+                  Seu pagamento está sendo processado. Você será notificado assim que a confirmação for recebida.
+                  Você será redirecionado para seus cursos em instantes.
+                </p>
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {currentView === "newsletter-unsubscribe" && (
