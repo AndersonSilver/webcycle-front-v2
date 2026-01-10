@@ -39,6 +39,18 @@ export const router = createBrowserRouter([
     element: <App />,
   },
   {
+    path: "/purchase/success",
+    element: <App />,
+  },
+  {
+    path: "/purchase/failure",
+    element: <App />,
+  },
+  {
+    path: "/purchase/pending",
+    element: <App />,
+  },
+  {
     path: "*",
     element: <Navigate to="/" replace />,
   },
