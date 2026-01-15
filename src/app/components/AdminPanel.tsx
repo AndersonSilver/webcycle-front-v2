@@ -19,13 +19,11 @@ import {
   Edit,
   Trash2,
   Save,
-  X,
   BookOpen,
   DollarSign,
   Users,
   Clock,
   Upload,
-  FileText,
   ShoppingCart,
   TrendingUp,
   Mail,
@@ -38,18 +36,13 @@ import {
   Percent,
   Copy,
   Check,
-  Heart,
   CheckCircle2,
-  Brain,
-  Trophy,
   Headphones,
   MessageCircle,
   Send,
   AlertCircle,
   Sparkles,
-  CheckCircle,
   Ban,
-  RefreshCw,
   User,
   Mail as MailIcon,
 } from "lucide-react";
@@ -169,7 +162,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [newsletterCtaLink, setNewsletterCtaLink] = useState("");
   const [newsletterSending, setNewsletterSending] = useState(false);
   const [showNewsletterConfirmDialog, setShowNewsletterConfirmDialog] = useState(false);
-  const [studentProgress, setStudentProgress] = useState<StudentProgress[]>([]);
+  const [studentProgress] = useState<StudentProgress[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
   
   // Support Chat
@@ -185,7 +178,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const sessionData = localStorage.getItem('SESSION');
   const token = sessionData ? JSON.parse(sessionData)?.token : null;
   const socket = useSocket(token);
-  const [chartsData, setChartsData] = useState<any>({
+  const [_chartsData, setChartsData] = useState<any>({
     sales: { labels: [], datasets: [] },
     revenue: { labels: [], datasets: [], total: 0 },
     students: { labels: [], datasets: [] },
@@ -201,6 +194,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [couponExpires, setCouponExpires] = useState("");
   const [couponMaxUses, setCouponMaxUses] = useState("");
   const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
+  const [deleteCouponDialogOpen, setDeleteCouponDialogOpen] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState<Coupon | null>(null);
 
   // Form fields - Informações Básicas
   const [title, setTitle] = useState("");
@@ -224,11 +219,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [videoUploading, setVideoUploading] = useState(false);
   const [aboutCourse, setAboutCourse] = useState("");
   const [supportMaterials, setSupportMaterials] = useState<{ name: string; url: string }[]>([]);
-  const [materialUploading, setMaterialUploading] = useState(false);
-  // Benefícios (O que você vai aprender)
-  const [benefitTitle, setBenefitTitle] = useState("");
-  const [benefitDescription, setBenefitDescription] = useState("");
-  const [benefitIcon, setBenefitIcon] = useState("Heart");
   
   // Form fields - Módulos
   const [modules, setModules] = useState<ModuleForm[]>([]);
@@ -590,20 +580,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
-  const saveCourses = async (updatedCourses: Course[]) => {
-    setCourses(updatedCourses);
-    // Os cursos são salvos automaticamente pela API quando editados
-  };
-
-  const saveCoupons = async (updatedCoupons: Coupon[]) => {
-    setCoupons(updatedCoupons);
-    // Os cupons são salvos automaticamente pela API quando editados
-  };
-
-  const saveReviews = async (updatedReviews: Review[]) => {
-    setReviews(updatedReviews);
-    // As avaliações são salvas automaticamente pela API quando editadas
-  };
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
@@ -1140,12 +1116,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     setVideoUploading(false);
     setAboutCourse("");
     setSupportMaterials([]);
-    setMaterialUploading(false);
     setModules([]);
     setBenefits([]);
-    setBenefitTitle("");
-    setBenefitDescription("");
-    setBenefitIcon("Heart");
     setCurrentTab("info");
   };
 
@@ -1195,19 +1167,24 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const handleDeleteCoupon = async (id: string) => {
-    if (confirm("Deseja excluir este cupom?")) {
-      try {
-        await apiClient.deleteCoupon(id);
-        toast.success("Cupom excluído!");
-        
-        // Recarregar cupons
-        const couponsResponse = await apiClient.getAdminCoupons({ page: 1, limit: 100 });
-        setCoupons(couponsResponse.coupons);
-      } catch (error) {
-        toast.error("Erro ao excluir cupom");
-        console.error(error);
-      }
+    try {
+      await apiClient.deleteCoupon(id);
+      toast.success("Cupom excluído!");
+      
+      // Recarregar cupons
+      const couponsResponse = await apiClient.getAdminCoupons({ page: 1, limit: 100 });
+      setCoupons(couponsResponse.coupons);
+      setDeleteCouponDialogOpen(false);
+      setCouponToDelete(null);
+    } catch (error) {
+      toast.error("Erro ao excluir cupom");
+      console.error(error);
     }
+  };
+
+  const openDeleteCouponDialog = (coupon: Coupon) => {
+    setCouponToDelete(coupon);
+    setDeleteCouponDialogOpen(true);
   };
 
   const toggleCouponStatus = async (id: string) => {
@@ -1267,29 +1244,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   // Export functions
-  const exportToCSV = (data: any[], filename: string) => {
-    if (data.length === 0) {
-      toast.error("Não há dados para exportar");
-      return;
-    }
-
-    const headers = Object.keys(data[0]).join(",");
-    const rows = data.map(row => 
-      Object.values(row).map(val => 
-        typeof val === "string" && val.includes(",") ? `"${val}"` : val
-      ).join(",")
-    );
-    const csv = [headers, ...rows].join("\n");
-    
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    toast.success("Relatório exportado com sucesso!");
-  };
-
   const exportPurchases = async () => {
     try {
       await apiClient.exportPurchases('csv');
@@ -1406,965 +1360,729 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             Voltar
           </Button>
 
-          <div className="flex items-center justify-between mb-8">
+          <div className="mb-8">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-bold mb-4">
+              <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold mb-2 sm:mb-4">
                 Painel Administrativo
               </h1>
-              <p className="text-xl text-blue-100">
+              <p className="text-sm sm:text-base lg:text-xl text-blue-100">
                 Gerencie sua plataforma de forma completa
               </p>
             </div>
+          </div>
 
-            {mainView === "courses" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="lg"
-                    className="bg-white text-blue-700 hover:bg-blue-50"
-                    onClick={handleNewCourse}
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Novo Curso
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="!max-w-[50vw] !w-[50vw] sm:!max-w-[50vw] max-h-[90vh] overflow-hidden flex flex-col p-6">
-                  <DialogHeader className="pb-4 border-b mb-4">
-                    <DialogTitle className="text-2xl font-bold">
-                      {editingCourse ? "Editar Curso" : "Criar Novo Curso"}
-                    </DialogTitle>
-                    <DialogDescription className="text-base mt-2">
-                      {editingCourse ? "Edite as informações do curso abaixo" : "Preencha os dados para criar um novo curso"}
-                    </DialogDescription>
-                  </DialogHeader>
+          {/* Navigation Tabs */}
+          <div className="flex overflow-x-auto gap-2 sm:gap-3 mt-8 mb-6 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <button
+              onClick={() => setMainView("dashboard")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "dashboard"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
+              Dashboard
+            </button>
+            <button
+              onClick={() => setMainView("courses")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "courses"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+              Cursos
+            </button>
+            <button
+              onClick={() => setMainView("students")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "students"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+              Alunos
+            </button>
+            <button
+              onClick={() => setMainView("revenue")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "revenue"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+              Faturamento
+            </button>
+            <button
+              onClick={() => setMainView("coupons")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "coupons"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
+              Cupons
+            </button>
+            <button
+              onClick={() => setMainView("reviews")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "reviews"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+              Avaliações
+            </button>
+            <button
+              onClick={() => setMainView("podcasts")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "podcasts"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
+              Podcasts
+            </button>
+            <button
+              onClick={() => setMainView("newsletter")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "newsletter"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+              Newsletter
+            </button>
+            <button
+              onClick={() => setMainView("support")}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
+                mainView === "support"
+                  ? "bg-white text-blue-600 shadow-lg"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              Suporte
+            </button>
+          </div>
 
-                  <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-hidden flex flex-col">
-                    <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-6">
-                      <button
-                        type="button"
-                        className={`flex-1 py-2.5 px-4 rounded-md transition-all font-medium ${
-                          currentTab === "info" 
-                            ? "bg-white text-blue-600 shadow-sm" 
-                            : "text-gray-600 hover:text-gray-900"
-                        }`}
-                        onClick={() => setCurrentTab("info")}
-                      >
-                        Informações Básicas
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex-1 py-2.5 px-4 rounded-md transition-all font-medium ${
-                          currentTab === "content" 
-                            ? "bg-white text-blue-600 shadow-sm" 
-                            : "text-gray-600 hover:text-gray-900"
-                        }`}
-                        onClick={() => setCurrentTab("content")}
-                      >
-                        Conteúdo
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex-1 py-2.5 px-4 rounded-md transition-all font-medium ${
-                          currentTab === "modules" 
-                            ? "bg-white text-blue-600 shadow-sm" 
-                            : "text-gray-600 hover:text-gray-900"
-                        }`}
-                        onClick={() => setCurrentTab("modules")}
-                      >
-                        Módulos
-                      </button>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4">
+              <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 break-words">
+                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs sm:text-sm text-blue-100">Faturamento Total</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4">
+              <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1">{totalSales}</div>
+              <div className="text-xs sm:text-sm text-blue-100">Total de Vendas</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4">
+              <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1">{totalStudents}</div>
+              <div className="text-xs sm:text-sm text-blue-100">Alunos Cadastrados</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4">
+              <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1">{totalCourses}</div>
+              <div className="text-xs sm:text-sm text-blue-100">Cursos Ativos</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Course Dialog - Outside header section */}
+      {mainView === "courses" && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="!max-w-[95vw] !w-[95vw] sm:!max-w-[90vw] md:!max-w-[85vw] lg:!max-w-[75vw] xl:!max-w-[65vw] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
+            <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+              <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
+                {editingCourse ? "Editar Curso" : "Criar Novo Curso"}
+              </DialogTitle>
+              <DialogDescription className="text-sm sm:text-base lg:text-lg mt-2 sm:mt-3">
+                {editingCourse ? "Edite as informações do curso abaixo" : "Preencha os dados para criar um novo curso"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 p-1.5 sm:p-2 bg-gray-100 rounded-lg mb-4 sm:mb-6 lg:mb-8">
+                <button
+                  type="button"
+                  className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${
+                    currentTab === "info" 
+                      ? "bg-white text-blue-600 shadow-sm" 
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setCurrentTab("info")}
+                >
+                  Informações Básicas
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${
+                    currentTab === "content" 
+                      ? "bg-white text-blue-600 shadow-sm" 
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setCurrentTab("content")}
+                >
+                  Conteúdo
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${
+                    currentTab === "modules" 
+                      ? "bg-white text-blue-600 shadow-sm" 
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setCurrentTab("modules")}
+                >
+                  Módulos
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-2 sm:px-4 lg:px-6 pb-6 space-y-8 sm:space-y-10 lg:space-y-12">
+                {currentTab === "info" && (
+                  <>
+                    {/* Seção: Informações Principais */}
+                    <div className="space-y-4 sm:space-y-6">
+                      <div className="border-b border-gray-200 pb-2 sm:pb-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800">Informações Principais</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">Dados básicos do curso</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        <div>
+                          <Label htmlFor="title" className="text-sm sm:text-base font-medium">Título *</Label>
+                          <Input
+                            id="title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Nome do curso"
+                            className="mt-2 h-10 sm:h-11 text-sm sm:text-base"
+                          />
+                          {errors.title && (
+                            <p className="text-xs sm:text-sm text-red-500 mt-1">
+                              {errors.title}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="subtitle" className="text-sm sm:text-base font-medium">Subtítulo *</Label>
+                          <Input
+                            id="subtitle"
+                            value={subtitle}
+                            onChange={(e) => setSubtitle(e.target.value)}
+                            placeholder="Breve descrição"
+                            className="mt-2 h-10 sm:h-11 text-sm sm:text-base"
+                          />
+                          {errors.subtitle && (
+                            <p className="text-xs sm:text-sm text-red-500 mt-1">
+                              {errors.subtitle}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="description" className="text-sm sm:text-base font-medium">Descrição *</Label>
+                        <Textarea
+                          id="description"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Descrição completa do curso"
+                          rows={4}
+                          className="mt-2 resize-none text-sm sm:text-base"
+                        />
+                        {errors.description && (
+                          <p className="text-xs sm:text-sm text-red-500 mt-1">
+                            {errors.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-8">
-                      {currentTab === "info" && (
-                        <>
-                          {/* Seção: Informações Principais */}
-                          <div className="space-y-6">
-                            <div className="border-b border-gray-200 pb-3">
-                              <h3 className="text-lg font-semibold text-gray-800">Informações Principais</h3>
-                              <p className="text-sm text-gray-500 mt-1">Dados básicos do curso</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div>
-                                <Label htmlFor="title" className="text-base font-medium">Título *</Label>
-                                <Input
-                                  id="title"
-                                  value={title}
-                                  onChange={(e) => setTitle(e.target.value)}
-                                  placeholder="Nome do curso"
-                                  className="mt-2 h-11"
-                                />
-                                {errors.title && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.title}
-                                  </p>
-                                )}
-                              </div>
+                    {/* Seção: Preços e Categoria */}
+                    <div className="space-y-6 sm:space-y-8 bg-gray-50 p-6 sm:p-8 lg:p-10 rounded-lg border">
+                      <div className="border-b border-gray-200 pb-4 sm:pb-5">
+                        <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Preços e Categoria</h3>
+                        <p className="text-sm sm:text-base text-gray-500 mt-2">Configure os valores e classificação</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+                        <div className="space-y-2">
+                          <Label htmlFor="price" className="text-base sm:text-lg font-medium">Preço (R$) *</Label>
+                          <Input
+                            id="price"
+                            type="number"
+                            step="0.01"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                            placeholder="297.00"
+                            className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          {errors.price && (
+                            <p className="text-sm text-red-500 mt-2">
+                              {errors.price}
+                            </p>
+                          )}
+                        </div>
 
-                              <div>
-                                <Label htmlFor="subtitle" className="text-base font-medium">Subtítulo *</Label>
-                                <Input
-                                  id="subtitle"
-                                  value={subtitle}
-                                  onChange={(e) => setSubtitle(e.target.value)}
-                                  placeholder="Breve descrição"
-                                  className="mt-2 h-11"
-                                />
-                                {errors.subtitle && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.subtitle}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="originalPrice" className="text-base sm:text-lg font-medium">Preço Original (R$)</Label>
+                          <Input
+                            id="originalPrice"
+                            type="number"
+                            step="0.01"
+                            value={originalPrice}
+                            onChange={(e) => setOriginalPrice(e.target.value)}
+                            placeholder="497.00"
+                            className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                        </div>
 
-                            <div>
-                              <Label htmlFor="description" className="text-base font-medium">Descrição *</Label>
-                              <Textarea
-                                id="description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Descrição completa do curso"
-                                rows={5}
-                                className="mt-2 resize-none"
-                              />
-                              {errors.description && (
-                                <p className="text-sm text-red-500 mt-1">
-                                  {errors.description}
-                                </p>
+                        <div className="sm:col-span-2 lg:col-span-1 space-y-2">
+                          <Label htmlFor="category" className="text-base sm:text-lg font-medium">Categoria *</Label>
+                          <Input
+                            id="category"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            placeholder="Relacionamentos, Ansiedade, etc."
+                            className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          {errors.category && (
+                            <p className="text-sm text-red-500 mt-2">
+                              {errors.category}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Seção: Mídia e Instrutor */}
+                    <div className="space-y-6 sm:space-y-8 bg-gray-50 p-6 sm:p-8 lg:p-10 rounded-lg border">
+                      <div className="border-b border-gray-200 pb-4 sm:pb-5">
+                        <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Mídia e Instrutor</h3>
+                        <p className="text-sm sm:text-base text-gray-500 mt-2">Imagem e informações do instrutor</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+                        <div className="space-y-2">
+                          <Label htmlFor="image" className="text-base sm:text-lg font-medium">Imagem do Curso *</Label>
+                          <div className="mt-2 space-y-3">
+                            <input
+                              type="file"
+                              id="image"
+                              accept="image/jpeg,image/png,image/gif,image/webp"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setImageFile(file);
+                                  handleImageUpload(file);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => document.getElementById('image')?.click()}
+                              disabled={imageUploading}
+                              className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                            >
+                              {imageUploading ? (
+                                <>
+                                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                  Enviando...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-5 h-5 mr-2" />
+                                  {imageFile ? (imageFile.name.length > 25 ? imageFile.name.substring(0, 25) + '...' : imageFile.name) : 'Selecionar Imagem'}
+                                </>
                               )}
-                            </div>
+                            </Button>
+                            {image && image.trim() && (image.startsWith('http://') || image.startsWith('https://')) && (
+                              <div className="mt-3">
+                                <img 
+                                  src={image} 
+                                  alt="Preview" 
+                                  className="w-full h-40 sm:h-48 lg:h-56 object-cover rounded-lg border"
+                                  onError={(e) => {
+                                    console.error('Erro ao carregar imagem:', image);
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                  onLoad={() => {
+                                    console.log('Imagem carregada com sucesso:', image);
+                                  }}
+                                />
+                                <p className="text-sm text-gray-500 mt-2">Imagem atual</p>
+                                <p className="text-xs text-blue-500 mt-1 break-all">{image}</p>
+                              </div>
+                            )}
+                            {image && image.trim() && !image.startsWith('http://') && !image.startsWith('https://') && (
+                              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                <p className="text-sm text-yellow-700">Aguardando URL da imagem...</p>
+                              </div>
+                            )}
                           </div>
+                          {errors.image && (
+                            <p className="text-sm text-red-500 mt-2">
+                              {errors.image}
+                            </p>
+                          )}
+                        </div>
 
-                          {/* Seção: Preços e Categoria */}
-                          <div className="space-y-6 bg-gray-50 p-6 rounded-lg border">
-                            <div className="border-b border-gray-200 pb-3">
-                              <h3 className="text-lg font-semibold text-gray-800">Preços e Categoria</h3>
-                              <p className="text-sm text-gray-500 mt-1">Configure os valores e classificação</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                              <div>
-                                <Label htmlFor="price" className="text-base font-medium">Preço (R$) *</Label>
-                                <Input
-                                  id="price"
-                                  type="number"
-                                  step="0.01"
-                                  value={price}
-                                  onChange={(e) => setPrice(e.target.value)}
-                                  placeholder="297.00"
-                                  className="mt-2 h-11"
-                                />
-                                {errors.price && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.price}
-                                  </p>
-                                )}
-                              </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="instructor" className="text-base sm:text-lg font-medium">Instrutor *</Label>
+                          <Input
+                            id="instructor"
+                            value={instructor}
+                            onChange={(e) => setInstructor(e.target.value)}
+                            placeholder="Nome do instrutor"
+                            className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          {errors.instructor && (
+                            <p className="text-sm text-red-500 mt-2">
+                              {errors.instructor}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-                              <div>
-                                <Label htmlFor="originalPrice" className="text-base font-medium">Preço Original (R$)</Label>
-                                <Input
-                                  id="originalPrice"
-                                  type="number"
-                                  step="0.01"
-                                  value={originalPrice}
-                                  onChange={(e) => setOriginalPrice(e.target.value)}
-                                  placeholder="497.00"
-                                  className="mt-2 h-11"
-                                />
-                              </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+                        <div className="space-y-2">
+                          <Label htmlFor="duration" className="text-base sm:text-lg font-medium">Duração *</Label>
+                          <Input
+                            id="duration"
+                            value={duration}
+                            onChange={(e) => setDuration(e.target.value)}
+                            placeholder="Ex: 20h, 30h"
+                            className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          {errors.duration && (
+                            <p className="text-sm text-red-500 mt-2">
+                              {errors.duration}
+                            </p>
+                          )}
+                        </div>
 
-                              <div>
-                                <Label htmlFor="category" className="text-base font-medium">Categoria *</Label>
-                                <Input
-                                  id="category"
-                                  value={category}
-                                  onChange={(e) => setCategory(e.target.value)}
-                                  placeholder="Relacionamentos, Ansiedade, etc."
-                                  className="mt-2 h-11"
-                                />
-                                {errors.category && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.category}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Seção: Mídia e Instrutor */}
-                          <div className="space-y-6 bg-gray-50 p-6 rounded-lg border">
-                            <div className="border-b border-gray-200 pb-3">
-                              <h3 className="text-lg font-semibold text-gray-800">Mídia e Instrutor</h3>
-                              <p className="text-sm text-gray-500 mt-1">Imagem e informações do instrutor</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div>
-                                <Label htmlFor="image" className="text-base font-medium">Imagem do Curso *</Label>
-                                <div className="mt-2 space-y-2">
-                                  <input
-                                    type="file"
-                                    id="image"
-                                    accept="image/jpeg,image/png,image/gif,image/webp"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        setImageFile(file);
-                                        handleImageUpload(file);
-                                      }
-                                    }}
-                                    className="hidden"
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      onClick={() => document.getElementById('image')?.click()}
-                                      disabled={imageUploading}
-                                      className="flex-1"
-                                    >
-                                      {imageUploading ? (
-                                        <>
-                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                          Enviando...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Upload className="w-4 h-4 mr-2" />
-                                          {imageFile ? imageFile.name : 'Selecionar Imagem'}
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
-                                  {image && image.trim() && (image.startsWith('http://') || image.startsWith('https://')) && (
-                                    <div className="mt-2">
-                                      <img 
-                                        src={image} 
-                                        alt="Preview" 
-                                        className="w-full h-32 object-cover rounded-lg border"
-                                        onError={(e) => {
-                                          console.error('Erro ao carregar imagem:', image);
-                                          e.currentTarget.style.display = 'none';
-                                        }}
-                                        onLoad={() => {
-                                          console.log('Imagem carregada com sucesso:', image);
-                                        }}
-                                      />
-                                      <p className="text-xs text-gray-500 mt-1">Imagem atual</p>
-                                      <p className="text-xs text-blue-500 mt-1 break-all">{image}</p>
-                                    </div>
-                                  )}
-                                  {image && image.trim() && !image.startsWith('http://') && !image.startsWith('https://') && (
-                                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                                      <p className="text-xs text-yellow-700">Aguardando URL da imagem...</p>
-                                    </div>
-                                  )}
-                                </div>
-                                {errors.image && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.image}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div>
-                                <Label htmlFor="instructor" className="text-base font-medium">Instrutor *</Label>
-                                <Input
-                                  id="instructor"
-                                  value={instructor}
-                                  onChange={(e) => setInstructor(e.target.value)}
-                                  placeholder="Nome do instrutor"
-                                  className="mt-2 h-11"
-                                />
-                                {errors.instructor && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.instructor}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Seção: Estatísticas */}
-                          <div className="space-y-6 bg-gray-50 p-6 rounded-lg border">
-                            <div className="border-b border-gray-200 pb-3">
-                              <h3 className="text-lg font-semibold text-gray-800">Estatísticas do Curso</h3>
-                              <p className="text-sm text-gray-500 mt-1">Duração, aulas e métricas</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                              <div>
-                                <Label htmlFor="duration" className="text-base font-medium">Duração *</Label>
-                                <Input
-                                  id="duration"
-                                  value={duration}
-                                  onChange={(e) => setDuration(e.target.value)}
-                                  placeholder="12h de vídeo"
-                                  className="mt-2 h-11"
-                                />
-                                {errors.duration && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.duration}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div>
-                                <Label htmlFor="lessons" className="text-base font-medium">Número de Aulas *</Label>
-                                <Input
-                                  id="lessons"
-                                  type="number"
-                                  value={lessons}
-                                  onChange={(e) => setLessons(e.target.value)}
-                                  placeholder="50"
-                                  className="mt-2 h-11"
-                                />
-                                {errors.lessons && (
-                                  <p className="text-sm text-red-500 mt-1">
-                                    {errors.lessons}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div>
-                                <Label htmlFor="students" className="text-base font-medium">Número de Alunos</Label>
-                                <Input
-                                  id="students"
-                                  type="number"
-                                  value={students}
-                                  onChange={(e) => setStudents(e.target.value)}
-                                  placeholder="1234"
-                                  className="mt-2 h-11"
-                                />
-                              </div>
-
-                              <div>
-                                <Label htmlFor="rating" className="text-base font-medium">Avaliação (1-5)</Label>
-                                <Input
-                                  id="rating"
-                                  type="number"
-                                  step="0.1"
-                                  min="1"
-                                  max="5"
-                                  value={rating}
-                                  onChange={(e) => setRating(e.target.value)}
-                                  placeholder="4.8"
-                                  className="mt-2 h-11"
-                                />
-                              </div>
-                            </div>
-                          </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lessons" className="text-base sm:text-lg font-medium">Número de Aulas *</Label>
+                          <Input
+                            id="lessons"
+                            type="number"
+                            value={lessons}
+                            onChange={(e) => setLessons(e.target.value)}
+                            placeholder="Ex: 10, 20"
+                            className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          {errors.lessons && (
+                            <p className="text-sm text-red-500 mt-2">
+                              {errors.lessons}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                         </>
                       )}
 
                       {currentTab === "content" && (
                         <>
-                          <div>
-                            <Label htmlFor="videoUrl">Vídeo de Apresentação do Curso</Label>
-                            <div className="mt-2 space-y-2">
-                              <input
-                                type="file"
-                                id="videoUrl"
-                                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    // Verificar tamanho do arquivo
-                                    const fileSizeMB = file.size / (1024 * 1024);
-                                    if (fileSizeMB > 100) {
-                                      const shouldContinue = window.confirm(
-                                        `⚠️ ATENÇÃO: O vídeo é muito grande (${fileSizeMB.toFixed(1)} MB).\n\n` +
-                                        `Vídeos grandes demoram muito para carregar para os alunos.\n\n` +
-                                        `Recomendação: Comprima o vídeo para menos de 50 MB antes de fazer upload.\n\n` +
-                                        `Deseja continuar mesmo assim?`
-                                      );
-                                      if (!shouldContinue) {
-                                        e.target.value = '';
-                                        return;
+                          {/* Seção: Conteúdo do Curso */}
+                          <div className="space-y-6 sm:space-y-8">
+                            <div className="border-b border-gray-200 pb-4 sm:pb-5">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Conteúdo do Curso</h3>
+                              <p className="text-sm sm:text-base text-gray-500 mt-2">Vídeo de apresentação e informações adicionais</p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="videoUrl" className="text-base sm:text-lg font-medium">Vídeo de Apresentação do Curso</Label>
+                              <div className="mt-2 space-y-3">
+                                <input
+                                  type="file"
+                                  id="videoUrl"
+                                  accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      // Verificar tamanho do arquivo
+                                      const fileSizeMB = file.size / (1024 * 1024);
+                                      if (fileSizeMB > 100) {
+                                        const shouldContinue = window.confirm(
+                                          `⚠️ ATENÇÃO: O vídeo é muito grande (${fileSizeMB.toFixed(1)} MB).\n\n` +
+                                          `Vídeos grandes demoram muito para carregar para os alunos.\n\n` +
+                                          `Recomendação: Comprima o vídeo para menos de 50 MB antes de fazer upload.\n\n` +
+                                          `Deseja continuar mesmo assim?`
+                                        );
+                                        if (!shouldContinue) {
+                                          e.target.value = '';
+                                          return;
+                                        }
                                       }
+                                      setVideoFile(file);
+                                      handleVideoUpload(file);
                                     }
-                                    setVideoFile(file);
-                                    handleVideoUpload(file);
-                                  }
-                                }}
-                                className="hidden"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => document.getElementById('videoUrl')?.click()}
-                                disabled={videoUploading}
-                                className="w-full"
-                              >
-                                {videoUploading ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Enviando vídeo...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    {videoFile ? videoFile.name : 'Selecionar Vídeo'}
-                                  </>
-                                )}
-                              </Button>
-                              {videoFile && !videoUploading && (
-                                <p className="text-xs text-gray-500">
-                                  Tamanho: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
-                                  {videoFile.size > 50 * 1024 * 1024 && (
-                                    <span className="text-orange-600 ml-2">
-                                      ⚠️ Recomendado: menos de 50 MB para melhor performance
-                                    </span>
+                                  }}
+                                  className="hidden"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => document.getElementById('videoUrl')?.click()}
+                                  disabled={videoUploading}
+                                  className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                >
+                                  {videoUploading ? (
+                                    <>
+                                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                      Enviando vídeo...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="w-5 h-5 mr-2" />
+                                      {videoFile ? (videoFile.name.length > 30 ? videoFile.name.substring(0, 30) + '...' : videoFile.name) : 'Selecionar Vídeo'}
+                                    </>
                                   )}
-                                </p>
-                              )}
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                                <p className="text-xs text-blue-800 font-semibold mb-1">💡 Dica de Performance:</p>
-                                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                                  <li>Vídeos menores carregam mais rápido para os alunos</li>
-                                  <li>Recomendado: máximo 50 MB para vídeos de apresentação</li>
-                                  <li>Use ferramentas como HandBrake ou FFmpeg para comprimir</li>
-                                  <li>Resolução recomendada: 720p ou 1080p (não 4K)</li>
-                                </ul>
-                              </div>
-                              {videoUrl && (
-                                <div className="mt-2">
-                                  <video src={videoUrl} controls className="w-full rounded-lg border" />
-                                  <p className="text-xs text-gray-500 mt-1">Vídeo atual</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="aboutCourse">Sobre o Curso</Label>
-                            <Textarea
-                              id="aboutCourse"
-                              value={aboutCourse}
-                              onChange={(e) => setAboutCourse(e.target.value)}
-                              placeholder="Informações detalhadas sobre o curso..."
-                              rows={6}
-                            />
-                          </div>
-
-                          <div className="space-y-3">
-                            <Label>Materiais de Apoio</Label>
-                            
-                            <input
-                              type="file"
-                              id="material-file-input"
-                              accept=".pdf,.doc,.docx,.xls,.xlsx"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-
-                                // Validar tamanho (10MB)
-                                if (file.size > 10 * 1024 * 1024) {
-                                  toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
-                                  return;
-                                }
-
-                                // Validar tipo
-                                const allowedTypes = [
-                                  'application/pdf',
-                                  'application/msword',
-                                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                  'application/vnd.ms-excel',
-                                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                ];
-                                if (!allowedTypes.includes(file.type)) {
-                                  toast.error('Tipo de arquivo não permitido. Use PDF, DOC, DOCX, XLS ou XLSX.');
-                                  return;
-                                }
-
-                                try {
-                                  setMaterialUploading(true);
-                                  const result = await apiClient.uploadDocument(file);
-                                  
-                                  // Adicionar material à lista com o nome do arquivo
-                                  setSupportMaterials([
-                                    ...supportMaterials,
-                                    { name: file.name, url: result.url }
-                                  ]);
-                                  
-                                  toast.success('Arquivo enviado com sucesso!');
-                                  
-                                  // Limpar input
-                                  e.target.value = '';
-                                } catch (error: any) {
-                                  console.error('Erro ao fazer upload:', error);
-                                  toast.error(error.message || 'Erro ao fazer upload do arquivo');
-                                } finally {
-                                  setMaterialUploading(false);
-                                }
-                              }}
-                              disabled={materialUploading}
-                            />
-                            
-                            <div 
-                              className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer"
-                              onClick={() => {
-                                document.getElementById('material-file-input')?.click();
-                              }}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                              onDrop={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                const file = e.dataTransfer.files[0];
-                                if (!file) return;
-
-                                // Validar tamanho (10MB)
-                                if (file.size > 10 * 1024 * 1024) {
-                                  toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
-                                  return;
-                                }
-
-                                // Validar tipo
-                                const allowedTypes = [
-                                  'application/pdf',
-                                  'application/msword',
-                                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                  'application/vnd.ms-excel',
-                                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                ];
-                                if (!allowedTypes.includes(file.type)) {
-                                  toast.error('Tipo de arquivo não permitido. Use PDF, DOC, DOCX, XLS ou XLSX.');
-                                  return;
-                                }
-
-                                try {
-                                  setMaterialUploading(true);
-                                  const result = await apiClient.uploadDocument(file);
-                                  
-                                  // Adicionar material à lista com o nome do arquivo
-                                  setSupportMaterials([
-                                    ...supportMaterials,
-                                    { name: file.name, url: result.url }
-                                  ]);
-                                  
-                                  toast.success('Arquivo enviado com sucesso!');
-                                } catch (error: any) {
-                                  console.error('Erro ao fazer upload:', error);
-                                  toast.error(error.message || 'Erro ao fazer upload do arquivo');
-                                } finally {
-                                  setMaterialUploading(false);
-                                }
-                              }}
-                            >
-                              <div className="text-center">
-                                {materialUploading ? (
-                                  <>
-                                    <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                                    <p className="text-sm text-gray-600 mb-1">Enviando arquivo...</p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                                    <p className="text-sm text-gray-600 mb-1">
-                                      Arraste e solte arquivos aqui ou
-                                    </p>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="mt-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        document.getElementById('material-file-input')?.click();
-                                      }}
-                                    >
-                                      <FileText className="w-4 h-4 mr-2" />
-                                      Selecionar Arquivos
-                                    </Button>
-                                  </>
+                                </Button>
+                                {videoFile && !videoUploading && (
+                                  <p className="text-sm text-gray-500">
+                                    Tamanho: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                                    {videoFile.size > 50 * 1024 * 1024 && (
+                                      <span className="text-orange-600 ml-2">
+                                        ⚠️ Recomendado: menos de 50 MB para melhor performance
+                                      </span>
+                                    )}
+                                  </p>
                                 )}
-                                <p className="text-xs text-gray-500 mt-2">
-                                  PDF, DOC, XLS até 10MB
-                                </p>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                                  <p className="text-sm text-blue-800 font-semibold mb-1">💡 Dica de Performance:</p>
+                                  <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                                    <li>Vídeos menores carregam mais rápido para os alunos</li>
+                                    <li>Recomendado: máximo 50 MB para vídeos de apresentação</li>
+                                    <li>Use ferramentas como HandBrake ou FFmpeg para comprimir</li>
+                                    <li>Resolução recomendada: 720p ou 1080p (não 4K)</li>
+                                  </ul>
+                                </div>
+                                {videoUrl && (
+                                  <div className="mt-3">
+                                    <video src={videoUrl} controls className="w-full rounded-lg border max-h-64" />
+                                    <p className="text-sm text-gray-500 mt-2">Vídeo atual</p>
+                                    <p className="text-xs text-blue-500 mt-1 break-all">{videoUrl}</p>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
-                            {supportMaterials.length > 0 && (
-                              <div className="space-y-2">
-                                {supportMaterials.map((material, index) => (
-                                  <div key={index} className="flex items-center justify-between p-3 bg-white border rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                      <FileText className="w-4 h-4 text-blue-600" />
-                                      <span className="text-sm font-medium">{material.name}</span>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSupportMaterials(supportMaterials.filter((_, i) => i !== index));
-                                      }}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Seção de Benefícios (O que você vai aprender) */}
-                          <div className="space-y-3 mt-6">
-                            <Label>O Que Você Vai Aprender (Benefícios)</Label>
-                            
-                            <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <Input
-                                  placeholder="Título do benefício"
-                                  value={benefitTitle}
-                                  onChange={(e) => setBenefitTitle(e.target.value)}
-                                />
-                                <Textarea
-                                  placeholder="Descrição do benefício"
-                                  value={benefitDescription}
-                                  onChange={(e) => setBenefitDescription(e.target.value)}
-                                  rows={2}
-                                />
-                                <div className="flex gap-2">
-                                  <select
-                                    value={benefitIcon}
-                                    onChange={(e) => setBenefitIcon(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                  >
-                                    <option value="Heart">Coração</option>
-                                    <option value="BookOpen">Livro</option>
-                                    <option value="CheckCircle2">Check</option>
-                                    <option value="Brain">Cérebro</option>
-                                    <option value="Trophy">Troféu</option>
-                                    <option value="Headphones">Fones</option>
-                                    <option value="MessageCircle">Mensagem</option>
-                                  </select>
-                                  <Button
-                                    type="button"
-                                    onClick={() => {
-                                      if (benefitTitle && benefitDescription) {
-                                        const newBenefit = {
-                                          icon: benefitIcon,
-                                          title: benefitTitle,
-                                          description: benefitDescription,
-                                        };
-                                        const updatedBenefits = [...benefits, newBenefit];
-                                        setBenefits(updatedBenefits);
-                                        setBenefitTitle("");
-                                        setBenefitDescription("");
-                                        setBenefitIcon("Heart");
-                                        toast.success("Benefício adicionado!");
-                                      } else {
-                                        toast.error("Preencha título e descrição do benefício");
-                                      }
-                                    }}
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {benefits.length > 0 && (
-                                <div className="space-y-2 mt-4">
-                                  {benefits.map((benefit, index) => {
-                                    const IconMap: any = {
-                                      Heart,
-                                      BookOpen,
-                                      CheckCircle2,
-                                      Brain,
-                                      Trophy,
-                                      Headphones,
-                                      MessageCircle,
-                                    };
-                                    const Icon = IconMap[benefit.icon] || Heart;
-                                    return (
-                                      <div key={index} className="flex items-start gap-3 p-3 bg-white border rounded-lg">
-                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                          <Icon className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <h4 className="font-semibold text-sm">{benefit.title}</h4>
-                                          <p className="text-xs text-gray-600">{benefit.description}</p>
-                                        </div>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            setBenefits(benefits.filter((_, i) => i !== index));
-                                          }}
-                                        >
-                                          <X className="w-4 h-4" />
-                                        </Button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                            <div className="space-y-2">
+                              <Label htmlFor="aboutCourse" className="text-base sm:text-lg font-medium">Sobre o Curso</Label>
+                              <Textarea
+                                id="aboutCourse"
+                                value={aboutCourse}
+                                onChange={(e) => setAboutCourse(e.target.value)}
+                                placeholder="Informações detalhadas sobre o curso..."
+                                rows={8}
+                                className="mt-2 resize-none text-base sm:text-lg"
+                              />
                             </div>
                           </div>
                         </>
                       )}
 
                       {currentTab === "modules" && (
-                        <div className="space-y-6">
-                          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                            <div>
-                              <Label className="text-lg font-semibold text-gray-900">Módulos do Curso</Label>
-                              <p className="text-sm text-gray-500 mt-1">Organize o conteúdo em módulos e aulas</p>
+                        <>
+                          {/* Seção: Módulos e Aulas */}
+                          <div className="space-y-6 sm:space-y-8">
+                            <div className="border-b border-gray-200 pb-4 sm:pb-5">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Módulos e Aulas</h3>
+                              <p className="text-sm sm:text-base text-gray-500 mt-2">Organize o conteúdo em módulos e aulas</p>
                             </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                              onClick={() => {
-                                setModules([...modules, { title: "", lessons: [], duration: "" }]);
-                              }}
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Adicionar Módulo
-                            </Button>
-                          </div>
 
-                          {modules.length === 0 ? (
-                            <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
-                              <BookOpen className="w-20 h-20 mx-auto mb-4 text-gray-400" />
-                              <p className="text-gray-700 font-medium text-lg mb-2">Nenhum módulo adicionado</p>
-                              <p className="text-sm text-gray-500">Clique em "Adicionar Módulo" para começar a organizar o conteúdo</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-5">
+                            <div className="space-y-4 sm:space-y-6">
                               {modules.map((module, moduleIndex) => (
-                                <Card key={moduleIndex} className="border-2 border-gray-200 hover:border-blue-400 transition-all shadow-sm">
-                                  <CardContent className="p-6">
-                                    {/* Cabeçalho do Módulo */}
-                                    <div className="mb-5 pb-5 border-b border-gray-200">
-                                      <div className="flex items-start gap-4">
-                                        <div className="flex-1 space-y-4">
-                                          <div>
-                                            <Label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">
-                                              Título do Módulo
-                                            </Label>
+                                <div key={moduleIndex} className="border border-gray-200 rounded-lg p-5 sm:p-6 lg:p-8 bg-gray-50">
+                                  <div className="flex items-center justify-between mb-4 sm:mb-5">
+                                    <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-800">Módulo {moduleIndex + 1}</h4>
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newModules = modules.filter((_, i) => i !== moduleIndex);
+                                        setModules(newModules);
+                                      }}
+                                      className="h-10 sm:h-11 w-10 sm:w-11 p-0"
+                                    >
+                                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </Button>
+                                  </div>
+
+                                  <div className="space-y-4 sm:space-y-5">
+                                    <Input
+                                      placeholder="Título do módulo"
+                                      value={module.title}
+                                      onChange={(e) => {
+                                        const newModules = [...modules];
+                                        newModules[moduleIndex].title = e.target.value;
+                                        setModules(newModules);
+                                      }}
+                                      className="h-12 sm:h-14 text-base sm:text-lg"
+                                    />
+
+                                    <div className="space-y-4 sm:space-y-5">
+                                      {module.lessons.map((lesson, lessonIndex) => (
+                                        <div key={lessonIndex} className="p-4 bg-white rounded-lg border border-gray-200 space-y-3">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <Input
-                                              placeholder="Ex: Módulo 1: Introdução ao Tema"
-                                              value={module.title}
+                                              placeholder="Título da aula"
+                                              value={lesson.title}
                                               onChange={(e) => {
                                                 const newModules = [...modules];
-                                                newModules[moduleIndex].title = e.target.value;
+                                                newModules[moduleIndex].lessons[lessonIndex].title = e.target.value;
                                                 setModules(newModules);
                                               }}
-                                              className="h-11 text-base"
+                                              className="h-12 sm:h-14 text-base sm:text-lg"
+                                            />
+                                            <Input
+                                              placeholder="Duração (ex: 10min)"
+                                              value={lesson.duration}
+                                              onChange={(e) => {
+                                                const newModules = [...modules];
+                                                newModules[moduleIndex].lessons[lessonIndex].duration = e.target.value;
+                                                setModules(newModules);
+                                              }}
+                                              className="h-12 sm:h-14 text-base sm:text-lg"
                                             />
                                           </div>
-                                          <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                              <Label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">
-                                                Duração Total
-                                              </Label>
-                                              <Input
-                                                placeholder="Ex: 2h 30min"
-                                                value={module.duration}
+                                          
+                                          <div className="space-y-2">
+                                            <Label className="text-sm sm:text-base font-medium">Vídeo da Aula <span className="text-red-500">*</span></Label>
+                                            <div className="space-y-2">
+                                              <input
+                                                type="file"
+                                                id={`lesson-video-${moduleIndex}-${lessonIndex}`}
+                                                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
                                                 onChange={(e) => {
-                                                  const newModules = [...modules];
-                                                  newModules[moduleIndex].duration = e.target.value;
-                                                  setModules(newModules);
+                                                  const file = e.target.files?.[0];
+                                                  if (file) {
+                                                    handleLessonVideoUpload(file, moduleIndex, lessonIndex);
+                                                  }
                                                 }}
-                                                className="h-11"
+                                                className="hidden"
                                               />
-                                            </div>
-                                            <div className="flex items-end">
-                                              <div className="w-full p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                <p className="text-xs text-gray-600 uppercase font-semibold mb-1">Total de Aulas</p>
-                                                <p className="text-lg font-bold text-blue-600">{module.lessons.length}</p>
-                                              </div>
+                                              <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => document.getElementById(`lesson-video-${moduleIndex}-${lessonIndex}`)?.click()}
+                                                className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                                disabled={lesson.videoUrl === 'uploading...'}
+                                              >
+                                                {lesson.videoUrl === 'uploading...' ? (
+                                                  <>
+                                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                    Enviando...
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Upload className="w-5 h-5 mr-2" />
+                                                    {lesson.videoUrl && lesson.videoUrl !== 'uploading...' ? 'Trocar Vídeo' : 'Selecionar Vídeo'}
+                                                  </>
+                                                )}
+                                              </Button>
+                                              {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
+                                                <div className="mt-2">
+                                                  <video src={lesson.videoUrl} controls className="w-full rounded-lg border max-h-48" />
+                                                  <p className="text-xs text-gray-500 mt-1">Vídeo atual</p>
+                                                </div>
+                                              )}
+                                              {lesson.videoUrl === 'uploading...' && (
+                                                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                  <p className="text-sm text-blue-600 flex items-center gap-2">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Enviando vídeo...
+                                                  </p>
+                                                </div>
+                                              )}
+                                              {(!lesson.videoUrl || lesson.videoUrl.trim() === "") && lesson.videoUrl !== 'uploading...' && (
+                                                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5">
+                                                  <span className="font-semibold">⚠️</span> Vídeo da aula é obrigatório
+                                                </p>
+                                              )}
                                             </div>
                                           </div>
-                                        </div>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 w-10 p-0"
-                                          onClick={() => {
-                                            setModules(modules.filter((_, i) => i !== moduleIndex));
-                                          }}
-                                        >
-                                          <Trash2 className="w-5 h-5" />
-                                        </Button>
-                                      </div>
-                                    </div>
 
-                                    {/* Lista de Aulas */}
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-semibold text-gray-700">Aulas do Módulo</Label>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
-                                          onClick={() => {
-                                            const newModules = [...modules];
-                                            newModules[moduleIndex].lessons.push({
-                                              title: "",
-                                              duration: "",
-                                              videoUrl: "",
-                                            });
-                                            setModules(newModules);
-                                          }}
-                                        >
-                                          <Plus className="w-4 h-4 mr-2" />
-                                          Adicionar Aula
-                                        </Button>
-                                      </div>
-
-                                      {module.lessons.length === 0 ? (
-                                        <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg bg-gray-50">
-                                          <p className="text-sm text-gray-500">Nenhuma aula adicionada ainda</p>
+                                          <div className="flex justify-end pt-2 border-t">
+                                            <Button
+                                              type="button"
+                                              variant="destructive"
+                                              size="sm"
+                                              onClick={() => {
+                                                const newModules = [...modules];
+                                                newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter((_, i) => i !== lessonIndex);
+                                                setModules(newModules);
+                                              }}
+                                              className="h-10 sm:h-11 text-sm sm:text-base"
+                                            >
+                                              <Trash2 className="w-4 h-4 mr-2" />
+                                              Remover Aula
+                                            </Button>
+                                          </div>
                                         </div>
-                                      ) : (
-                                        <div className="space-y-3">
-                                          {module.lessons.map((lesson, lessonIndex) => (
-                                            <div key={lessonIndex} className="p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all">
-                                              <div className="flex items-start gap-4">
-                                                <div className="flex-1 space-y-4">
-                                                  <div>
-                                                    <Label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">
-                                                      Título da Aula {lessonIndex + 1}
-                                                    </Label>
-                                                    <Input
-                                                      placeholder="Ex: Introdução ao Tema Principal"
-                                                      value={lesson.title}
-                                                      onChange={(e) => {
-                                                        const newModules = [...modules];
-                                                        newModules[moduleIndex].lessons[lessonIndex].title = e.target.value;
-                                                        setModules(newModules);
-                                                      }}
-                                                      className="h-10 bg-white"
-                                                    />
-                                                  </div>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                      <Label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">
-                                                        Duração da Aula
-                                                      </Label>
-                                                      <Input
-                                                        placeholder="Ex: 45min"
-                                                        className="h-10 bg-white w-full"
-                                                        value={lesson.duration}
-                                                        onChange={(e) => {
-                                                          const newModules = [...modules];
-                                                          newModules[moduleIndex].lessons[lessonIndex].duration = e.target.value;
-                                                          setModules(newModules);
-                                                        }}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <Label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">
-                                                        Vídeo da Aula <span className="text-red-500">*</span>
-                                                      </Label>
-                                                      <div className="space-y-2">
-                                                        <input
-                                                          type="file"
-                                                          id={`lesson-video-${moduleIndex}-${lessonIndex}`}
-                                                          accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
-                                                          onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                              handleLessonVideoUpload(file, moduleIndex, lessonIndex);
-                                                            }
-                                                          }}
-                                                          className="hidden"
-                                                        />
-                                                        <Button
-                                                          type="button"
-                                                          variant="outline"
-                                                          size="sm"
-                                                          onClick={() => document.getElementById(`lesson-video-${moduleIndex}-${lessonIndex}`)?.click()}
-                                                          className="w-full"
-                                                          disabled={lesson.videoUrl === 'uploading...'}
-                                                        >
-                                                          {lesson.videoUrl === 'uploading...' ? (
-                                                            <>
-                                                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                              Enviando...
-                                                            </>
-                                                          ) : (
-                                                            <>
-                                                              <Upload className="w-4 h-4 mr-2" />
-                                                              Selecionar Vídeo
-                                                            </>
-                                                          )}
-                                                        </Button>
-                                                        {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
-                                                          <div className="mt-2">
-                                                            <video src={lesson.videoUrl} controls className="w-full rounded-lg border max-h-48" />
-                                                            <p className="text-xs text-gray-500 mt-1">Vídeo atual</p>
-                                                          </div>
-                                                        )}
-                                                        {lesson.videoUrl === 'uploading...' && (
-                                                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                                            <p className="text-xs text-blue-600 flex items-center gap-2">
-                                                              <Loader2 className="w-3 h-3 animate-spin" />
-                                                              Enviando vídeo...
-                                                            </p>
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                      {(!lesson.videoUrl || lesson.videoUrl.trim() === "") && (
-                                                        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5">
-                                                          <span className="font-semibold">⚠️</span> Vídeo da aula é obrigatório
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 w-10 p-0 flex-shrink-0"
-                                                  onClick={() => {
-                                                    const newModules = [...modules];
-                                                    newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter(
-                                                      (_, i) => i !== lessonIndex
-                                                    );
-                                                    setModules(newModules);
-                                                  }}
-                                                >
-                                                  <X className="w-5 h-5" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
+                                      ))}
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newModules = [...modules];
+                                          newModules[moduleIndex].lessons.push({ title: "", duration: "", videoUrl: "" });
+                                          setModules(newModules);
+                                        }}
+                                        className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                      >
+                                        <Plus className="w-5 h-5 mr-2" />
+                                        Adicionar Aula
+                                      </Button>
                                     </div>
-                                  </CardContent>
-                                </Card>
+                                  </div>
+                                </div>
                               ))}
+
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setModules([...modules, { title: "", lessons: [{ title: "", duration: "", videoUrl: "" }], duration: "" }]);
+                                }}
+                                className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                              >
+                                <Plus className="w-5 h-5 mr-2" />
+                                Adicionar Módulo
+                              </Button>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        </>
                       )}
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                    <div className="flex justify-end gap-3 pt-4 border-t mt-4">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
                           setIsDialogOpen(false);
                           setEditingCourse(null);
-                          resetForm();
+                          setCurrentTab("info");
                         }}
                       >
                         Cancelar
@@ -2381,253 +2099,266 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
             {mainView === "coupons" && (
               <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="lg"
-                    className="bg-white text-blue-700 hover:bg-blue-50"
-                    onClick={() => {
-                      resetCouponForm();
-                      setIsCouponDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Novo Cupom
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingCoupon ? "Editar Cupom" : "Criar Novo Cupom"}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingCoupon ? "Edite as informações do cupom abaixo" : "Preencha os dados para criar um novo cupom de desconto"}
-                    </DialogDescription>
+                <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[600px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
+                  <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center">
+                        <Ticket className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
+                          {editingCoupon ? "Editar Cupom" : "Criar Novo Cupom"}
+                        </DialogTitle>
+                        <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2">
+                          {editingCoupon ? "Edite as informações do cupom abaixo" : "Preencha os dados para criar um novo cupom de desconto"}
+                        </DialogDescription>
+                      </div>
+                    </div>
                   </DialogHeader>
 
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="couponCode">Código do Cupom *</Label>
+                  <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-6 sm:space-y-8">
+                    {/* Código do Cupom */}
+                    <div className="space-y-2">
+                      <Label htmlFor="couponCode" className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                        <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                        Código do Cupom <span className="text-red-500">*</span>
+                      </Label>
                       <Input
                         id="couponCode"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                         placeholder="BLACKFRIDAY2024"
+                        className="h-12 sm:h-14 text-base sm:text-lg font-mono"
                       />
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        O código será convertido automaticamente para maiúsculas
+                      </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="couponDiscount">Desconto *</Label>
-                        <Input
-                          id="couponDiscount"
-                          type="number"
-                          step="0.01"
-                          value={couponDiscount}
-                          onChange={(e) => setCouponDiscount(e.target.value)}
-                          placeholder={couponType === "percentage" ? "20" : "50.00"}
-                        />
+                    {/* Desconto e Tipo */}
+                    <div className="bg-gradient-to-br from-blue-50 to-teal-50 p-4 sm:p-6 rounded-lg border border-blue-200 space-y-4 sm:space-y-6">
+                      <div className="border-b border-blue-200 pb-2 sm:pb-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                          <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                          Configuração de Desconto
+                        </h3>
                       </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="couponDiscount" className="text-sm sm:text-base font-medium">
+                            Valor do Desconto <span className="text-red-500">*</span>
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="couponDiscount"
+                              type="number"
+                              step="0.01"
+                              value={couponDiscount}
+                              onChange={(e) => setCouponDiscount(e.target.value)}
+                              placeholder={couponType === "percentage" ? "20" : "50.00"}
+                              className="h-12 sm:h-14 text-base sm:text-lg pr-12"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                              {couponType === "percentage" ? "%" : "R$"}
+                            </div>
+                          </div>
+                        </div>
 
-                      <div>
-                        <Label htmlFor="couponType">Tipo de Desconto</Label>
-                        <select
-                          id="couponType"
-                          value={couponType}
-                          onChange={(e) => setCouponType(e.target.value as "percentage" | "fixed")}
-                          className="w-full h-10 px-3 rounded-md border border-gray-300"
-                        >
-                          <option value="percentage">Percentual (%)</option>
-                          <option value="fixed">Valor Fixo (R$)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="couponExpires">Data de Expiração</Label>
-                        <Input
-                          id="couponExpires"
-                          type="date"
-                          value={couponExpires}
-                          onChange={(e) => setCouponExpires(e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="couponMaxUses">Usos Máximos</Label>
-                        <Input
-                          id="couponMaxUses"
-                          type="number"
-                          value={couponMaxUses}
-                          onChange={(e) => setCouponMaxUses(e.target.value)}
-                          placeholder="Ilimitado"
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="couponType" className="text-sm sm:text-base font-medium">
+                            Tipo de Desconto
+                          </Label>
+                          <select
+                            id="couponType"
+                            value={couponType}
+                            onChange={(e) => setCouponType(e.target.value as "percentage" | "fixed")}
+                            className="w-full h-12 sm:h-14 px-4 rounded-md border border-gray-300 bg-white text-base sm:text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                          >
+                            <option value="percentage">Percentual (%)</option>
+                            <option value="fixed">Valor Fixo (R$)</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setIsCouponDialogOpen(false);
-                          resetCouponForm();
-                        }}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSaveCoupon}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Salvar Cupom
-                      </Button>
+                    {/* Validade e Usos */}
+                    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border space-y-4 sm:space-y-6">
+                      <div className="border-b border-gray-200 pb-2 sm:pb-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                          Validade e Limites
+                        </h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="couponExpires" className="text-sm sm:text-base font-medium flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            Data de Expiração
+                          </Label>
+                          <Input
+                            id="couponExpires"
+                            type="date"
+                            value={couponExpires}
+                            onChange={(e) => setCouponExpires(e.target.value)}
+                            className="h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            Deixe em branco para não expirar
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="couponMaxUses" className="text-sm sm:text-base font-medium flex items-center gap-2">
+                            <Users className="w-4 h-4 text-gray-500" />
+                            Usos Máximos
+                          </Label>
+                          <Input
+                            id="couponMaxUses"
+                            type="number"
+                            value={couponMaxUses}
+                            onChange={(e) => setCouponMaxUses(e.target.value)}
+                            placeholder="Ilimitado"
+                            className="h-12 sm:h-14 text-base sm:text-lg"
+                          />
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            Deixe em branco para uso ilimitado
+                          </p>
+                        </div>
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t mt-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsCouponDialogOpen(false);
+                        resetCouponForm();
+                      }}
+                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleSaveCoupon}
+                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all"
+                    >
+                      <Save className="w-5 h-5 mr-2" />
+                      Salvar Cupom
+                    </Button>
                   </div>
                 </DialogContent>
               </Dialog>
             )}
-          </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex flex-wrap gap-3 mt-8 mb-6">
-            <button
-              onClick={() => setMainView("dashboard")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "dashboard"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <BarChart3 className="w-5 h-5" />
-              Dashboard
-            </button>
-            <button
-              onClick={() => setMainView("courses")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "courses"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <BookOpen className="w-5 h-5" />
-              Cursos
-            </button>
-            <button
-              onClick={() => setMainView("students")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "students"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <Users className="w-5 h-5" />
-              Alunos
-            </button>
-            <button
-              onClick={() => setMainView("revenue")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "revenue"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <TrendingUp className="w-5 h-5" />
-              Faturamento
-            </button>
-            <button
-              onClick={() => setMainView("coupons")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "coupons"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <Ticket className="w-5 h-5" />
-              Cupons
-            </button>
-            <button
-              onClick={() => setMainView("reviews")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "reviews"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <MessageSquare className="w-5 h-5" />
-              Avaliações
-            </button>
-            <button
-              onClick={() => setMainView("podcasts")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "podcasts"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <Headphones className="w-5 h-5" />
-              Podcasts
-            </button>
-            <button
-              onClick={() => setMainView("newsletter")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "newsletter"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <Mail className="w-5 h-5" />
-              Newsletter
-            </button>
-            <button
-              onClick={() => setMainView("support")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                mainView === "support"
-                  ? "bg-white text-blue-600 shadow-lg"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <MessageCircle className="w-5 h-5" />
-              Suporte
-            </button>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">
-                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+      {/* Delete Coupon Confirmation Dialog */}
+      {mainView === "coupons" && (
+        <Dialog open={deleteCouponDialogOpen} onOpenChange={setDeleteCouponDialogOpen}>
+          <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[500px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
+            <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
+                    Confirmar Exclusão
+                  </DialogTitle>
+                  <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2">
+                    Esta ação não pode ser desfeita
+                  </DialogDescription>
+                </div>
               </div>
-              <div className="text-sm text-blue-100">Faturamento Total</div>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-4 sm:space-y-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
+                <p className="text-sm sm:text-base text-gray-700 mb-4">
+                  Tem certeza que deseja excluir o cupom <span className="font-bold text-gray-900">{couponToDelete?.code}</span>?
+                </p>
+                
+                {couponToDelete && (
+                  <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm text-gray-600">Código:</span>
+                      <span className="text-sm sm:text-base font-mono font-bold text-gray-900">{couponToDelete.code}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm text-gray-600">Desconto:</span>
+                      <span className="text-sm sm:text-base font-bold text-blue-600">
+                        {couponToDelete.type === "percentage" 
+                          ? `${couponToDelete.discount}%` 
+                          : `R$ ${couponToDelete.discount.toFixed(2)}`}
+                      </span>
+                    </div>
+                    {couponToDelete.expiresAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs sm:text-sm text-gray-600">Expira em:</span>
+                        <span className="text-sm sm:text-base text-gray-900">
+                          {new Date(couponToDelete.expiresAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm text-gray-600">Usos:</span>
+                      <span className="text-sm sm:text-base text-gray-900">
+                        {couponToDelete.currentUses} / {couponToDelete.maxUses === 999999 ? '∞' : couponToDelete.maxUses}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs sm:text-sm text-yellow-800 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>Esta ação é permanente. Todos os dados relacionados a este cupom serão removidos.</span>
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{totalSales}</div>
-              <div className="text-sm text-blue-100">Total de Vendas</div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDeleteCouponDialogOpen(false);
+                  setCouponToDelete(null);
+                }}
+                className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => couponToDelete && handleDeleteCoupon(couponToDelete.id)}
+                className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all"
+              >
+                <Trash2 className="w-5 h-5 mr-2" />
+                Excluir Cupom
+              </Button>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{totalStudents}</div>
-              <div className="text-sm text-blue-100">Alunos Cadastrados</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{totalCourses}</div>
-              <div className="text-sm text-blue-100">Cursos Ativos</div>
-            </div>
-          </div>
-        </div>
-      </section>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Dashboard View */}
       {mainView === "dashboard" && (
         <section className="container mx-auto px-4 py-12">
-          <div className="mb-8 flex items-center justify-between">
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold mb-2">Dashboard de Vendas</h2>
               <p className="text-gray-600">Análise visual do desempenho da plataforma</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={exportPurchases}>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={exportPurchases} className="w-full sm:w-auto">
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Vendas
               </Button>
-              <Button variant="outline" onClick={exportCourses}>
+              <Button variant="outline" onClick={exportCourses} className="w-full sm:w-auto">
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Cursos
               </Button>
@@ -2692,7 +2423,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     outerRadius={120}
                     label={(entry) => `${entry.courseTitle}: ${entry.sales}`}
                   >
-                    {revenuePerCourse.map((entry, index) => (
+                    {revenuePerCourse.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={courseColors[index % courseColors.length]} />
                     ))}
                   </Pie>
@@ -2708,11 +2439,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       {/* Courses View */}
       {mainView === "courses" && (
         <section className="container mx-auto px-4 py-12">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2">Gerenciar Cursos</h2>
-            <p className="text-gray-600">
-              Edite ou exclua os cursos existentes
-            </p>
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Gerenciar Cursos</h2>
+              <p className="text-gray-600">
+                Edite ou exclua os cursos existentes
+              </p>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                  onClick={handleNewCourse}
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Novo Curso
+                </Button>
+              </DialogTrigger>
+            </Dialog>
           </div>
 
           {courses.length === 0 ? (
@@ -2733,9 +2478,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             <div className="space-y-4">
               {courses.map((course) => (
                 <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex gap-6">
-                      <div className="w-48 h-32 flex-shrink-0">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                      <div className="w-full sm:w-48 h-48 sm:h-32 flex-shrink-0">
                         <img
                           src={course.image}
                           alt={course.title}
@@ -2743,24 +2488,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         />
                       </div>
 
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block mb-2">
                               {course.category}
                             </span>
-                            <h3 className="text-xl font-bold mt-2">{course.title}</h3>
-                            <p className="text-sm text-gray-600 mt-1">{course.subtitle}</p>
+                            <h3 className="text-lg sm:text-xl font-bold mt-2 break-words">{course.title}</h3>
+                            <p className="text-sm text-gray-600 mt-1 break-words">{course.subtitle}</p>
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-shrink-0">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(course)}
+                              className="flex-1 sm:flex-none"
                             >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
+                              <Edit className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Editar</span>
                             </Button>
                             <Button
                               variant="destructive"
@@ -2772,7 +2518,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-6 text-sm text-gray-600 mt-4">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm text-gray-600 mt-4">
                           <div className="flex items-center gap-2">
                             <DollarSign className="w-4 h-4" />
                             <span className="font-bold text-green-600">R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}</span>
@@ -2813,15 +2559,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       {/* Students View */}
       {mainView === "students" && (
-        <section className="container mx-auto px-4 py-12">
-          <div className="mb-8 flex items-center justify-between">
+        <section className="container mx-auto px-4 py-6 sm:py-12">
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Gerenciar Alunos</h2>
-              <p className="text-gray-600">
+              <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Alunos</h2>
+              <p className="text-sm sm:text-base text-gray-600">
                 Visualize todos os alunos e seu progresso nos cursos
               </p>
             </div>
-            <Button variant="outline" onClick={exportStudents}>
+            <Button variant="outline" onClick={exportStudents} className="w-full sm:w-auto">
               <Download className="w-4 h-4 mr-2" />
               Exportar Alunos
             </Button>
@@ -2829,16 +2575,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
           {users.length === 0 ? (
             <Card>
-              <CardContent className="py-20 text-center">
-                <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2">Nenhum aluno cadastrado</h3>
-                <p className="text-gray-600">
+              <CardContent className="py-12 sm:py-20 text-center px-4">
+                <Users className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg sm:text-xl font-bold mb-2">Nenhum aluno cadastrado</h3>
+                <p className="text-sm sm:text-base text-gray-600">
                   Os alunos aparecerão aqui quando se cadastrarem na plataforma
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {users.map((user, index) => {
                 // Filtrar apenas compras pagas do usuário (comparar emails em lowercase)
                 const userPurchases = purchases.filter(p => {
@@ -2854,29 +2600,29 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 return (
                   <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <h3 className="text-lg font-bold">{user.name}</h3>
-                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                              <Mail className="w-4 h-4" />
-                              {user.email}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold break-words">{user.name}</h3>
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
+                              <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="break-all">{user.email}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                              <Calendar className="w-4 h-4" />
-                              Cadastrado em: {new Date(user.registeredAt).toLocaleDateString('pt-BR')}
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
+                              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span>Cadastrado em: {new Date(user.registeredAt).toLocaleDateString('pt-BR')}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">{userPurchases.length}</div>
-                          <div className="text-sm text-gray-600">Cursos</div>
+                        <div className="text-left sm:text-right flex-shrink-0">
+                          <div className="text-xl sm:text-2xl font-bold text-blue-600">{userPurchases.length}</div>
+                          <div className="text-xs sm:text-sm text-gray-600">Cursos</div>
                           {userProgressData.length > 0 && (
-                            <div className="text-sm text-teal-600 font-semibold mt-1">
+                            <div className="text-xs sm:text-sm text-teal-600 font-semibold mt-1">
                               {avgProgress.toFixed(0)}% concluído
                             </div>
                           )}
@@ -2885,15 +2631,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {userPurchases.length > 0 && (
                         <div className="mt-4 pt-4 border-t">
-                          <p className="text-sm font-semibold text-gray-700 mb-3">Cursos e Progresso:</p>
-                          <div className="space-y-3">
+                          <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Cursos e Progresso:</p>
+                          <div className="space-y-2 sm:space-y-3">
                             {userPurchases.map((purchase, idx) => {
                               const progress = userProgressData.find(p => p.courseId === purchase.courseId);
                               return (
                                 <div key={idx} className="bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-900">{purchase.courseTitle}</span>
-                                    <span className="text-xs text-gray-500">R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price).toFixed(2)}</span>
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                    <span className="text-xs sm:text-sm font-medium text-gray-900 break-words">{purchase.courseTitle}</span>
+                                    <span className="text-xs text-gray-500 flex-shrink-0">R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price).toFixed(2)}</span>
                                   </div>
                                   {progress && (
                                     <>
@@ -2903,7 +2649,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           style={{ width: `${progress.progress}%` }}
                                         ></div>
                                       </div>
-                                      <div className="flex items-center justify-between mt-1 text-xs text-gray-600">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-1 text-xs text-gray-600">
                                         <span>{progress.completedLessons.length} aulas concluídas</span>
                                         <span>{progress.progress.toFixed(0)}%</span>
                                       </div>
@@ -3061,12 +2807,29 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       {/* Coupons View */}
       {mainView === "coupons" && (
-        <section className="container mx-auto px-4 py-12">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2">Cupons de Desconto</h2>
-            <p className="text-gray-600">
-              Crie e gerencie cupons promocionais
-            </p>
+        <section className="container mx-auto px-4 py-6 sm:py-12">
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold mb-2">Cupons de Desconto</h2>
+              <p className="text-sm sm:text-base text-gray-600">
+                Crie e gerencie cupons promocionais
+              </p>
+            </div>
+            <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
+                  onClick={() => {
+                    resetCouponForm();
+                    setIsCouponDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Novo Cupom
+                </Button>
+              </DialogTrigger>
+            </Dialog>
           </div>
 
           {coupons.length === 0 ? (
@@ -3084,40 +2847,41 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {coupons.map((coupon) => {
                 const isExpired = coupon.expiresAt && new Date(coupon.expiresAt) < new Date();
                 const usagePercent = (coupon.currentUses / coupon.maxUses) * 100;
 
                 return (
                   <Card key={coupon.id} className={`overflow-hidden ${!coupon.active || isExpired ? 'opacity-60' : ''}`}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Ticket className="w-5 h-5 text-blue-600" />
-                            <h3 className="text-xl font-bold font-mono">{coupon.code}</h3>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-start justify-between mb-4 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                            <h3 className="text-lg sm:text-xl font-bold font-mono break-all">{coupon.code}</h3>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => copyCouponCode(coupon.code)}
+                              className="h-8 w-8 p-0 flex-shrink-0"
                             >
                               {copiedCoupon === coupon.code ? (
-                                <Check className="w-4 h-4 text-green-600" />
+                                <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                               ) : (
-                                <Copy className="w-4 h-4" />
+                                <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                               )}
                             </Button>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Percent className="w-4 h-4 text-gray-500" />
-                            <span className="text-2xl font-bold text-blue-600">
+                            <Percent className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-xl sm:text-2xl font-bold text-blue-600">
                               {coupon.type === "percentage" ? `${coupon.discount}%` : `R$ ${coupon.discount.toFixed(2)}`}
                             </span>
                           </div>
                         </div>
                         
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -3126,24 +2890,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               setCouponCode(coupon.code);
                               setCouponDiscount(coupon.discount.toString());
                               setCouponType(coupon.type);
-                              setCouponExpires(coupon.expiresAt);
+                              // Converter data para formato YYYY-MM-DD para o input type="date"
+                              if (coupon.expiresAt) {
+                                const date = new Date(coupon.expiresAt);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                setCouponExpires(`${year}-${month}-${day}`);
+                              } else {
+                                setCouponExpires("");
+                              }
                               setCouponMaxUses(coupon.maxUses.toString());
                               setIsCouponDialogOpen(true);
                             }}
+                            className="h-8 w-8 p-0"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteCoupon(coupon.id)}
+                            onClick={() => openDeleteCouponDialog(coupon)}
+                            className="h-8 w-8 p-0"
                           >
-                            <Trash2 className="w-4 h-4 text-red-500" />
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
                           </Button>
                         </div>
                       </div>
 
-                      <div className="space-y-3 text-sm">
+                      <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                         {coupon.expiresAt && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Expira em:</span>
@@ -3192,15 +2967,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       {/* Reviews View */}
       {mainView === "reviews" && (
-        <section className="container mx-auto px-4 py-12">
-          <div className="mb-8 flex items-center justify-between">
+        <section className="container mx-auto px-4 py-6 sm:py-12">
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Avaliações dos Cursos</h2>
-              <p className="text-gray-600">
+              <h2 className="text-xl sm:text-2xl font-bold mb-2">Avaliações dos Cursos</h2>
+              <p className="text-sm sm:text-base text-gray-600">
                 Gerencie as avaliações e comentários dos alunos
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 variant={reviews.filter(r => !r.approved).length > 0 ? "default" : "outline"}
                 onClick={async () => {
@@ -3224,6 +2999,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     console.error("Erro ao carregar avaliações pendentes:", error);
                   }
                 }}
+                className="w-full sm:w-auto"
               >
                 Ver Pendentes ({reviews.filter(r => !r.approved).length})
               </Button>
@@ -3250,6 +3026,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     console.error("Erro ao carregar todas as avaliações:", error);
                   }
                 }}
+                className="w-full sm:w-auto"
               >
                 Ver Todas
               </Button>
@@ -3258,79 +3035,82 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
           {reviews.length === 0 ? (
             <Card>
-              <CardContent className="py-20 text-center">
-                <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2">Nenhuma avaliação ainda</h3>
-                <p className="text-gray-600">
+              <CardContent className="py-12 sm:py-20 text-center px-4">
+                <MessageSquare className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg sm:text-xl font-bold mb-2">Nenhuma avaliação ainda</h3>
+                <p className="text-sm sm:text-base text-gray-600">
                   As avaliações dos alunos aparecerão aqui
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {reviews.map((review) => (
                 <Card key={review.id} className={`overflow-hidden ${!review.approved ? 'border-l-4 border-l-yellow-500' : ''}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                      <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0">
                           {review.userName.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <h3 className="font-bold">{review.userName}</h3>
-                          <p className="text-sm text-gray-600">{review.userEmail}</p>
-                          <p className="text-sm text-blue-600 font-medium mt-1">{review.courseTitle}</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-bold break-words">{review.userName}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600 break-all">{review.userEmail}</p>
+                          <p className="text-xs sm:text-sm text-blue-600 font-medium mt-1 break-words">{review.courseTitle}</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-shrink-0">
                         <div className="flex items-center gap-1">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
                               key={i}
-                              className={`w-5 h-5 ${
+                              className={`w-4 h-4 sm:w-5 sm:h-5 ${
                                 i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
                               }`}
                             />
                           ))}
                         </div>
                         
-                        <div className="flex gap-2">
-                          {!review.approved && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleApproveReview(review.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              Aprovar
-                            </Button>
-                          )}
+                        {!review.approved && (
                           <Button
-                            variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteReview(review.id)}
+                            onClick={() => handleApproveReview(review.id)}
+                            className="bg-green-600 hover:bg-green-700 h-9 sm:h-10 text-xs sm:text-sm"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Check className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            Aprovar
                           </Button>
-                        </div>
+                        )}
                       </div>
                     </div>
 
-                    <p className="text-gray-700 mb-3">{review.comment}</p>
+                    <p className="text-sm sm:text-base text-gray-700 mb-3 break-words">{review.comment}</p>
 
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{new Date(review.date).toLocaleDateString('pt-BR')} às {new Date(review.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      {!review.approved && (
-                        <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium">
-                          Aguardando aprovação
-                        </span>
-                      )}
-                      {review.approved && (
-                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                          Aprovado
-                        </span>
-                      )}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 border-t">
+                      <span className="text-xs sm:text-sm text-gray-500 break-words">
+                        {new Date(review.date).toLocaleDateString('pt-BR')} às {new Date(review.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        {!review.approved && (
+                          <span className="bg-yellow-100 text-yellow-800 px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
+                            Aguardando aprovação
+                          </span>
+                        )}
+                        {review.approved && (
+                          <span className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
+                            Aprovado
+                          </span>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteReview(review.id)}
+                          className="h-8 sm:h-9 w-8 sm:w-9 p-0"
+                        >
+                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -3343,22 +3123,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       {/* Podcasts View */}
       {mainView === "podcasts" && (
         <section className="container mx-auto px-4 py-12">
-          <div className="mb-8 flex items-center justify-between">
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold mb-2">Gerenciar Podcasts</h2>
               <p className="text-gray-600">Cadastre e gerencie podcasts gratuitos</p>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => {
-                  setEditingCourse(null);
-                  setTitle("");
-                  setDescription("");
-                  setImage("");
-                  setVideoUrl("");
-                  setDuration("");
-                  setErrors({});
-                }}>
+                <Button 
+                  onClick={() => {
+                    setEditingCourse(null);
+                    setTitle("");
+                    setDescription("");
+                    setImage("");
+                    setVideoUrl("");
+                    setDuration("");
+                    setErrors({});
+                  }}
+                  className="w-full sm:w-auto"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Podcast
                 </Button>
