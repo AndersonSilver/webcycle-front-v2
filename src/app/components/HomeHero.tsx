@@ -48,11 +48,11 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
               <span className="text-sm font-semibold">🧠 Plataforma de Cursos de Psicologia</span>
             </div>
             
-            <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
               Transforme Sua Vida com Psicologia Aplicada
             </h1>
             
-            <p className="text-xl lg:text-2xl text-blue-100 max-w-3xl">
+            <p className="text-base sm:text-lg lg:text-2xl text-blue-100 max-w-3xl">
               Descubra cursos criados por especialistas em psicologia para te ajudar a 
               desenvolver inteligência emocional, relacionamentos saudáveis e bem-estar mental.
             </p>
@@ -76,25 +76,47 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
               </Button>
             </div>
             
-            <div className="flex flex-wrap items-center justify-start gap-8 pt-12 text-sm">
-              <div className="text-center">
-                <div className="font-bold text-3xl mb-1">{totalCourses}</div>
-                <div className="text-blue-200">Cursos Especializados</div>
+            {/* Stats - Mobile: Grid 2x2, Desktop: Flex horizontal */}
+            <div className="pt-12">
+              <div className="grid grid-cols-2 gap-6 sm:hidden">
+                <div className="text-center">
+                  <div className="font-bold text-2xl mb-1">{totalCourses}</div>
+                  <div className="text-blue-200 text-xs">Cursos Especializados</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-2xl mb-1">50.000+</div>
+                  <div className="text-blue-200 text-xs">Alunos Transformados</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-2xl mb-1">{averageRating}</div>
+                  <div className="text-blue-200 text-xs">Avaliação Média</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-2xl mb-1">{totalHours}</div>
+                  <div className="text-blue-200 text-xs">de Conteúdo</div>
+                </div>
               </div>
-              <div className="hidden sm:block w-px h-12 bg-white/30"></div>
-              <div className="text-center">
-                <div className="font-bold text-3xl mb-1">50.000+</div>
-                <div className="text-blue-200">Alunos Transformados</div>
-              </div>
-              <div className="hidden sm:block w-px h-12 bg-white/30"></div>
-              <div className="text-center">
-                <div className="font-bold text-3xl mb-1">{averageRating}</div>
-                <div className="text-blue-200">Avaliação Média</div>
-              </div>
-              <div className="hidden sm:block w-px h-12 bg-white/30"></div>
-              <div className="text-center">
-                <div className="font-bold text-3xl mb-1">{totalHours}</div>
-                <div className="text-blue-200">de Conteúdo</div>
+              
+              <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:justify-start gap-8 text-sm">
+                <div className="text-center">
+                  <div className="font-bold text-3xl mb-1">{totalCourses}</div>
+                  <div className="text-blue-200">Cursos Especializados</div>
+                </div>
+                <div className="w-px h-12 bg-white/30"></div>
+                <div className="text-center">
+                  <div className="font-bold text-3xl mb-1">50.000+</div>
+                  <div className="text-blue-200">Alunos Transformados</div>
+                </div>
+                <div className="w-px h-12 bg-white/30"></div>
+                <div className="text-center">
+                  <div className="font-bold text-3xl mb-1">{averageRating}</div>
+                  <div className="text-blue-200">Avaliação Média</div>
+                </div>
+                <div className="w-px h-12 bg-white/30"></div>
+                <div className="text-center">
+                  <div className="font-bold text-3xl mb-1">{totalHours}</div>
+                  <div className="text-blue-200">de Conteúdo</div>
+                </div>
               </div>
             </div>
           </div>

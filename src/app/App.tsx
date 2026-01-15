@@ -14,7 +14,7 @@ import { Cart } from "./components/Cart";
 import { SupportChat } from "./components/SupportChat";
 import { Button } from "./components/ui/button";
 import { Toaster } from "./components/ui/sonner";
-import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, Users, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2 } from "lucide-react";
 import { Course } from "./data/courses";
 import { toast } from "sonner";
 import { apiClient } from "../services/apiClient";
@@ -839,6 +839,24 @@ export default function App() {
                       Meus Cursos
                     </button>
                     <button
+                      className="text-gray-700 hover:text-blue-600 transition-colors text-left flex items-center gap-2"
+                    >
+                      <User className="w-4 h-4" />
+                      Meu Perfil
+                    </button>
+                    {user.role === "admin" && (
+                      <button
+                        onClick={() => {
+                          handleOpenAdminPanel();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="text-gray-700 hover:text-blue-600 transition-colors text-left flex items-center gap-2"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Painel Admin
+                      </button>
+                    )}
+                    <button
                       onClick={() => {
                         handleLogout();
                         setMobileMenuOpen(false);
@@ -1093,7 +1111,7 @@ export default function App() {
                         setNewsletterLoading(false);
                       }
                     }}
-                    className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto items-stretch"
+                    className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-xl mx-auto w-full"
                   >
                     <input
                       type="email"
@@ -1102,15 +1120,15 @@ export default function App() {
                       onChange={(e) => setNewsletterEmail(e.target.value)}
                       required
                       disabled={newsletterLoading}
-                      className="flex-1 px-6 h-14 rounded-lg text-gray-900 placeholder-gray-500 bg-white border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 shadow-md text-base disabled:opacity-50"
+                      className="flex-1 w-full px-4 sm:px-6 h-14 sm:h-16 rounded-md text-gray-900 placeholder-gray-500 bg-white border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 shadow-md text-sm sm:text-base disabled:opacity-50"
                     />
                     <Button
                       type="submit"
                       size="lg"
                       disabled={newsletterLoading || !newsletterEmail}
-                      className="bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-xl px-8 h-14 whitespace-nowrap font-semibold disabled:opacity-50"
+                      className="bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-xl px-6 sm:px-8 h-14 sm:h-16 w-full sm:w-auto whitespace-nowrap font-semibold disabled:opacity-50 text-sm sm:text-base rounded-md"
                     >
-                      <Send className="w-5 h-5 mr-2" />
+                      <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       {newsletterLoading ? "Enviando..." : "Inscrever-se"}
                     </Button>
                   </form>
