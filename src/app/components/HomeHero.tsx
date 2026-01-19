@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { ArrowRight } from "lucide-react";
 import { ImageCarousel } from "./ImageCarousel";
 import { apiClient } from "../../services/apiClient";
+import { useHomeContent } from "../../hooks/useHomeContent";
 
 interface HomeHeroProps {
   onExplore: () => void;
@@ -10,6 +11,7 @@ interface HomeHeroProps {
 }
 
 export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
+  const { content } = useHomeContent();
   const [totalCourses, setTotalCourses] = useState(6);
   const [totalHours, setTotalHours] = useState("200h+");
   const [averageRating, setAverageRating] = useState("4.9/5");
@@ -33,6 +35,15 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
     loadStats();
   }, []);
 
+  // Valores padrão caso não tenha conteúdo da API
+  const heroContent = content?.hero || {
+    badge: "🧠 Plataforma de Cursos de Psicologia",
+    title: "Transforme Sua Vida com Psicologia Aplicada",
+    subtitle: "Descubra cursos criados por especialistas em psicologia para te ajudar a desenvolver inteligência emocional, relacionamentos saudáveis e bem-estar mental.",
+    primaryButton: { text: "Explorar Cursos", action: "explore" },
+    secondaryButton: { text: "Podcasts", action: "podcasts" },
+  };
+
   return (
     <section className="relative bg-gradient-to-br from-blue-600 via-teal-600 to-blue-700 text-white overflow-hidden">
       <div className="absolute inset-0 bg-black/20"></div>
@@ -45,34 +56,41 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
             <div className="inline-block px-6 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-4">
-              <span className="text-sm font-semibold">🧠 Plataforma de Cursos de Psicologia</span>
+              <span className="text-sm font-semibold">{heroContent.badge}</span>
             </div>
             
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
-              Transforme Sua Vida com Psicologia Aplicada
+              {heroContent.title}
             </h1>
             
             <p className="text-base sm:text-lg lg:text-2xl text-blue-100 max-w-3xl">
-              Descubra cursos criados por especialistas em psicologia para te ajudar a 
-              desenvolver inteligência emocional, relacionamentos saudáveis e bem-estar mental.
+              {heroContent.subtitle}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <Button 
                 size="lg" 
-                onClick={onExplore}
+                onClick={() => {
+                  if (heroContent.primaryButton.action === "explore") {
+                    onExplore();
+                  }
+                }}
                 className="bg-white text-blue-700 hover:bg-blue-50 shadow-xl text-lg px-8 py-6"
               >
-                Explorar Cursos
+                {heroContent.primaryButton.text}
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
-                onClick={onGoToPodcasts}
+                onClick={() => {
+                  if (heroContent.secondaryButton.action === "podcasts" && onGoToPodcasts) {
+                    onGoToPodcasts();
+                  }
+                }}
                 className="border-2 border-white text-white hover:bg-white hover:text-blue-700 bg-transparent text-lg px-8 py-6"
               >
-                Podcasts
+                {heroContent.secondaryButton.text}
               </Button>
             </div>
             
@@ -126,7 +144,7 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
             <div className="relative h-[500px]">
               <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/30 to-teal-500/30 blur-3xl"></div>
               <div className="relative h-full shadow-2xl">
-                <ImageCarousel />
+                <ImageCarousel images={content?.carousel} />
               </div>
             </div>
           </div>

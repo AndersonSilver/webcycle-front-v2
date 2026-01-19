@@ -1346,6 +1346,62 @@ class ApiClient {
     }>(`/newsletter/subscribers?${queryParams.toString()}`);
   }
 
+  async getNewsletterCampaigns(params?: {
+    page?: number;
+    limit?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    return this.request<{
+      campaigns: Array<{
+        id: string;
+        subject: string;
+        content: string;
+        ctaText?: string;
+        ctaLink?: string;
+        totalRecipients: number;
+        sentCount: number;
+        failedCount: number;
+        recipientEmails?: string[];
+        failedEmails?: string[];
+        sentByUserId?: string;
+        sentByUser?: {
+          id: string;
+          name: string;
+          email: string;
+        };
+        sentAt: string;
+      }>;
+      total: number;
+      page: number;
+      limit: number;
+    }>(`/newsletter/campaigns?${queryParams.toString()}`);
+  }
+
+  async getNewsletterCampaignDetails(campaignId: string) {
+    return this.request<{
+      id: string;
+      subject: string;
+      content: string;
+      ctaText?: string;
+      ctaLink?: string;
+      totalRecipients: number;
+      sentCount: number;
+      failedCount: number;
+      recipientEmails?: string[];
+      failedEmails?: string[];
+      sentByUserId?: string;
+      sentByUser?: {
+        id: string;
+        name: string;
+        email: string;
+      };
+      sentAt: string;
+    }>(`/newsletter/campaigns/${campaignId}`);
+  }
+
   // ==================== SUPPORT CHAT ====================
 
   async getMySupportTickets() {
@@ -1386,6 +1442,173 @@ class ApiClient {
   async assignSupportTicket(id: string) {
     return this.request<{ ticket: any }>(`/support/admin/tickets/${id}/assign`, {
       method: 'PUT',
+    });
+  }
+
+  // Home Content endpoints
+  async getHomeContent() {
+    return this.request<{
+      content: {
+        hero?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+          primaryButton: { text: string; action: string };
+          secondaryButton: { text: string; action: string };
+        };
+        carousel?: Array<{
+          id: string;
+          url: string;
+          alt: string;
+          order: number;
+        }>;
+        whyChooseUs?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+          cards: Array<{
+            icon: string;
+            title: string;
+            description: string;
+            gradientColors: { from: string; to: string };
+          }>;
+        };
+        testimonials?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+        };
+        newsletter?: {
+          title: string;
+          subtitle: string;
+          features: Array<{ text: string }>;
+        };
+        cta?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+          primaryButton: { text: string; action: string };
+          secondaryButton: { text: string; action: string };
+          benefitCards: Array<{
+            icon: string;
+            title: string;
+            subtitle: string;
+            iconColor: string;
+          }>;
+        };
+      };
+    }>('/home-content/public', { requiresAuth: false });
+  }
+
+  async getAdminHomeContent() {
+    return this.request<{
+      content: {
+        hero?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+          primaryButton: { text: string; action: string };
+          secondaryButton: { text: string; action: string };
+        };
+        carousel?: Array<{
+          id: string;
+          url: string;
+          alt: string;
+          order: number;
+        }>;
+        whyChooseUs?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+          cards: Array<{
+            icon: string;
+            title: string;
+            description: string;
+            gradientColors: { from: string; to: string };
+          }>;
+        };
+        testimonials?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+        };
+        newsletter?: {
+          title: string;
+          subtitle: string;
+          features: Array<{ text: string }>;
+        };
+        cta?: {
+          badge: string;
+          title: string;
+          subtitle: string;
+          primaryButton: { text: string; action: string };
+          secondaryButton: { text: string; action: string };
+          benefitCards: Array<{
+            icon: string;
+            title: string;
+            subtitle: string;
+            iconColor: string;
+          }>;
+        };
+      };
+    }>('/home-content/admin');
+  }
+
+  async updateHomeContent(data: {
+    hero?: {
+      badge: string;
+      title: string;
+      subtitle: string;
+      primaryButton: { text: string; action: string };
+      secondaryButton: { text: string; action: string };
+    };
+    carousel?: Array<{
+      id?: string;
+      url: string;
+      alt: string;
+      order: number;
+    }>;
+    whyChooseUs?: {
+      badge: string;
+      title: string;
+      subtitle: string;
+      cards: Array<{
+        icon: string;
+        title: string;
+        description: string;
+        gradientColors: { from: string; to: string };
+      }>;
+    };
+    testimonials?: {
+      badge: string;
+      title: string;
+      subtitle: string;
+    };
+    newsletter?: {
+      title: string;
+      subtitle: string;
+      features: Array<{ text: string }>;
+    };
+    cta?: {
+      badge: string;
+      title: string;
+      subtitle: string;
+      primaryButton: { text: string; action: string };
+      secondaryButton: { text: string; action: string };
+      benefitCards: Array<{
+        icon: string;
+        title: string;
+        subtitle: string;
+        iconColor: string;
+      }>;
+    };
+  }) {
+    return this.request<{
+      message: string;
+      content: any;
+    }>('/home-content/admin', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 }
