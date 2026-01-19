@@ -19,6 +19,7 @@ import { Course } from "./data/courses";
 import { toast } from "sonner";
 import { apiClient } from "../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
+import { useHomeContent } from "../hooks/useHomeContent";
 
 type View = "home" | "detail" | "checkout" | "my-courses" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending";
 
@@ -81,6 +82,24 @@ export default function App() {
   const [unsubscribeStatus, setUnsubscribeStatus] = useState<"loading" | "success" | "error" | null>(null);
   const catalogRef = useRef<HTMLDivElement>(null);
   const userDataLoadingRef = useRef(false); // Flag para evitar múltiplas chamadas simultâneas
+  const { content: homeContent } = useHomeContent();
+
+  // Helper function para renderizar ícones dinamicamente
+  const getIconComponent = (iconName: string) => {
+    const iconMap: { [key: string]: any } = {
+      Brain,
+      Award,
+      TrendingUp,
+      Heart,
+      Shield,
+      Star,
+      Sparkles,
+      CheckCircle2,
+      Send,
+      ArrowRight,
+    };
+    return iconMap[iconName] || Brain; // Default para Brain se não encontrar
+  };
 
   // Atualizar view quando a URL mudar
   useEffect(() => {
@@ -658,22 +677,6 @@ export default function App() {
             >
               WebCycle
             </button>
-            
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
-              <button 
-                onClick={handleBackToHome}
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                Cursos
-              </button>
-              <a href="#sobre" className="text-gray-700 hover:text-blue-600 transition-colors">
-                Sobre
-              </a>
-              <a href="#contato" className="text-gray-700 hover:text-blue-600 transition-colors">
-                Contato
-              </a>
-            </nav>
 
             {/* User Menu */}
             <div className="hidden md:flex items-center gap-4">
@@ -789,30 +792,6 @@ export default function App() {
           {mobileMenuOpen && (
             <div className="md:hidden py-4 border-t border-gray-200">
               <nav className="flex flex-col gap-4">
-                <button
-                  onClick={() => {
-                    handleBackToHome();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="text-gray-700 hover:text-blue-600 transition-colors text-left"
-                >
-                  Cursos
-                </button>
-                <a
-                  href="#sobre"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Sobre
-                </a>
-                <a
-                  href="#contato"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Contato
-                </a>
-
                 {user && (
                   <>
                     <div className="px-2 py-3 border-b border-gray-200 flex items-center gap-3">
@@ -900,68 +879,68 @@ export default function App() {
             <PodcastSection />
 
             {/* About Section */}
-            <section id="sobre" className="py-20 bg-gradient-to-b from-white to-gray-50">
-              <div className="container mx-auto px-4">
-                <div className="max-w-5xl mx-auto text-center">
-                  <div className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
-                    Por Que Escolher Nós?
-                  </div>
-                  <h2 className="text-3xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
-                    Transforme Sua Vida com Conhecimento
-                  </h2>
-                  <p className="text-xl text-gray-600 mb-16 max-w-3xl mx-auto">
-                    Somos uma plataforma dedicada a democratizar o conhecimento em psicologia, 
-                    oferecendo cursos de alta qualidade criados por especialistas renomados.
-                  </p>
-                  
-                  <div className="grid md:grid-cols-3 gap-8 mt-12">
-                    <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
-                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <Brain className="w-10 h-10 text-white" />
-                      </div>
-                      <h3 className="font-bold text-xl mb-3 text-gray-900">Baseado em Ciência</h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        Todo conteúdo é validado por pesquisas e práticas da psicologia moderna
-                      </p>
+            {homeContent?.whyChooseUs && (
+              <section id="sobre" className="py-20 bg-gradient-to-b from-white to-gray-50">
+                <div className="container mx-auto px-4">
+                  <div className="max-w-5xl mx-auto text-center">
+                    <div className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
+                      {homeContent.whyChooseUs.badge}
                     </div>
-                    <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
-                      <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <Award className="w-10 h-10 text-white" />
-                      </div>
-                      <h3 className="font-bold text-xl mb-3 text-gray-900">Instrutores Especialistas</h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        Aprenda com psicólogos, terapeutas e professores certificados
-                      </p>
-                    </div>
-                    <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
-                      <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <TrendingUp className="w-10 h-10 text-white" />
-                      </div>
-                      <h3 className="font-bold text-xl mb-3 text-gray-900">Resultados Comprovados</h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        Mais de 50.000 alunos já transformaram suas vidas com nossos cursos
-                      </p>
+                    <h2 className="text-3xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
+                      {homeContent.whyChooseUs.title}
+                    </h2>
+                    <p className="text-xl text-gray-600 mb-16 max-w-3xl mx-auto">
+                      {homeContent.whyChooseUs.subtitle}
+                    </p>
+                    
+                    <div className="grid md:grid-cols-3 gap-8 mt-12">
+                      {homeContent.whyChooseUs.cards.map((card, index) => {
+                        const IconComponent = getIconComponent(card.icon);
+                        // Mapear cores para classes Tailwind válidas
+                        const gradientClasses: { [key: string]: string } = {
+                          'blue-500': 'from-blue-500',
+                          'blue-600': 'to-blue-600',
+                          'teal-500': 'from-teal-500',
+                          'teal-600': 'to-teal-600',
+                          'purple-500': 'from-purple-500',
+                          'purple-600': 'to-purple-600',
+                        };
+                        const fromClass = gradientClasses[card.gradientColors.from] || 'from-blue-500';
+                        const toClass = gradientClasses[card.gradientColors.to] || 'to-blue-600';
+                        return (
+                          <div key={index} className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
+                            <div className={`w-20 h-20 bg-gradient-to-br ${fromClass} ${toClass} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                              <IconComponent className="w-10 h-10 text-white" />
+                            </div>
+                            <h3 className="font-bold text-xl mb-3 text-gray-900">{card.title}</h3>
+                            <p className="text-gray-600 leading-relaxed">
+                              {card.description}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Testimonials Section */}
-            <section className="py-20 bg-white">
-              <div className="container mx-auto px-4">
-                <div className="max-w-6xl mx-auto">
-                  <div className="text-center mb-16">
-                    <div className="inline-block px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold mb-6">
-                      Depoimentos
+            {homeContent?.testimonials && (
+              <section className="py-20 bg-white">
+                <div className="container mx-auto px-4">
+                  <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                      <div className="inline-block px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold mb-6">
+                        {homeContent.testimonials.badge}
+                      </div>
+                      <h2 className="text-3xl lg:text-5xl font-bold mb-6">
+                        {homeContent.testimonials.title}
+                      </h2>
+                      <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                        {homeContent.testimonials.subtitle}
+                      </p>
                     </div>
-                    <h2 className="text-3xl lg:text-5xl font-bold mb-6">
-                      O Que Nossos Alunos Dizem
-                    </h2>
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                      Histórias reais de transformação e crescimento pessoal
-                    </p>
-                  </div>
                   
                   {publicReviews.length > 0 ? (
                     <div className="grid md:grid-cols-3 gap-8">
@@ -1071,25 +1050,27 @@ export default function App() {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Newsletter Section */}
-            <section className="py-20 bg-gradient-to-br from-blue-600 via-teal-600 to-blue-700 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-black/10"></div>
-              <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-              
-              <div className="container mx-auto px-4 relative z-10">
-                <div className="max-w-3xl mx-auto text-center">
-                  <Sparkles className="w-12 h-12 mx-auto mb-6 text-yellow-300" />
-                  <h2 className="text-3xl lg:text-5xl font-bold mb-6">
-                    Receba Conteúdos Exclusivos
-                  </h2>
-                  <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-                    Cadastre-se e receba dicas, artigos e novidades sobre psicologia aplicada diretamente no seu e-mail
-                  </p>
+            {homeContent?.newsletter && (
+              <section className="py-20 bg-gradient-to-br from-blue-600 via-teal-600 to-blue-700 text-white relative overflow-hidden">
+                <div className="absolute inset-0 bg-black/10"></div>
+                <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+                
+                <div className="container mx-auto px-4 relative z-10">
+                  <div className="max-w-3xl mx-auto text-center">
+                    <Sparkles className="w-12 h-12 mx-auto mb-6 text-yellow-300" />
+                    <h2 className="text-3xl lg:text-5xl font-bold mb-6">
+                      {homeContent.newsletter.title}
+                    </h2>
+                    <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+                      {homeContent.newsletter.subtitle}
+                    </p>
                   
                   <form
                     onSubmit={async (e) => {
@@ -1133,86 +1114,94 @@ export default function App() {
                     </Button>
                   </form>
                   
-                  <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-blue-100">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-yellow-300" />
-                      <span>Sem spam</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-yellow-300" />
-                      <span>Conteúdo exclusivo</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-yellow-300" />
-                      <span>Cancelar a qualquer momento</span>
+                    <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-blue-100">
+                      {homeContent.newsletter.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-yellow-300" />
+                          <span>{feature.text}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* CTA Section */}
-            <section className="py-20 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-black/40"></div>
-              <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl"></div>
-              
-              <div className="container mx-auto px-4 text-center relative z-10">
-                <div className="max-w-4xl mx-auto">
-                  <div className="inline-block px-6 py-3 bg-white/10 backdrop-blur-sm rounded-full mb-8">
-                    <span className="text-lg font-semibold">🚀 Comece Agora</span>
-                  </div>
-                  <h2 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
-                    Pronto Para Transformar Sua Vida?
-                  </h2>
-                  <p className="text-xl lg:text-2xl text-gray-200 mb-12 max-w-2xl mx-auto leading-relaxed">
-                    Escolha o curso ideal para você e comece hoje mesmo sua jornada de autoconhecimento e crescimento pessoal
-                  </p>
-                  
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                    <Button
-                      size="lg"
-                      onClick={handleExplore}
-                      className="bg-white text-blue-700 hover:bg-blue-50 shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform"
-                    >
-                      Explorar Todos os Cursos
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="border-2 border-white text-white hover:bg-white hover:text-blue-700 bg-transparent text-lg px-10 py-6"
-                    >
-                      Ver Aula Grátis
-                    </Button>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
-                      <Heart className="w-6 h-6 text-red-400" />
-                      <div className="text-left">
-                        <div className="font-semibold">Acesso Imediato</div>
-                        <div className="text-sm text-gray-300">Comece agora</div>
-                      </div>
+            {homeContent?.cta && (
+              <section className="py-20 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white relative overflow-hidden">
+                <div className="absolute inset-0 bg-black/40"></div>
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl"></div>
+                
+                <div className="container mx-auto px-4 text-center relative z-10">
+                  <div className="max-w-4xl mx-auto">
+                    <div className="inline-block px-6 py-3 bg-white/10 backdrop-blur-sm rounded-full mb-8">
+                      <span className="text-lg font-semibold">{homeContent.cta?.badge}</span>
                     </div>
-                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
-                      <Shield className="w-6 h-6 text-green-400" />
-                      <div className="text-left">
-                        <div className="font-semibold">Garantia de 7 dias</div>
-                        <div className="text-sm text-gray-300">100% seguro</div>
-                      </div>
+                    <h2 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
+                      {homeContent.cta?.title}
+                    </h2>
+                    <p className="text-xl lg:text-2xl text-gray-200 mb-12 max-w-2xl mx-auto leading-relaxed">
+                      {homeContent.cta?.subtitle}
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          if (homeContent.cta?.primaryButton?.action === "explore") {
+                            handleExplore();
+                          }
+                        }}
+                        className="bg-white text-blue-700 hover:bg-blue-50 shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform"
+                      >
+                        {homeContent.cta?.primaryButton?.text}
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        onClick={() => {
+                          if (homeContent.cta?.secondaryButton?.action === "free-class") {
+                            // Implementar ação de aula grátis
+                            handleExplore();
+                          }
+                        }}
+                        className="border-2 border-white text-white hover:bg-white hover:text-blue-700 bg-transparent text-lg px-10 py-6"
+                      >
+                        {homeContent.cta?.secondaryButton?.text}
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
-                      <Award className="w-6 h-6 text-yellow-400" />
-                      <div className="text-left">
-                        <div className="font-semibold">Certificados</div>
-                        <div className="text-sm text-gray-300">Reconhecidos</div>
-                      </div>
+                    
+                    <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                      {homeContent.cta?.benefitCards?.map((benefit, index) => {
+                        const IconComponent = getIconComponent(benefit.icon);
+                        // Mapear cores para classes Tailwind válidas
+                        const iconColorClasses: { [key: string]: string } = {
+                          'red-400': 'text-red-400',
+                          'green-400': 'text-green-400',
+                          'yellow-400': 'text-yellow-400',
+                          'blue-400': 'text-blue-400',
+                          'purple-400': 'text-purple-400',
+                          'teal-400': 'text-teal-400',
+                        };
+                        const iconColorClass = iconColorClasses[benefit.iconColor] || 'text-red-400';
+                        return (
+                          <div key={index} className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                            <IconComponent className={`w-6 h-6 ${iconColorClass}`} />
+                            <div className="text-left">
+                              <div className="font-semibold">{benefit.title}</div>
+                              <div className="text-sm text-gray-300">{benefit.subtitle}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
           </>
         )}
 
