@@ -890,13 +890,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         students: students ? parseInt(students) : undefined,
         rating: rating ? parseFloat(rating) : undefined,
         // Materiais de apoio (bonuses) - formato: { icon, title, description }
-        bonuses: supportMaterials.length > 0
-          ? supportMaterials.map(m => ({
-            icon: 'FileText',
-            title: m.name || 'Material de Apoio',
-            description: m.url || undefined,
-          }))
-          : undefined,
+        // Só enviar se houver materiais válidos (com nome)
+        ...(supportMaterials.length > 0 && supportMaterials.some(m => m.name?.trim())
+          ? {
+              bonuses: supportMaterials
+                .filter(m => m.name?.trim()) // Filtrar apenas materiais com nome válido
+                .map(m => ({
+                  icon: 'FileText',
+                  title: (m.name || '').trim() || 'Material de Apoio',
+                  description: (typeof m.url === 'string' ? m.url.trim() : undefined) || undefined,
+                })),
+            }
+          : {}),
         // Benefícios (O que você vai aprender) - sempre enviar array, mesmo que vazio
         benefits: benefits || [],
       };
