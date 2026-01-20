@@ -1271,7 +1271,7 @@ export default function App() {
               {
                 imageUrl: mentoriaImg,
                 alt: "Mentoria",
-                link: "https://example.com",
+                link: "/landing",
               },
               {
                 imageUrl: desenvolvasecastImg,
@@ -1281,12 +1281,12 @@ export default function App() {
               {
                 imageUrl: livroImg,
                 alt: "Livro",
-                link: "/meus-cursos",
+                link: "/landing",
               },
               {
                 imageUrl: manualautoconfiancaImg,
                 alt: "Manual de Autoconfiança",
-                link: "/admin",
+                link: "/landing",
               },
             ]}
           />
