@@ -31,7 +31,7 @@ export function ImageLandingPage({ images }: ImageLandingPageProps) {
           <div
             key={index}
             onClick={() => handleImageClick(item.link)}
-            className="group relative cursor-pointer overflow-hidden w-full flex items-center justify-center px-60 sm:px-6 lg:px-60 py-2"
+            className="group relative cursor-pointer overflow-hidden w-full flex items-center justify-center px-4 sm:px-6 lg:px-60 py-2"
           >
             <img
               src={item.imageUrl}
