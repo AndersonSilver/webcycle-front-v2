@@ -51,6 +51,14 @@ export const router = createBrowserRouter([
     element: <App />,
   },
   {
+    path: "/landing",
+    element: <App />,
+  },
+  {
+    path: "/image-landing",
+    element: <App />,
+  },
+  {
     path: "*",
     element: <Navigate to="/" replace />,
   },

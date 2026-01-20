@@ -12,6 +12,11 @@ import { PodcastPlayer } from "./components/PodcastPlayer";
 import { AdminPanel } from "./components/AdminPanel";
 import { Cart } from "./components/Cart";
 import { SupportChat } from "./components/SupportChat";
+import { ImageLandingPage } from "./components/ImageLandingPage";
+import desenvolvasecastImg from "./components/laminas/desenvolvasecast.png";
+import livroImg from "./components/laminas/livro.png";
+import manualautoconfiancaImg from "./components/laminas/manualautoconfiança.png";
+import mentoriaImg from "./components/laminas/mentoria.png";
 import { Button } from "./components/ui/button";
 import { Toaster } from "./components/ui/sonner";
 import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2 } from "lucide-react";
@@ -21,7 +26,7 @@ import { apiClient } from "../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 import { useHomeContent } from "../hooks/useHomeContent";
 
-type View = "home" | "detail" | "checkout" | "my-courses" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending";
+type View = "home" | "detail" | "checkout" | "my-courses" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending" | "image-landing";
 
 interface UserData {
   name: string;
@@ -55,10 +60,16 @@ export default function App() {
     if (path.startsWith("/curso/")) return "detail";
     if (path.startsWith("/podcast/") && path.endsWith("/assistir")) return "podcast-player";
     if (path === "/newsletter/unsubscribe") return "newsletter-unsubscribe";
+    if (path === "/landing" || path === "/image-landing") return "image-landing";
     return "home";
   };
 
   const [currentView, setCurrentView] = useState<View>(getCurrentView());
+
+  // Atualizar view quando a rota mudar
+  useEffect(() => {
+    setCurrentView(getCurrentView());
+  }, [location.pathname]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -668,6 +679,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
+      {currentView !== "image-landing" && (
       <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-40">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
@@ -865,6 +877,7 @@ export default function App() {
           )}
         </div>
       </header>
+      )}
 
       {/* Main Content */}
       <main>
@@ -1252,6 +1265,33 @@ export default function App() {
           <AdminPanel onBack={handleBackToHome} />
         )}
 
+        {currentView === "image-landing" && (
+          <ImageLandingPage
+            images={[
+              {
+                imageUrl: mentoriaImg,
+                alt: "Mentoria",
+                link: "https://example.com",
+              },
+              {
+                imageUrl: desenvolvasecastImg,
+                alt: "Desenvolva-se Cast",
+                link: "https://www.youtube.com/@DesenvolvaseCast",
+              },
+              {
+                imageUrl: livroImg,
+                alt: "Livro",
+                link: "/meus-cursos",
+              },
+              {
+                imageUrl: manualautoconfiancaImg,
+                alt: "Manual de Autoconfiança",
+                link: "/admin",
+              },
+            ]}
+          />
+        )}
+
         {currentView === "purchase-success" && (
           <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-12">
             <div className="max-w-md w-full">
@@ -1385,6 +1425,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
+      {currentView !== "image-landing" && (
       <footer id="contato" className="bg-gray-900 text-gray-300 py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
@@ -1436,6 +1477,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      )}
 
       {/* Login Modal */}
       {showLogin && (
@@ -1449,7 +1491,7 @@ export default function App() {
       <Toaster />
 
       {/* Support Chat */}
-      <SupportChat />
+      {currentView !== "image-landing" && <SupportChat />}
     </div>
   );
 }
