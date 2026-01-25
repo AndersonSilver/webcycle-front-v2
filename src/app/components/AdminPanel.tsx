@@ -8509,185 +8509,309 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Product Dialog */}
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>
+                  <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[800px] lg:!max-w-[900px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
+                    <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+                      <DialogTitle className="text-xl sm:text-2xl font-bold">
                         {editingProduct ? "Editar Produto" : "Novo Produto"}
                       </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label>Título *</Label>
-                        <Input
-                          value={editingProduct?.title || ""}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })}
-                          placeholder="Nome do produto"
-                        />
-                      </div>
-                      <div>
-                        <Label>Descrição</Label>
-                        <Textarea
-                          value={editingProduct?.description || ""}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                          placeholder="Descrição do produto"
-                          rows={4}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-6 sm:space-y-8">
+                      {/* Informações Básicas */}
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Informações Básicas</h3>
                         <div>
-                          <Label>Preço *</Label>
+                          <Label className="text-sm sm:text-base mb-2 block">Título *</Label>
                           <Input
-                            type="number"
-                            step="0.01"
-                            value={editingProduct?.price || ""}
-                            onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
-                            placeholder="0.00"
+                            value={editingProduct?.title || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })}
+                            placeholder="Nome do produto"
+                            className="h-10 sm:h-11 text-sm sm:text-base"
                           />
                         </div>
                         <div>
-                          <Label>Preço Original</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={editingProduct?.originalPrice || ""}
-                            onChange={(e) => setEditingProduct({ ...editingProduct, originalPrice: parseFloat(e.target.value) })}
-                            placeholder="0.00"
+                          <Label className="text-sm sm:text-base mb-2 block">Descrição</Label>
+                          <Textarea
+                            value={editingProduct?.description || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                            placeholder="Descrição do produto"
+                            rows={4}
+                            className="text-sm sm:text-base resize-none"
                           />
                         </div>
                       </div>
-                      <div>
-                        <Label>Tipo *</Label>
-                        <select
-                          value={editingProduct?.type || "physical"}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, type: e.target.value })}
-                          className="w-full px-3 py-2 border rounded-lg"
-                        >
-                          <option value="physical">Físico</option>
-                          <option value="digital">Digital</option>
-                        </select>
-                      </div>
-                      {editingProduct?.type === 'physical' && (
-                        <div>
-                          <Label>Estoque</Label>
-                          <Input
-                            type="number"
-                            value={editingProduct?.stock || 0}
-                            onChange={(e) => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value) })}
-                            placeholder="0"
-                          />
-                        </div>
-                      )}
-                      {editingProduct?.type === 'digital' && (
-                        <div>
-                          <Label>URL do Arquivo Digital</Label>
-                          <Input
-                            value={editingProduct?.digitalFileUrl || ""}
-                            onChange={(e) => setEditingProduct({ ...editingProduct, digitalFileUrl: e.target.value })}
-                            placeholder="https://..."
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <Label>Categoria</Label>
-                        <Input
-                          value={editingProduct?.category || ""}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                          placeholder="Ex: Livros, E-books"
-                        />
-                      </div>
-                      <div>
-                        <Label>Autor/Instrutor</Label>
-                        <Input
-                          value={editingProduct?.author || ""}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, author: e.target.value })}
-                          placeholder="Nome do autor ou instrutor"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Quantidade de Páginas</Label>
-                          <Input
-                            type="number"
-                            value={editingProduct?.pages || ""}
-                            onChange={(e) => setEditingProduct({ ...editingProduct, pages: e.target.value ? parseInt(e.target.value) : undefined })}
-                            placeholder="Ex: 300"
-                          />
-                        </div>
-                        <div>
-                          <Label>Avaliação (0-5)</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="5"
-                            value={editingProduct?.rating || ""}
-                            onChange={(e) => setEditingProduct({ ...editingProduct, rating: e.target.value ? parseFloat(e.target.value) : undefined })}
-                            placeholder="0.0"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Imagem Principal *</Label>
-                        <input
-                          type="file"
-                          id="product-image-upload"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setProductImageFile(file);
-                              handleProductImageUpload(file);
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('product-image-upload')?.click()}
-                          disabled={productImageUploading}
-                          className="w-full h-12"
-                        >
-                          {productImageUploading ? (
-                            <>
-                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                              Enviando...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-5 h-5 mr-2" />
-                              {productImageFile ? (productImageFile.name.length > 25 ? productImageFile.name.substring(0, 25) + '...' : productImageFile.name) : 'Selecionar Imagem'}
-                            </>
-                          )}
-                        </Button>
-                        {editingProduct?.image && editingProduct.image.trim() && (editingProduct.image.startsWith('http://') || editingProduct.image.startsWith('https://')) && (
-                          <div className="mt-3">
-                            <img 
-                              src={editingProduct.image} 
-                              alt="Preview" 
-                              className="w-full h-48 object-cover rounded-lg border"
-                              onError={(e) => {
-                                console.error('Erro ao carregar imagem:', editingProduct.image);
-                                e.currentTarget.style.display = 'none';
-                              }}
+
+                      {/* Preços */}
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Preços</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Preço *</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editingProduct?.price || ""}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
+                              placeholder="0.00"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
                             />
-                            <p className="text-sm text-gray-500 mt-2">Imagem atual</p>
-                            <p className="text-xs mt-1 break-all text-gray-400">{editingProduct.image}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Preço Original</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editingProduct?.originalPrice || ""}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, originalPrice: parseFloat(e.target.value) })}
+                              placeholder="0.00"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tipo e Configurações */}
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Tipo e Configurações</h3>
+                        <div>
+                          <Label className="text-sm sm:text-base mb-2 block">Tipo *</Label>
+                          <select
+                            value={editingProduct?.type || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, type: e.target.value })}
+                            className="w-full px-3 py-2 sm:py-2.5 border rounded-lg h-10 sm:h-11 text-sm sm:text-base"
+                          >
+                            <option value="">Selecione um tipo</option>
+                            <option value="physical">Físico</option>
+                            <option value="digital">Digital</option>
+                          </select>
+                        </div>
+                        {editingProduct?.type === 'physical' && (
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Estoque</Label>
+                            <Input
+                              type="number"
+                              value={editingProduct?.stock || 0}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value) })}
+                              placeholder="0"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
+                            />
                           </div>
                         )}
-                        {editingProduct?.image && editingProduct.image.trim() && !editingProduct.image.startsWith('http://') && !editingProduct.image.startsWith('https://') && (
-                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                            <p className="text-sm text-yellow-700">Aguardando URL da imagem...</p>
+                        {editingProduct?.type === 'digital' && (
+                          <div className="space-y-4 sm:space-y-5 bg-blue-50/50 p-4 sm:p-5 rounded-lg border border-blue-100">
+                            <div>
+                              <Label className="text-sm sm:text-base mb-2 block font-medium">Tipo de Conteúdo Digital *</Label>
+                              <select
+                                value={editingProduct?.digitalContentType || ""}
+                                onChange={(e) => setEditingProduct({ ...editingProduct, digitalContentType: e.target.value, digitalFileUrl: e.target.value === 'upload' ? undefined : editingProduct?.digitalFileUrl })}
+                                className="w-full px-3 py-2 sm:py-2.5 border rounded-lg h-10 sm:h-11 text-sm sm:text-base bg-white"
+                              >
+                                <option value="">Selecione o tipo</option>
+                                <option value="url">URL do Conteúdo</option>
+                                <option value="upload">Upload do Material</option>
+                              </select>
+                            </div>
+                            {editingProduct?.digitalContentType === 'url' && (
+                              <div>
+                                <Label className="text-sm sm:text-base mb-2 block font-medium">URL do Arquivo Digital *</Label>
+                                <Input
+                                  value={editingProduct?.digitalFileUrl || ""}
+                                  onChange={(e) => setEditingProduct({ ...editingProduct, digitalFileUrl: e.target.value })}
+                                  placeholder="https://..."
+                                  className="h-10 sm:h-11 text-sm sm:text-base"
+                                />
+                              </div>
+                            )}
+                            {editingProduct?.digitalContentType === 'upload' && (
+                              <div>
+                                <Label className="text-sm sm:text-base mb-2 block font-medium">Arquivo Digital *</Label>
+                                <div className="space-y-3">
+                                  <Input
+                                    type="file"
+                                    accept=".pdf,.zip,.rar,.7z,.doc,.docx,.epub,.mobi"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        try {
+                                          setProductImageUploading(true);
+                                          const result = await apiClient.uploadDocument(file);
+                                          setEditingProduct({ ...editingProduct, digitalFileUrl: result.url });
+                                          toast.success("Arquivo enviado com sucesso!");
+                                        } catch (error: any) {
+                                          console.error('Erro no upload de arquivo:', error);
+                                          toast.error(error.message || "Erro ao enviar arquivo");
+                                        } finally {
+                                          setProductImageUploading(false);
+                                        }
+                                      }
+                                    }}
+                                    className="w-full text-sm sm:text-base"
+                                    disabled={productImageUploading}
+                                  />
+                                  {productImageUploading && (
+                                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      <span>Enviando arquivo...</span>
+                                    </div>
+                                  )}
+                                  {editingProduct?.digitalFileUrl && !productImageUploading && (
+                                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                      <p className="text-sm text-green-700 font-medium">✓ Arquivo enviado com sucesso</p>
+                                      <p className="text-xs text-green-600 mt-1 break-all">{editingProduct.digitalFileUrl.split('/').pop()}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-4">
-                        <Button
-                          onClick={async () => {
+                      {/* Informações Adicionais */}
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Informações Adicionais</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Categoria</Label>
+                            <Input
+                              value={editingProduct?.category || ""}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                              placeholder="Ex: Livros, E-books"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Autor/Instrutor</Label>
+                            <Input
+                              value={editingProduct?.author || ""}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, author: e.target.value })}
+                              placeholder="Nome do autor ou instrutor"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Quantidade de Páginas</Label>
+                            <Input
+                              type="number"
+                              value={editingProduct?.pages || ""}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, pages: e.target.value ? parseInt(e.target.value) : undefined })}
+                              placeholder="Ex: 300"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm sm:text-base mb-2 block">Avaliação (0-5)</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="5"
+                              value={editingProduct?.rating || ""}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, rating: e.target.value ? parseFloat(e.target.value) : undefined })}
+                              placeholder="0.0"
+                              className="h-10 sm:h-11 text-sm sm:text-base"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Imagem */}
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Imagem Principal</h3>
+                        <div>
+                          <Label className="text-sm sm:text-base mb-3 block">Imagem Principal *</Label>
+                          <input
+                            type="file"
+                            id="product-image-upload"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setProductImageFile(file);
+                                handleProductImageUpload(file);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById('product-image-upload')?.click()}
+                            disabled={productImageUploading}
+                            className="w-full h-11 sm:h-12 text-sm sm:text-base"
+                          >
+                            {productImageUploading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+                                Enviando...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                                {productImageFile ? (productImageFile.name.length > 30 ? productImageFile.name.substring(0, 30) + '...' : productImageFile.name) : 'Selecionar Imagem'}
+                              </>
+                            )}
+                          </Button>
+                          {editingProduct?.image && editingProduct.image.trim() && (editingProduct.image.startsWith('http://') || editingProduct.image.startsWith('https://')) && (
+                            <div className="mt-4 space-y-2">
+                              <img 
+                                src={editingProduct.image} 
+                                alt="Preview" 
+                                className="w-full h-48 sm:h-56 lg:h-64 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+                                onError={(e) => {
+                                  console.error('Erro ao carregar imagem:', editingProduct.image);
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1">Imagem atual</p>
+                                <p className="text-xs break-all text-gray-500">{editingProduct.image}</p>
+                              </div>
+                            </div>
+                          )}
+                          {editingProduct?.image && editingProduct.image.trim() && !editingProduct.image.startsWith('http://') && !editingProduct.image.startsWith('https://') && (
+                            <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <p className="text-sm text-yellow-700">Aguardando URL da imagem...</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botões de Ação */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6">
+                      <Button
+                        onClick={async () => {
                             // Verificar se ainda está fazendo upload
                             if (productImageUploading) {
                               toast.error("Aguarde o upload da imagem concluir antes de salvar.");
                               return;
+                            }
+
+                            // Validar tipo do produto
+                            if (!editingProduct?.type || editingProduct.type.trim() === "") {
+                              toast.error("Por favor, selecione o tipo do produto.");
+                              return;
+                            }
+
+                            // Validar conteúdo digital se o produto for digital
+                            if (editingProduct?.type === 'digital') {
+                              if (!editingProduct?.digitalContentType || editingProduct.digitalContentType.trim() === "") {
+                                toast.error("Por favor, selecione o tipo de conteúdo digital.");
+                                return;
+                              }
+                              if (!editingProduct?.digitalFileUrl || editingProduct.digitalFileUrl.trim() === "") {
+                                toast.error("Por favor, forneça a URL ou faça upload do arquivo digital.");
+                                return;
+                              }
+                            }
+
+                            // Validar avaliação (rating) se fornecida
+                            if (editingProduct?.rating !== undefined && editingProduct?.rating !== null) {
+                              const rating = typeof editingProduct.rating === 'number' ? editingProduct.rating : parseFloat(editingProduct.rating);
+                              if (isNaN(rating) || rating < 0 || rating > 5) {
+                                toast.error("A avaliação deve ser um número entre 0 e 5.");
+                                return;
+                              }
                             }
 
                             // Verificar se a imagem foi enviada antes de salvar (apenas ao criar novo produto)
@@ -8713,17 +8837,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               toast.error(error.message || "Erro ao salvar produto");
                             }
                           }}
-                          className="flex-1"
+                          className="flex-1 h-11 sm:h-12 text-sm sm:text-base font-medium"
                           disabled={productImageUploading}
                         >
                           {productImageUploading ? (
                             <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
                               Aguardando upload...
                             </>
                           ) : (
                             <>
-                              <Save className="w-4 h-4 mr-2" />
+                              <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                               Salvar
                             </>
                           )}
@@ -8736,11 +8860,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             setProductImageFile(null);
                           }}
                           disabled={productImageUploading}
+                          className="h-11 sm:h-12 text-sm sm:text-base"
                         >
                           Cancelar
                         </Button>
                       </div>
-                    </div>
                   </DialogContent>
                 </Dialog>
               </section>
