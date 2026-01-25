@@ -30,15 +30,30 @@ const getStreamingUrl = (azureUrl: string): string => {
   // Se já for uma URL do Azure Blob Storage, converter para endpoint de streaming
   if (azureUrl && azureUrl.includes('blob.core.windows.net')) {
     try {
+      // Obter token de autenticação
+      const sessionData = localStorage.getItem('SESSION');
+      const token = sessionData ? JSON.parse(sessionData)?.token : null;
+      
+      if (!token) {
+        console.warn('⚠️ Token não encontrado, vídeo pode não carregar');
+      }
+      
       // Usar query parameter em vez de path parameter para URLs longas
       const encodedUrl = encodeURIComponent(azureUrl);
       const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
-      console.log('🔄 Convertendo para streaming URL:', streamingUrl);
+      let streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
+      
+      // Adicionar token na URL para autenticação (necessário porque <video> não envia headers)
+      if (token) {
+        streamingUrl += `&token=${encodeURIComponent(token)}`;
+      }
+      
+      console.log('🔄 Convertendo para streaming URL (com autenticação)');
       return streamingUrl;
     } catch (error) {
-      console.error('❌ Erro ao converter URL para streaming, usando URL direta:', error);
-      return azureUrl; // Fallback para URL direta
+      console.error('❌ Erro ao converter URL para streaming:', error);
+      // Não usar fallback direto - manter segurança
+      throw new Error('Erro ao gerar URL de streaming protegida');
     }
   }
   // Se for YouTube ou outra URL, retornar como está
@@ -147,7 +162,12 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-teal-600 to-blue-700 text-white overflow-hidden">
+      <section 
+        className="relative text-white overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
+        }}
+      >
         <div className="absolute inset-0 bg-black/20"></div>
         
         <div className="relative container mx-auto px-4 py-8">

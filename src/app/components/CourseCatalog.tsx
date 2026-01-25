@@ -5,27 +5,10 @@ import { Input } from "./ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { apiClient } from "../../services/apiClient";
 import { toast } from "sonner";
+import { Course } from "../data/courses";
 
 interface CourseCatalogProps {
   onViewDetails: (courseId: string) => void;
-}
-
-interface Course {
-  id: string;
-  title: string;
-  subtitle?: string;
-  description: string;
-  price: number;
-  originalPrice?: number;
-  category: string;
-  image: string;
-  videoUrl?: string;
-  instructor: string;
-  duration: string;
-  level: string;
-  rating: number;
-  totalRatings: number;
-  totalStudents: number;
 }
 
 export function CourseCatalog({ onViewDetails }: CourseCatalogProps) {
@@ -104,13 +87,25 @@ export function CourseCatalog({ onViewDetails }: CourseCatalogProps) {
   });
 
   return (
-    <section className="py-20 bg-gradient-to-b from-white via-gray-50 to-white">
+    <section 
+      className="py-20"
+      style={{
+        background: `linear-gradient(to bottom, var(--theme-background) 0%, var(--theme-background-secondary) 50%, var(--theme-background) 100%)`
+      }}
+    >
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <div className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
             Catálogo Completo
           </div>
-          <h2 className="text-3xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
+          <h2 
+            className="text-3xl lg:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+            style={{
+              background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}
+          >
             Explore Nossos Cursos de Psicologia
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">

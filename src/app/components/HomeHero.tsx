@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
-import { ArrowRight } from "lucide-react";
 import { ImageCarousel } from "./ImageCarousel";
 import { apiClient } from "../../services/apiClient";
 import { useHomeContent } from "../../hooks/useHomeContent";
@@ -45,95 +44,104 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-blue-600 via-teal-600 to-blue-700 text-white overflow-hidden">
+    <section
+      className="relative text-white overflow-hidden"
+      style={{
+        background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
+      }}
+    >
       <div className="absolute inset-0 bg-black/20"></div>
-      
+
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/30 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-teal-400/30 rounded-full blur-3xl"></div>
-      
+      <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}></div>
+      <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}></div>
+
       <div className="relative container mx-auto px-4 py-20 lg:py-32">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
-            <div className="inline-block px-6 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-4">
+            <div className="inline-block px-6 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-4" >
               <span className="text-sm font-semibold">{heroContent.badge}</span>
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
               {heroContent.title}
             </h1>
-            
-            <p className="text-base sm:text-lg lg:text-2xl text-blue-100 max-w-3xl">
+
+            <p className="text-base sm:text-lg lg:text-2xl max-w-3xl" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
               {heroContent.subtitle}
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 onClick={() => {
                   if (heroContent.primaryButton.action === "explore") {
                     onExplore();
                   }
                 }}
-                className="bg-white text-blue-700 hover:bg-blue-50 shadow-xl text-lg px-8 py-6"
+                className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
+                style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
               >
                 {heroContent.primaryButton.text}
-                <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
+              <Button
+                size="lg"
                 onClick={() => {
                   if (heroContent.secondaryButton.action === "podcasts" && onGoToPodcasts) {
                     onGoToPodcasts();
                   }
                 }}
-                className="border-2 border-white text-white hover:bg-white hover:text-blue-700 bg-transparent text-lg px-8 py-6"
+                className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
+                style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
               >
                 {heroContent.secondaryButton.text}
               </Button>
             </div>
-            
+
             {/* Stats - Mobile: Grid 2x2, Desktop: Flex horizontal */}
             <div className="pt-12">
               <div className="grid grid-cols-2 gap-6 sm:hidden">
                 <div className="text-center">
                   <div className="font-bold text-2xl mb-1">{totalCourses}</div>
-                  <div className="text-blue-200 text-xs">Cursos Especializados</div>
+                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Cursos Especializados</div>
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-2xl mb-1">50.000+</div>
-                  <div className="text-blue-200 text-xs">Alunos Transformados</div>
+                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Alunos Transformados</div>
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-2xl mb-1">{averageRating}</div>
-                  <div className="text-blue-200 text-xs">Avaliação Média</div>
+                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Avaliação Média</div>
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-2xl mb-1">{totalHours}</div>
-                  <div className="text-blue-200 text-xs">de Conteúdo</div>
+                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>de Conteúdo</div>
                 </div>
               </div>
-              
+
               <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:justify-start gap-8 text-sm">
                 <div className="text-center">
                   <div className="font-bold text-3xl mb-1">{totalCourses}</div>
-                  <div className="text-blue-200">Cursos Especializados</div>
+                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Cursos Especializados</div>
                 </div>
                 <div className="w-px h-12 bg-white/30"></div>
                 <div className="text-center">
                   <div className="font-bold text-3xl mb-1">50.000+</div>
-                  <div className="text-blue-200">Alunos Transformados</div>
+                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Alunos Transformados</div>
                 </div>
                 <div className="w-px h-12 bg-white/30"></div>
                 <div className="text-center">
                   <div className="font-bold text-3xl mb-1">{averageRating}</div>
-                  <div className="text-blue-200">Avaliação Média</div>
+                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Avaliação Média</div>
                 </div>
                 <div className="w-px h-12 bg-white/30"></div>
                 <div className="text-center">
                   <div className="font-bold text-3xl mb-1">{totalHours}</div>
-                  <div className="text-blue-200">de Conteúdo</div>
+                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>de Conteúdo</div>
                 </div>
               </div>
             </div>
@@ -142,7 +150,7 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
           {/* Image Carousel */}
           <div className="hidden lg:block">
             <div className="relative h-[500px]">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/30 to-teal-500/30 blur-3xl"></div>
+              <div className="absolute inset-0 blur-3xl" style={{ background: `linear-gradient(to top right, var(--theme-primary-light), var(--theme-secondary))`, opacity: 0.3 }}></div>
               <div className="relative h-full shadow-2xl">
                 <ImageCarousel images={content?.carousel} />
               </div>
@@ -150,8 +158,8 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
           </div>
         </div>
       </div>
-      
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent"></div>
+
+      {/* <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white to-transparent"></div> */}
     </section>
   );
 }

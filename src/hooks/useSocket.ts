@@ -28,12 +28,19 @@ export const useSocket = (token: string | null) => {
       console.log('✅ Conectado ao chat de suporte');
     });
 
-    socketRef.current.on('disconnect', () => {
-      console.log('❌ Desconectado do chat de suporte');
+    socketRef.current.on('disconnect', (reason) => {
+      // Não logar desconexões normais ou quando o backend está offline
+      if (reason !== 'io server disconnect' && reason !== 'transport close') {
+        console.log('❌ Desconectado do chat de suporte:', reason);
+      }
     });
 
     socketRef.current.on('connect_error', (error) => {
-      console.error('Erro na conexão Socket.io:', error);
+      // Não logar erros de conexão quando o backend está offline (esperado)
+      // Apenas logar se for um erro diferente de conexão recusada
+      if (error.message && !error.message.includes('ECONNREFUSED') && !error.message.includes('websocket error')) {
+        console.warn('Erro na conexão Socket.io:', error.message);
+      }
     });
 
     return () => {

@@ -4,8 +4,16 @@ import * as LucideIcons from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +64,8 @@ import {
   FileText,
   X,
   Heart,
+  Palette,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -77,6 +87,7 @@ import { apiClient } from "../../services/apiClient";
 import { handleApiError, extractValidationErrors } from "../../utils/errorHandler";
 import { Loader2 } from "lucide-react";
 import { useSocket } from "../../hooks/useSocket";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -159,12 +170,32 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [currentTab, setCurrentTab] = useState<"info" | "content" | "modules">("info");
-  const [mainView, setMainView] = useState<"dashboard" | "courses" | "students" | "revenue" | "coupons" | "reviews" | "podcasts" | "newsletter" | "support" | "home-content">("dashboard");
+  const [mainView, setMainView] = useState<"dashboard" | "courses" | "students" | "revenue" | "coupons" | "reviews" | "podcasts" | "newsletter" | "support" | "home-content" | "theme" | "products" | "sales">("dashboard");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [podcasts, setPodcasts] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [productTypeFilter, setProductTypeFilter] = useState<"all" | "physical" | "digital">("all");
+  const [productImageUploading, setProductImageUploading] = useState(false);
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [allPurchases, setAllPurchases] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  // Sales filters and sorting
+  const [salesSearch, setSalesSearch] = useState("");
+  const [salesStatusFilter, setSalesStatusFilter] = useState<"all" | "with-proof" | "without-proof">("all");
+  const [salesDateFilter, setSalesDateFilter] = useState<"all" | "7d" | "30d" | "90d" | "month" | "year">("all");
+  const [salesSortBy, setSalesSortBy] = useState<"date" | "total" | "customer" | "products">("date");
+  const [salesSortOrder, setSalesSortOrder] = useState<"asc" | "desc">("desc");
+  const [salesViewMode, setSalesViewMode] = useState<"cards" | "table">("cards");
+  const [proofDialogOpen, setProofDialogOpen] = useState(false);
+  const [selectedProductPurchase, setSelectedProductPurchase] = useState<any | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofFiles, setProofFiles] = useState<Record<string, File>>({});
+  const [uploadingProof, setUploadingProof] = useState<string | null>(null);
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<any[]>([]);
   const [newsletterTotal, setNewsletterTotal] = useState(0);
   const [newsletterSubject, setNewsletterSubject] = useState("");
@@ -225,7 +256,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [podcastSortBy, setPodcastSortBy] = useState<"title" | "date" | "duration">("date");
   const [podcastSortOrder, setPodcastSortOrder] = useState<"asc" | "desc">("desc");
   const [podcastViewMode, setPodcastViewMode] = useState<"cards" | "table">("cards");
-
+  
   // Support Chat
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
@@ -302,6 +333,41 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [ctaSecondaryButtonAction, setCtaSecondaryButtonAction] = useState("free-class");
   const [ctaBenefitCards, setCtaBenefitCards] = useState<Array<{ icon: string; title: string; subtitle: string; iconColor: string }>>([]);
 
+  // Theme Management
+  const [themeLoading, setThemeLoading] = useState(false);
+  const [themeSaving, setThemeSaving] = useState(false);
+  const [themeColors, setThemeColors] = useState<{
+    primary: string;
+    primaryDark: string;
+    primaryLight: string;
+    secondary: string;
+    secondaryDark: string;
+    textPrimary: string;
+    textSecondary: string;
+    background: string;
+    backgroundSecondary: string;
+    border: string;
+    accent: string;
+    danger: string;
+    success: string;
+    info: string;
+  }>({
+    primary: '#3B82F6',
+    primaryDark: '#2563EB',
+    primaryLight: '#60A5FA',
+    secondary: '#10B981',
+    secondaryDark: '#059669',
+    textPrimary: '#1F2937',
+    textSecondary: '#6B7280',
+    background: '#FFFFFF',
+    backgroundSecondary: '#F9FAFB',
+    border: '#E5E7EB',
+    accent: '#F59E0B',
+    danger: '#EF4444',
+    success: '#10B981',
+    info: '#6366F1',
+  });
+
   // Form fields - Informações Básicas
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -312,12 +378,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [image, setImage] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [_podcastImageFile, setPodcastImageFile] = useState<File | null>(null);
+  const [podcastImageUploading, setPodcastImageUploading] = useState(false);
   const [instructor, setInstructor] = useState("");
   const [duration, setDuration] = useState("");
   const [lessons, setLessons] = useState("");
   const [students, setStudents] = useState("");
   const [rating, setRating] = useState("5");
-
+  
   // Form fields - Conteúdo
   const [videoUrl, setVideoUrl] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -329,7 +397,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [benefitTitle, setBenefitTitle] = useState("");
   const [benefitDescription, setBenefitDescription] = useState("");
   const [benefitIcon, setBenefitIcon] = useState("Heart");
-
+  
   // Form fields - Módulos
   const [modules, setModules] = useState<ModuleForm[]>([]);
   const [benefits, setBenefits] = useState<Benefit[]>([]);
@@ -341,7 +409,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     const loadAdminData = async () => {
       try {
         setLoading(true);
-
+        
         // Carregar dashboard
         try {
           const dashboardData = await apiClient.getAdminDashboard();
@@ -366,13 +434,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           if (purchasesResponse?.purchases) {
             // Expandir compras: cada curso de uma compra vira um item separado
             const expandedPurchases: any[] = [];
-
+            
             purchasesResponse.purchases.forEach((p: any) => {
               // Converter finalAmount para número
-              const finalAmount = typeof p.finalAmount === 'string'
-                ? parseFloat(p.finalAmount.replace(',', '.'))
+              const finalAmount = typeof p.finalAmount === 'string' 
+                ? parseFloat(p.finalAmount.replace(',', '.')) 
                 : (typeof p.finalAmount === 'number' ? p.finalAmount : 0);
-
+              
               // Se a compra tem cursos associados
               if (p.courses && p.courses.length > 0) {
                 // Criar um item para cada curso da compra
@@ -383,28 +451,56 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     userName: p.user?.name || "Usuário",
                     userEmail: p.user?.email || "",
                     courseId: pc.courseId || "",
-                    courseTitle: pc.course?.title || "",
+                    courseTitle: pc.course?.title || "Curso não encontrado",
                     price: isNaN(finalAmount) ? 0 : finalAmount,
                     date: p.createdAt,
                     paymentStatus: p.paymentStatus,
+                    type: 'course',
                   });
                 });
-              } else {
-                // Se não tem cursos, criar um item genérico
+              }
+              
+              // Se a compra tem produtos associados
+              if (p.products && p.products.length > 0) {
+                // Criar um item para cada produto da compra
+                p.products.forEach((pp: any) => {
+                  const productPrice = typeof pp.priceAtPurchase === 'string' 
+                    ? parseFloat(pp.priceAtPurchase.replace(',', '.')) 
+                    : (typeof pp.priceAtPurchase === 'number' ? pp.priceAtPurchase : 0);
+                  
+                  expandedPurchases.push({
+                    id: p.id,
+                    userId: p.userId,
+                    userName: p.user?.name || "Usuário",
+                    userEmail: p.user?.email || "",
+                    courseId: "",
+                    courseTitle: pp.product?.title || "Produto não encontrado",
+                    price: productPrice * (pp.quantity || 1),
+                    date: p.createdAt,
+                    paymentStatus: p.paymentStatus,
+                    type: 'product',
+                    productId: pp.productId,
+                  });
+                });
+              }
+              
+              // Se não tem cursos nem produtos, criar um item genérico
+              if ((!p.courses || p.courses.length === 0) && (!p.products || p.products.length === 0)) {
                 expandedPurchases.push({
                   id: p.id,
                   userId: p.userId,
                   userName: p.user?.name || "Usuário",
                   userEmail: p.user?.email || "",
                   courseId: "",
-                  courseTitle: "Curso não encontrado",
+                  courseTitle: "Compra sem itens",
                   price: isNaN(finalAmount) ? 0 : finalAmount,
                   date: p.createdAt,
                   paymentStatus: p.paymentStatus,
+                  type: 'unknown',
                 });
               }
             });
-
+            
             setPurchases(expandedPurchases);
           }
         } catch (error) {
@@ -529,7 +625,161 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     if (mainView === "home-content") {
       loadHomeContent();
     }
+    if (mainView === "products") {
+      loadProducts();
+    }
+    if (mainView === "sales") {
+      loadSales();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainView]);
+
+  // Carregar produtos
+  const loadProducts = async () => {
+    try {
+      const response = await apiClient.getProducts({ page: 1, limit: 100 });
+      setProducts(response?.products || []);
+    } catch (error) {
+      console.error("Erro ao carregar produtos:", error);
+      toast.error("Erro ao carregar produtos");
+      setProducts([]);
+    }
+  };
+
+  // Função para fazer upload de imagem de produto
+  const handleProductImageUpload = async (file: File) => {
+    try {
+      setProductImageUploading(true);
+      console.log('📤 Iniciando upload de imagem do produto:', file.name);
+      const result = await apiClient.uploadImage(file);
+      console.log('✅ Upload concluído. URL recebida:', result.url);
+      
+      if (!result.url || !result.url.trim()) {
+        throw new Error('URL da imagem não foi retornada pelo servidor');
+      }
+      
+      setEditingProduct({ ...editingProduct, image: result.url });
+      setProductImageFile(null);
+      console.log('✅ Estado image atualizado para:', result.url);
+      toast.success("Imagem enviada com sucesso!");
+    } catch (error: any) {
+      console.error('❌ Erro no upload de imagem:', error);
+      toast.error(error.message || "Erro ao fazer upload da imagem");
+      setProductImageFile(null);
+    } finally {
+      setProductImageUploading(false);
+    }
+  };
+
+  // Carregar vendas com produtos físicos
+  const loadSales = async () => {
+    try {
+      setSalesLoading(true);
+      const response = await apiClient.getAdminPurchases({ page: 1, limit: 100 });
+      const purchasesList = response?.purchases || [];
+      
+      console.log('📦 Compras recebidas:', purchasesList.length);
+      console.log('📦 Primeira compra (exemplo):', purchasesList[0]);
+      
+      // Filtrar apenas compras pagas que têm produtos físicos
+      // O backend retorna 'products' não 'productPurchases'
+      const salesWithPhysicalProducts = purchasesList
+        .filter((p: any) => {
+          const hasPaid = p.paymentStatus === 'paid' || p.paymentStatus === 'PAID';
+          const hasProducts = (p.products && p.products.length > 0) || (p.productPurchases && p.productPurchases.length > 0);
+          return hasPaid && hasProducts;
+        })
+        .map((p: any) => {
+          // Usar 'products' ou 'productPurchases' dependendo do que vier do backend
+          const productList = p.products || p.productPurchases || [];
+          return {
+          ...p,
+            physicalProducts: productList.filter((pp: any) => {
+              const product = pp.product || pp;
+              return product?.type === 'physical' || product?.type === 'PHYSICAL';
+            }),
+          };
+        })
+        .filter((p: any) => p.physicalProducts.length > 0);
+      
+      console.log('📦 Vendas com produtos físicos:', salesWithPhysicalProducts.length);
+      setAllPurchases(salesWithPhysicalProducts);
+    } catch (error) {
+      console.error("Erro ao carregar vendas:", error);
+      toast.error("Erro ao carregar vendas");
+      setAllPurchases([]);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  // Adicionar comprovante de envio
+  const handleAddProof = async () => {
+    if (!selectedProductPurchase || !proofFile) {
+      toast.error("Selecione um arquivo de comprovante");
+      return;
+    }
+
+    try {
+      setSalesLoading(true);
+      
+      // Verificar se já existe tracking para este produto
+      const existingTracking = selectedProductPurchase.tracking || selectedProductPurchase.shippingTracking;
+      
+      if (existingTracking) {
+        // Se já existe tracking, apenas fazer upload do comprovante
+        await apiClient.uploadProofOfDelivery(existingTracking.id, proofFile);
+        toast.success("Comprovante de envio adicionado com sucesso!");
+      } else {
+        // Se não existe tracking, criar um tracking básico primeiro
+        const response = await apiClient.addTrackingCode(selectedProductPurchase.id, {});
+        
+        if (response?.id) {
+          await apiClient.uploadProofOfDelivery(response.id, proofFile);
+          toast.success("Comprovante de envio adicionado com sucesso!");
+        } else {
+          toast.error("Erro ao criar registro de envio");
+          return;
+        }
+      }
+      
+      setProofDialogOpen(false);
+      setProofFile(null);
+      setSelectedProductPurchase(null);
+      loadSales();
+    } catch (error: any) {
+      console.error("Erro ao adicionar comprovante:", error);
+      toast.error(error.message || "Erro ao adicionar comprovante de envio");
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  // Fazer upload do comprovante de envio
+  const handleUploadProof = async (trackingId: string) => {
+    const proofFile = proofFiles[trackingId];
+    if (!proofFile) {
+      toast.error("Selecione um arquivo para fazer upload");
+      return;
+    }
+
+    try {
+      setUploadingProof(trackingId);
+      await apiClient.uploadProofOfDelivery(trackingId, proofFile);
+      toast.success("Comprovante de envio enviado com sucesso!");
+      setProofFiles(prev => {
+        const newFiles = { ...prev };
+        delete newFiles[trackingId];
+        return newFiles;
+      });
+      loadSales();
+    } catch (error: any) {
+      console.error("Erro ao fazer upload do comprovante:", error);
+      toast.error(error.message || "Erro ao fazer upload do comprovante");
+    } finally {
+      setUploadingProof(null);
+    }
+  };
 
   // Carregar conteúdo da home
   const loadHomeContent = async () => {
@@ -660,6 +910,104 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  // Função helper para normalizar cores hexadecimais (remove alpha se houver)
+  const normalizeHexColor = (color: string): string => {
+    if (!color) return color;
+    // Remove espaços e converte para maiúsculas
+    const cleaned = color.trim().toUpperCase();
+    // Se começa com #, remove
+    const hex = cleaned.startsWith('#') ? cleaned.slice(1) : cleaned;
+    // Se tem 8 caracteres (inclui alpha), remove os últimos 2
+    if (hex.length === 8) {
+      return `#${hex.slice(0, 6)}`;
+    }
+    // Se tem 6 caracteres, adiciona #
+    if (hex.length === 6) {
+      return `#${hex}`;
+    }
+    // Se tem 3 caracteres (formato curto), expande para 6
+    if (hex.length === 3) {
+      return `#${hex.split('').map(c => c + c).join('')}`;
+    }
+    // Retorna como está se não corresponder a nenhum formato conhecido
+    return cleaned.startsWith('#') ? cleaned : `#${cleaned}`;
+  };
+
+  // Função helper para atualizar cor com normalização automática
+  const updateColor = (key: keyof typeof themeColors, value: string) => {
+    const normalized = normalizeHexColor(value);
+    setThemeColors({ ...themeColors, [key]: normalized });
+  };
+
+  // Carregar tema
+  const loadTheme = async () => {
+    try {
+      setThemeLoading(true);
+      const themeData = await apiClient.getAdminTheme();
+      setThemeColors({
+        primary: themeData.primary,
+        primaryDark: themeData.primaryDark,
+        primaryLight: themeData.primaryLight,
+        secondary: themeData.secondary,
+        secondaryDark: themeData.secondaryDark,
+        textPrimary: themeData.textPrimary,
+        textSecondary: themeData.textSecondary,
+        background: themeData.background,
+        backgroundSecondary: themeData.backgroundSecondary,
+        border: themeData.border,
+        accent: themeData.accent,
+        danger: themeData.danger,
+        success: themeData.success,
+        info: themeData.info,
+      });
+    } catch (error: any) {
+      console.error("Erro ao carregar tema:", error);
+      toast.error("Erro ao carregar tema");
+    } finally {
+      setThemeLoading(false);
+    }
+  };
+
+  // Salvar tema
+  const saveTheme = async () => {
+    try {
+      setThemeSaving(true);
+      await apiClient.updateTheme(themeColors);
+      toast.success("Cores atualizadas com sucesso!");
+      // Aplicar cores imediatamente via CSS variables
+      const root = document.documentElement;
+      root.style.setProperty('--theme-primary', themeColors.primary);
+      root.style.setProperty('--theme-primary-dark', themeColors.primaryDark);
+      root.style.setProperty('--theme-primary-light', themeColors.primaryLight);
+      root.style.setProperty('--theme-secondary', themeColors.secondary);
+      root.style.setProperty('--theme-secondary-dark', themeColors.secondaryDark);
+      root.style.setProperty('--theme-text-primary', themeColors.textPrimary);
+      root.style.setProperty('--theme-text-secondary', themeColors.textSecondary);
+      root.style.setProperty('--theme-background', themeColors.background);
+      root.style.setProperty('--theme-background-secondary', themeColors.backgroundSecondary);
+      root.style.setProperty('--theme-border', themeColors.border);
+      root.style.setProperty('--theme-accent', themeColors.accent);
+      root.style.setProperty('--theme-danger', themeColors.danger);
+      root.style.setProperty('--theme-success', themeColors.success);
+      root.style.setProperty('--theme-info', themeColors.info);
+      // Recarregar tema para sincronizar
+      await loadTheme();
+    } catch (error: any) {
+      console.error("Erro ao salvar tema:", error);
+      toast.error(error.message || "Erro ao salvar cores");
+    } finally {
+      setThemeSaving(false);
+    }
+  };
+
+  // Carregar tema quando a view mudar para theme
+  useEffect(() => {
+    if (mainView === "theme") {
+      loadTheme();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainView]);
+
   // Socket.io listeners para atualizações em tempo real do suporte
   useEffect(() => {
     if (!socket || mainView !== "support") return;
@@ -670,13 +1018,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       if (selectedTicket?.id === data.ticketId) {
         setSelectedTicket((prev: any) => {
           if (!prev) return null;
-
+          
           // Verificar se a mensagem já existe para evitar duplicação
           const messageExists = prev.messages?.some((msg: any) => msg.id === data.message.id);
           if (messageExists) {
             return prev;
           }
-
+          
           return {
             ...prev,
             messages: [...(prev.messages || []), data.message],
@@ -685,7 +1033,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         // Scroll automático quando recebe nova mensagem
         setTimeout(() => scrollToBottom(), 100);
       }
-
+      
       // Sempre atualizar lista de tickets
       loadSupportTickets();
     });
@@ -769,12 +1117,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       setSupportLoading(true);
       const response = await apiClient.getSupportTicket(ticketId);
       setSelectedTicket(response.ticket);
-
+      
       // Marcar mensagens como lidas quando o admin abre o ticket
       if (socket) {
         console.log(`📖 Marcando mensagens como lidas para ticket ${ticketId}`);
         socket.emit('mark_read', { ticketId });
-
+        
         // Aguardar um pouco e recarregar tanto o ticket quanto a lista
         setTimeout(async () => {
           try {
@@ -808,7 +1156,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       await apiClient.sendSupportMessage(selectedTicket.id, {
         content: messageContent,
       });
-
+      
       // Não precisa recarregar manualmente - Socket.io atualizará automaticamente
       // O scroll será feito automaticamente pelo useEffect quando a mensagem chegar
       setTimeout(() => scrollToBottom(), 200);
@@ -865,8 +1213,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
 
     // Preparar campo de imagem (só enviar se for URL válida)
-    const imageUrl = image && image.trim() && (image.startsWith('http://') || image.startsWith('https://'))
-      ? image.trim()
+    const imageUrl = image && image.trim() && (image.startsWith('http://') || image.startsWith('https://')) 
+      ? image.trim() 
       : undefined;
 
     try {
@@ -896,7 +1244,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               bonuses: supportMaterials
                 .filter(m => m.name?.trim()) // Filtrar apenas materiais com nome válido
                 .map(m => ({
-                  icon: 'FileText',
+              icon: 'FileText',
                   title: (m.name || '').trim() || 'Material de Apoio',
                   description: (typeof m.url === 'string' ? m.url.trim() : undefined) || undefined,
                 })),
@@ -919,7 +1267,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         // Atualizar curso existente
         await apiClient.updateCourse(editingCourse.id, courseData);
         toast.success("Curso atualizado com sucesso!");
-
+        
         // Se há módulos para criar/atualizar
         console.log("📦 Módulos para processar na atualização:", modules);
         if (modules && modules.length > 0) {
@@ -927,28 +1275,28 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           const existingModulesResponse = await apiClient.getCourseModules(editingCourse.id);
           const existingModules = existingModulesResponse?.modules || [];
           const existingModuleIds = new Set(existingModules.map((m: any) => m.id));
-
+          
           let modulesCreated = 0;
           let modulesUpdated = 0;
           let lessonsCreated = 0;
           let lessonsUpdated = 0;
           let hasErrors = false;
-
+          
           try {
             console.log(`🚀 Iniciando processamento de ${modules.length} módulo(s) na atualização...`);
             for (let i = 0; i < modules.length; i++) {
               const module = modules[i];
               console.log(`📚 Processando módulo ${i + 1}/${modules.length}: "${module.title}"`);
-
+              
               // Validar se o módulo tem título
               if (!module.title || module.title.trim() === "") {
                 console.warn(`⚠️ Módulo ${i + 1} não tem título, pulando...`);
                 continue;
               }
-
+              
               try {
                 let moduleId: string;
-
+                
                 // Verificar se o módulo já existe
                 if (module.id && existingModuleIds.has(module.id)) {
                   // Atualizar módulo existente
@@ -968,18 +1316,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     duration: module.duration || "0h",
                     order: i,
                   });
-
+                  
                   if (!moduleResponse?.module?.id) {
                     console.error(`  ❌ Erro ao criar módulo ${i + 1}: resposta inválida`, moduleResponse);
                     toast.error(`Erro ao criar módulo "${module.title}"`);
                     hasErrors = true;
                     continue;
                   }
-
+                  
                   moduleId = moduleResponse.module.id;
                   modulesCreated++;
                 }
-
+                
                 // Processar aulas do módulo
                 console.log(`  📝 Módulo tem ${module.lessons?.length || 0} aula(s) para processar`);
                 if (module.lessons && module.lessons.length > 0) {
@@ -987,17 +1335,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   const moduleLessonsResponse = await apiClient.getModuleLessons(moduleId);
                   const existingLessons = moduleLessonsResponse?.lessons || [];
                   const existingLessonIds = new Set(existingLessons.map((l: any) => l.id));
-
+                  
                   for (let j = 0; j < module.lessons.length; j++) {
                     const lesson = module.lessons[j];
                     console.log(`    📖 Processando aula ${j + 1}/${module.lessons.length}: "${lesson.title}"`);
-
+                    
                     // Validar se a aula tem título antes de criar
                     if (!lesson.title || lesson.title.trim() === "") {
                       console.warn(`    ⚠️ Aula ${j + 1} do módulo "${module.title}" não tem título, pulando...`);
                       continue;
                     }
-
+                    
                     // Validar se a aula tem URL do vídeo
                     if (!lesson.videoUrl || lesson.videoUrl.trim() === "") {
                       console.error(`    ❌ Aula "${lesson.title}" não tem URL do vídeo`);
@@ -1005,7 +1353,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       hasErrors = true;
                       continue;
                     }
-
+                    
                     try {
                       // Verificar se a aula já existe
                       if (lesson.id && existingLessonIds.has(lesson.id)) {
@@ -1037,7 +1385,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       hasErrors = true;
                     }
                   }
-
+                  
                   // Deletar aulas que foram removidas
                   const currentLessonIds = new Set(module.lessons.filter(l => l.id).map(l => l.id!));
                   for (const existingLesson of existingLessons) {
@@ -1059,7 +1407,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 hasErrors = true;
               }
             }
-
+            
             // Deletar módulos que foram removidos
             const currentModuleIds = new Set(modules.filter(m => m.id).map(m => m.id!));
             for (const existingModule of existingModules) {
@@ -1072,7 +1420,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 }
               }
             }
-
+            
             console.log(`✅ Processo concluído: ${modulesCreated} criado(s), ${modulesUpdated} atualizado(s), ${lessonsCreated} aula(s) criada(s), ${lessonsUpdated} aula(s) atualizada(s)`);
             if (hasErrors) {
               toast.warning(`Curso atualizado! Mas houve alguns erros no processamento de módulos/aulas.`);
@@ -1087,32 +1435,32 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       } else {
         // Criar novo curso
         const response = await apiClient.createCourse(courseData);
-
+        
         if (!response || !response.course) {
           throw new Error("Resposta inválida da API ao criar curso");
         }
-
+        
         toast.success("Curso criado com sucesso!");
-
+        
         // Se o curso foi criado com sucesso e há módulos, criar módulos
         console.log("📦 Módulos para criar:", modules);
         if (modules && modules.length > 0 && response.course.id) {
           let modulesCreated = 0;
           let lessonsCreated = 0;
           let hasErrors = false;
-
+          
           try {
             console.log(`🚀 Iniciando criação de ${modules.length} módulo(s)...`);
             for (let i = 0; i < modules.length; i++) {
               const module = modules[i];
               console.log(`📚 Processando módulo ${i + 1}/${modules.length}: "${module.title}"`);
-
+              
               // Validar se o módulo tem título
               if (!module.title || module.title.trim() === "") {
                 console.warn(`⚠️ Módulo ${i + 1} não tem título, pulando...`);
                 continue;
               }
-
+              
               try {
                 console.log(`  ➕ Criando módulo "${module.title}"...`);
                 const moduleResponse = await apiClient.createModule(response.course.id, {
@@ -1120,31 +1468,31 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   duration: module.duration || "0h",
                   order: i,
                 });
-
+                
                 console.log(`  ✅ Módulo criado:`, moduleResponse);
-
+                
                 if (!moduleResponse?.module?.id) {
                   console.error(`  ❌ Erro ao criar módulo ${i + 1}: resposta inválida`, moduleResponse);
                   toast.error(`Erro ao criar módulo "${module.title}"`);
                   hasErrors = true;
                   continue;
                 }
-
+                
                 modulesCreated++;
-
+                
                 // Criar aulas do módulo
                 console.log(`  📝 Módulo tem ${module.lessons?.length || 0} aula(s) para criar`);
                 if (module.lessons && module.lessons.length > 0) {
                   for (let j = 0; j < module.lessons.length; j++) {
                     const lesson = module.lessons[j];
                     console.log(`    📖 Processando aula ${j + 1}/${module.lessons.length}: "${lesson.title}"`);
-
+                    
                     // Validar se a aula tem título antes de criar
                     if (!lesson.title || lesson.title.trim() === "") {
                       console.warn(`    ⚠️ Aula ${j + 1} do módulo "${module.title}" não tem título, pulando...`);
                       continue;
                     }
-
+                    
                     // Validar se a aula tem URL do vídeo
                     if (!lesson.videoUrl || lesson.videoUrl.trim() === "") {
                       console.error(`    ❌ Aula "${lesson.title}" não tem URL do vídeo`);
@@ -1152,7 +1500,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       hasErrors = true;
                       continue;
                     }
-
+                    
                     try {
                       console.log(`    ➕ Criando aula "${lesson.title}"...`);
                       const lessonResponse = await apiClient.createLesson(moduleResponse.module.id, {
@@ -1179,7 +1527,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 hasErrors = true;
               }
             }
-
+            
             console.log(`✅ Processo concluído: ${modulesCreated} módulo(s) e ${lessonsCreated} aula(s) criados`);
             if (hasErrors) {
               toast.warning(`Curso criado! ${modulesCreated} módulo(s) e ${lessonsCreated} aula(s) criados, mas houve alguns erros.`);
@@ -1213,7 +1561,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         const formErrors = extractValidationErrors(error);
         setErrors(formErrors as FormErrors);
       }
-
+      
       // Exibir mensagens de erro ao usuário
       handleApiError(error, "Erro ao salvar curso");
     }
@@ -1267,7 +1615,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       try {
         await apiClient.deleteCourse(id);
         toast.success("Curso excluído com sucesso!");
-
+        
         // Recarregar cursos
         const coursesResponse = await apiClient.getCourses({ page: 1, limit: 100 });
         setCourses(coursesResponse.courses);
@@ -1284,6 +1632,31 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     setIsDialogOpen(true);
   };
 
+  // Função para fazer upload de imagem de podcast
+  const handlePodcastImageUpload = async (file: File) => {
+    try {
+      setPodcastImageUploading(true);
+      console.log('📤 Iniciando upload de imagem do podcast:', file.name);
+      const result = await apiClient.uploadImage(file);
+      console.log('✅ Upload concluído. URL recebida:', result.url);
+      
+      if (!result.url || !result.url.trim()) {
+        throw new Error('URL da imagem não foi retornada pelo servidor');
+      }
+      
+      setImage(result.url);
+      setPodcastImageFile(null);
+      console.log('✅ Estado image atualizado para:', result.url);
+      toast.success("Imagem enviada com sucesso!");
+    } catch (error: any) {
+      console.error('❌ Erro no upload de imagem:', error);
+      toast.error(error.message || "Erro ao fazer upload da imagem");
+      setPodcastImageFile(null);
+    } finally {
+      setPodcastImageUploading(false);
+    }
+  };
+
   // Função para fazer upload de imagem
   const handleImageUpload = async (file: File) => {
     try {
@@ -1291,11 +1664,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       console.log('📤 Iniciando upload de imagem:', file.name);
       const result = await apiClient.uploadImage(file);
       console.log('✅ Upload concluído. URL recebida:', result.url);
-
+      
       if (!result.url || !result.url.trim()) {
         throw new Error('URL da imagem não foi retornada pelo servidor');
       }
-
+      
       setImage(result.url);
       setImageFile(null);
       console.log('✅ Estado image atualizado para:', result.url);
@@ -1331,7 +1704,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       const newModules = [...modules];
       newModules[moduleIndex].lessons[lessonIndex].videoUrl = 'uploading...';
       setModules(newModules);
-
+      
       const result = await apiClient.uploadVideo(file);
       newModules[moduleIndex].lessons[lessonIndex].videoUrl = result.url;
       setModules(newModules);
@@ -1420,18 +1793,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const handleDeleteCoupon = async (id: string) => {
-    try {
-      await apiClient.deleteCoupon(id);
-      toast.success("Cupom excluído!");
-
-      // Recarregar cupons
-      const couponsResponse = await apiClient.getAdminCoupons({ page: 1, limit: 100 });
-      setCoupons(couponsResponse.coupons);
+      try {
+        await apiClient.deleteCoupon(id);
+        toast.success("Cupom excluído!");
+        
+        // Recarregar cupons
+        const couponsResponse = await apiClient.getAdminCoupons({ page: 1, limit: 100 });
+        setCoupons(couponsResponse.coupons);
       setDeleteCouponDialogOpen(false);
       setCouponToDelete(null);
-    } catch (error) {
-      toast.error("Erro ao excluir cupom");
-      console.error(error);
+      } catch (error) {
+        toast.error("Erro ao excluir cupom");
+        console.error(error);
     }
   };
 
@@ -1444,7 +1817,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     try {
       await apiClient.toggleCoupon(id);
       toast.success("Status atualizado!");
-
+      
       // Recarregar cupons
       const couponsResponse = await apiClient.getAdminCoupons({ page: 1, limit: 100 });
       setCoupons(couponsResponse.coupons);
@@ -1466,11 +1839,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     try {
       await apiClient.approveReview(id);
       toast.success("Avaliação aprovada!");
-
+      
       // Atualizar apenas a avaliação aprovada no estado local, mantendo todas as outras
-      setReviews(prevReviews =>
-        prevReviews.map(review =>
-          review.id === id
+      setReviews(prevReviews => 
+        prevReviews.map(review => 
+          review.id === id 
             ? { ...review, approved: true }
             : review
         )
@@ -1486,7 +1859,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       try {
         await apiClient.deleteReview(id);
         toast.success("Avaliação excluída!");
-
+        
         // Remover apenas a avaliação deletada do estado local
         setReviews(prevReviews => prevReviews.filter(review => review.id !== id));
       } catch (error) {
@@ -1529,35 +1902,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
   // Usar dados do dashboard do backend (mais preciso, inclui todas as compras)
   // Fallback para cálculo local se dashboardData não estiver disponível
-  const totalRevenue = dashboardData?.totalRevenue !== undefined
-    ? Number(dashboardData.totalRevenue)
+  const totalRevenue = dashboardData?.totalRevenue !== undefined 
+    ? Number(dashboardData.totalRevenue) 
     : purchases.reduce((acc, p) => {
-      const price = typeof p.price === 'string'
-        ? parseFloat(String(p.price).replace(',', '.')) || 0
-        : (typeof p.price === 'number' ? p.price : 0);
-      return acc + Number(price);
-    }, 0);
-
-  const totalSales = dashboardData?.totalSales !== undefined
-    ? Number(dashboardData.totalSales)
+        const price = typeof p.price === 'string' 
+          ? parseFloat(String(p.price).replace(',', '.')) || 0 
+          : (typeof p.price === 'number' ? p.price : 0);
+        return acc + Number(price);
+      }, 0);
+  
+  const totalSales = dashboardData?.totalSales !== undefined 
+    ? Number(dashboardData.totalSales) 
     : purchases.length;
-
+  
   const averageTicket = dashboardData?.averageTicket !== undefined
     ? Number(dashboardData.averageTicket)
     : (totalSales > 0 ? totalRevenue / totalSales : 0);
-
+  
   // Usar dados do dashboard para alunos e cursos também
   const totalStudents = dashboardData?.totalStudents !== undefined
     ? Number(dashboardData.totalStudents)
     : users.length;
-
+  
   const totalCourses = dashboardData?.totalCourses !== undefined
     ? Number(dashboardData.totalCourses)
     : courses.length;
 
   // ✅ Filtrar apenas compras PAGAS para cálculos de faturamento
   const paidPurchases = purchases.filter(p => p.paymentStatus === 'paid');
-
+  
   const revenuePerCourse = courses.map(course => {
     // Filtrar apenas compras pagas deste curso
     const coursePurchases = paidPurchases.filter(p => p.courseId === course.id);
@@ -1823,6 +2196,93 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       return couponSortOrder === "asc" ? comparison : -comparison;
     });
 
+  // Filtrar e ordenar vendas
+  const filteredAndSortedSales = allPurchases
+    .filter((purchase: any) => {
+      // Busca por cliente, email ou ID da compra
+      if (salesSearch) {
+        const searchLower = salesSearch.toLowerCase();
+        const customerName = purchase.user?.name?.toLowerCase() || '';
+        const customerEmail = purchase.user?.email?.toLowerCase() || '';
+        const purchaseId = purchase.id.toLowerCase();
+        
+        if (!customerName.includes(searchLower) && 
+            !customerEmail.includes(searchLower) &&
+            !purchaseId.includes(searchLower)) {
+          return false;
+        }
+      }
+      
+      // Filtro por status de comprovante
+      if (salesStatusFilter === "with-proof") {
+        const hasProof = purchase.physicalProducts?.some((pp: any) => {
+          const tracking = pp.tracking || pp.shippingTracking;
+          return tracking && tracking.proofOfDeliveryUrl;
+        });
+        if (!hasProof) return false;
+      }
+      if (salesStatusFilter === "without-proof") {
+        const hasProof = purchase.physicalProducts?.some((pp: any) => {
+          const tracking = pp.tracking || pp.shippingTracking;
+          return tracking && tracking.proofOfDeliveryUrl;
+        });
+        if (hasProof) return false;
+      }
+      
+      // Filtro por data
+      if (salesDateFilter !== "all") {
+        const purchaseDate = new Date(purchase.createdAt);
+        const now = new Date();
+        const daysDiff = Math.floor((now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        switch (salesDateFilter) {
+          case "7d":
+            if (daysDiff > 7) return false;
+            break;
+          case "30d":
+            if (daysDiff > 30) return false;
+            break;
+          case "90d":
+            if (daysDiff > 90) return false;
+            break;
+          case "month":
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            if (purchaseDate < monthStart) return false;
+            break;
+          case "year":
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            if (purchaseDate < yearStart) return false;
+            break;
+        }
+      }
+      
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      let comparison = 0;
+      switch (salesSortBy) {
+        case "date":
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case "total":
+          const totalA = typeof a.finalAmount === 'string' ? parseFloat(a.finalAmount) : a.finalAmount || 0;
+          const totalB = typeof b.finalAmount === 'string' ? parseFloat(b.finalAmount) : b.finalAmount || 0;
+          comparison = totalA - totalB;
+          break;
+        case "customer":
+          const nameA = a.user?.name || '';
+          const nameB = b.user?.name || '';
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case "products":
+          const productsA = a.physicalProducts?.length || 0;
+          const productsB = b.physicalProducts?.length || 0;
+          comparison = productsA - productsB;
+          break;
+      }
+      return salesSortOrder === "asc" ? comparison : -comparison;
+    });
+
   // Filtrar e ordenar avaliações
   const filteredAndSortedReviews = reviews
     .filter(review => {
@@ -2039,7 +2499,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
       </div>
     );
   }
@@ -2049,22 +2509,22 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       {/* Mobile Header & Navigation */}
       <div className="lg:hidden">
         <section className="bg-gradient-to-br from-gray-800 to-gray-900 text-white pt-24 pb-6 sticky top-0 z-30">
-          <div className="container mx-auto px-4">
-            <Button
-              variant="ghost"
+        <div className="container mx-auto px-4">
+          <Button
+            variant="ghost"
               className="text-white hover:bg-white/10 mb-4"
-              onClick={onBack}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
             <h1 className="text-2xl font-bold mb-2">
-              Painel Administrativo
-            </h1>
+                Painel Administrativo
+              </h1>
             <p className="text-sm text-gray-300">
-              Gerencie sua plataforma de forma completa
-            </p>
-          </div>
+                Gerencie sua plataforma de forma completa
+              </p>
+            </div>
         </section>
 
         {/* Mobile Navigation */}
@@ -2074,6 +2534,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               {[
                 { id: "dashboard", label: "Dashboard", icon: BarChart3 },
                 { id: "courses", label: "Cursos", icon: BookOpen },
+                { id: "products", label: "Produtos", icon: Package },
+                { id: "sales", label: "Vendas", icon: ShoppingCart },
                 { id: "students", label: "Alunos", icon: Users },
                 { id: "revenue", label: "Faturamento", icon: TrendingUp },
                 { id: "coupons", label: "Cupons", icon: Ticket },
@@ -2108,20 +2570,22 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         {/* Sidebar Navigation - Desktop */}
         <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 shadow-sm min-h-[calc(120vh-4rem)] sticky top-16 self-start">
           <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white">
-            <Button
+                  <Button
               variant="ghost"
               className="text-gray-700 hover:bg-gray-100 -ml-2 w-full justify-start"
               onClick={onBack}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
-            </Button>
+                  </Button>
           </div>
           
           <nav className="flex-1 overflow-y-auto p-4 space-y-1 min-h-0">
             {[
               { id: "dashboard", label: "Dashboard", icon: BarChart3 },
               { id: "courses", label: "Cursos", icon: BookOpen },
+              { id: "products", label: "Produtos", icon: Package },
+              { id: "sales", label: "Vendas", icon: ShoppingCart },
               { id: "students", label: "Alunos", icon: Users },
               { id: "revenue", label: "Faturamento", icon: TrendingUp },
               { id: "coupons", label: "Cupons", icon: Ticket },
@@ -2130,6 +2594,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               { id: "newsletter", label: "Newsletter", icon: Mail },
               { id: "support", label: "Suporte", icon: MessageCircle },
               { id: "home-content", label: "Conteúdo", icon: Sparkles },
+              { id: "theme", label: "Tema", icon: Palette },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = mainView === item.id;
@@ -2249,9 +2714,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <button
                         type="button"
                         className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "info"
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                          }`}
+                          ? "bg-white shadow-sm"
+                          : ""
+                        }`}
                         onClick={() => setCurrentTab("info")}
                       >
                         Informações Básicas
@@ -2259,9 +2724,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <button
                         type="button"
                         className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "content"
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                          }`}
+                          ? "bg-white shadow-sm"
+                          : ""
+                        }`}
                         onClick={() => setCurrentTab("content")}
                       >
                         Conteúdo
@@ -2269,9 +2734,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <button
                         type="button"
                         className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "modules"
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                          }`}
+                          ? "bg-white shadow-sm"
+                          : ""
+                        }`}
                         onClick={() => setCurrentTab("modules")}
                       >
                         Módulos
@@ -2287,7 +2752,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <h3 className="text-base sm:text-lg font-semibold text-gray-800">Informações Principais</h3>
                               <p className="text-xs sm:text-sm text-gray-500 mt-1">Dados básicos do curso</p>
                             </div>
-
+                            
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                               <div>
                                 <Label htmlFor="title" className="text-sm sm:text-base font-medium">Título *</Label>
@@ -2346,7 +2811,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Preços e Categoria</h3>
                               <p className="text-sm sm:text-base text-gray-500 mt-2">Configure os valores e classificação</p>
                             </div>
-
+                            
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                               <div className="space-y-2">
                                 <Label htmlFor="price" className="text-base sm:text-lg font-medium">Preço (R$) *</Label>
@@ -2403,7 +2868,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Mídia e Instrutor</h3>
                               <p className="text-sm sm:text-base text-gray-500 mt-2">Imagem e informações do instrutor</p>
                             </div>
-
+                            
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                               <div className="space-y-2">
                                 <Label htmlFor="image" className="text-base sm:text-lg font-medium">Imagem do Curso *</Label>
@@ -2421,30 +2886,30 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     }}
                                     className="hidden"
                                   />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => document.getElementById('image')?.click()}
-                                    disabled={imageUploading}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={() => document.getElementById('image')?.click()}
+                                      disabled={imageUploading}
                                     className="w-full h-12 sm:h-14 text-base sm:text-lg"
-                                  >
-                                    {imageUploading ? (
-                                      <>
+                                    >
+                                      {imageUploading ? (
+                                        <>
                                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                        Enviando...
-                                      </>
-                                    ) : (
-                                      <>
+                                          Enviando...
+                                        </>
+                                      ) : (
+                                        <>
                                         <Upload className="w-5 h-5 mr-2" />
                                         {imageFile ? (imageFile.name.length > 25 ? imageFile.name.substring(0, 25) + '...' : imageFile.name) : 'Selecionar Imagem'}
-                                      </>
-                                    )}
-                                  </Button>
+                                        </>
+                                      )}
+                                    </Button>
                                   {image && image.trim() && (image.startsWith('http://') || image.startsWith('https://')) && (
                                     <div className="mt-3">
-                                      <img
-                                        src={image}
-                                        alt="Preview"
+                                      <img 
+                                        src={image} 
+                                        alt="Preview" 
                                         className="w-full h-40 sm:h-48 lg:h-56 object-cover rounded-lg border"
                                         onError={(e) => {
                                           console.error('Erro ao carregar imagem:', image);
@@ -2455,7 +2920,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         }}
                                       />
                                       <p className="text-sm text-gray-500 mt-2">Imagem atual</p>
-                                      <p className="text-xs text-blue-500 mt-1 break-all">{image}</p>
+                                      <p className="text-xs mt-1 break-all" style={{ color: 'var(--theme-primary-light)' }}>{image}</p>
                                     </div>
                                   )}
                                   {image && image.trim() && !image.startsWith('http://') && !image.startsWith('https://') && (
@@ -2485,8 +2950,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     {errors.instructor}
                                   </p>
                                 )}
-                              </div>
                             </div>
+                          </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                               <div className="space-y-2">
@@ -2538,92 +3003,92 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <div className="space-y-2">
                               <Label htmlFor="videoUrl" className="text-base sm:text-lg font-medium">Vídeo de Apresentação do Curso</Label>
                               <div className="mt-2 space-y-3">
-                                <input
-                                  type="file"
-                                  id="videoUrl"
-                                  accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      // Verificar tamanho do arquivo
-                                      const fileSizeMB = file.size / (1024 * 1024);
-                                      if (fileSizeMB > 100) {
-                                        const shouldContinue = window.confirm(
-                                          `⚠️ ATENÇÃO: O vídeo é muito grande (${fileSizeMB.toFixed(1)} MB).\n\n` +
-                                          `Vídeos grandes demoram muito para carregar para os alunos.\n\n` +
-                                          `Recomendação: Comprima o vídeo para menos de 50 MB antes de fazer upload.\n\n` +
-                                          `Deseja continuar mesmo assim?`
-                                        );
-                                        if (!shouldContinue) {
-                                          e.target.value = '';
-                                          return;
-                                        }
+                              <input
+                                type="file"
+                                id="videoUrl"
+                                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    // Verificar tamanho do arquivo
+                                    const fileSizeMB = file.size / (1024 * 1024);
+                                    if (fileSizeMB > 100) {
+                                      const shouldContinue = window.confirm(
+                                        `⚠️ ATENÇÃO: O vídeo é muito grande (${fileSizeMB.toFixed(1)} MB).\n\n` +
+                                        `Vídeos grandes demoram muito para carregar para os alunos.\n\n` +
+                                        `Recomendação: Comprima o vídeo para menos de 50 MB antes de fazer upload.\n\n` +
+                                        `Deseja continuar mesmo assim?`
+                                      );
+                                      if (!shouldContinue) {
+                                        e.target.value = '';
+                                        return;
                                       }
-                                      setVideoFile(file);
-                                      handleVideoUpload(file);
                                     }
-                                  }}
-                                  className="hidden"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => document.getElementById('videoUrl')?.click()}
-                                  disabled={videoUploading}
+                                    setVideoFile(file);
+                                    handleVideoUpload(file);
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => document.getElementById('videoUrl')?.click()}
+                                disabled={videoUploading}
                                   className="w-full h-12 sm:h-14 text-base sm:text-lg"
-                                >
-                                  {videoUploading ? (
-                                    <>
+                              >
+                                {videoUploading ? (
+                                  <>
                                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                      Enviando vídeo...
-                                    </>
-                                  ) : (
-                                    <>
+                                    Enviando vídeo...
+                                  </>
+                                ) : (
+                                  <>
                                       <Upload className="w-5 h-5 mr-2" />
                                       {videoFile ? (videoFile.name.length > 30 ? videoFile.name.substring(0, 30) + '...' : videoFile.name) : 'Selecionar Vídeo'}
-                                    </>
-                                  )}
-                                </Button>
-                                {videoFile && !videoUploading && (
-                                  <p className="text-sm text-gray-500">
-                                    Tamanho: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
-                                    {videoFile.size > 50 * 1024 * 1024 && (
-                                      <span className="text-orange-600 ml-2">
-                                        ⚠️ Recomendado: menos de 50 MB para melhor performance
-                                      </span>
-                                    )}
-                                  </p>
+                                  </>
                                 )}
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                                  <p className="text-sm text-blue-800 font-semibold mb-1">💡 Dica de Performance:</p>
-                                  <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                                    <li>Vídeos menores carregam mais rápido para os alunos</li>
-                                    <li>Recomendado: máximo 50 MB para vídeos de apresentação</li>
-                                    <li>Use ferramentas como HandBrake ou FFmpeg para comprimir</li>
-                                    <li>Resolução recomendada: 720p ou 1080p (não 4K)</li>
-                                  </ul>
-                                </div>
-                                {videoUrl && (
+                              </Button>
+                              {videoFile && !videoUploading && (
+                                  <p className="text-sm text-gray-500">
+                                  Tamanho: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                                  {videoFile.size > 50 * 1024 * 1024 && (
+                                    <span className="text-orange-600 ml-2">
+                                      ⚠️ Recomendado: menos de 50 MB para melhor performance
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                                <div className="rounded-lg p-3 mt-2" style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)', borderColor: 'var(--theme-primary-light)' }}>
+                                  <p className="text-sm font-semibold mb-1" style={{ color: 'var(--theme-primary-dark)' }}>💡 Dica de Performance:</p>
+                                  <ul className="text-sm space-y-1 list-disc list-inside" style={{ color: 'var(--theme-primary)' }}>
+                                  <li>Vídeos menores carregam mais rápido para os alunos</li>
+                                  <li>Recomendado: máximo 50 MB para vídeos de apresentação</li>
+                                  <li>Use ferramentas como HandBrake ou FFmpeg para comprimir</li>
+                                  <li>Resolução recomendada: 720p ou 1080p (não 4K)</li>
+                                </ul>
+                              </div>
+                              {videoUrl && (
                                   <div className="mt-3">
                                     <video src={videoUrl} controls className="w-full rounded-lg border max-h-64" />
                                     <p className="text-sm text-gray-500 mt-2">Vídeo atual</p>
-                                    <p className="text-xs text-blue-500 mt-1 break-all">{videoUrl}</p>
-                                  </div>
-                                )}
-                              </div>
+                                    <p className="text-xs mt-1 break-all" style={{ color: 'var(--theme-primary-light)' }}>{videoUrl}</p>
+                                </div>
+                              )}
                             </div>
+                          </div>
 
                             <div className="space-y-2">
                               <Label htmlFor="aboutCourse" className="text-base sm:text-lg font-medium">Sobre o Curso</Label>
-                              <Textarea
-                                id="aboutCourse"
-                                value={aboutCourse}
-                                onChange={(e) => setAboutCourse(e.target.value)}
-                                placeholder="Informações detalhadas sobre o curso..."
+                            <Textarea
+                              id="aboutCourse"
+                              value={aboutCourse}
+                              onChange={(e) => setAboutCourse(e.target.value)}
+                              placeholder="Informações detalhadas sobre o curso..."
                                 rows={8}
                                 className="mt-2 resize-none text-base sm:text-lg"
-                              />
-                            </div>
+                            />
+                          </div>
 
                             {/* Seção: Materiais de Apoio */}
                             <div className="space-y-4 sm:space-y-6 border-t border-gray-200 pt-6 sm:pt-8">
@@ -2632,22 +3097,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 <p className="text-sm sm:text-base text-gray-500 mt-2">Adicione arquivos PDF, DOC, XLS para download pelos alunos</p>
                               </div>
 
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center hover:border-blue-400 transition-colors">
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center transition-colors"
+                                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--theme-primary-light)'}
+                                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#D1D5DB'}
+                              >
                                 <Upload className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
                                 <p className="text-sm sm:text-base text-gray-600 mb-2">
                                   Arraste e solte arquivos aqui ou
                                 </p>
-                                <input
-                                  type="file"
+                            <input
+                              type="file"
                                   id="materialUpload"
-                                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx"
                                   multiple
-                                  onChange={async (e) => {
+                              onChange={async (e) => {
                                     const files = e.target.files;
                                     if (files && files.length > 0) {
                                       for (const file of Array.from(files)) {
                                         // Verificar tamanho (10MB)
-                                        if (file.size > 10 * 1024 * 1024) {
+                                if (file.size > 10 * 1024 * 1024) {
                                           toast.error(`${file.name} excede 10MB`);
                                           continue;
                                         }
@@ -2655,7 +3123,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           const url = await apiClient.uploadDocument(file);
                                           setSupportMaterials([...supportMaterials, { name: file.name, url }]);
                                           toast.success(`${file.name} enviado com sucesso!`);
-                                        } catch (error: any) {
+                                } catch (error: any) {
                                           toast.error(`Erro ao enviar ${file.name}: ${error.message}`);
                                         }
                                       }
@@ -2664,47 +3132,47 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   }}
                                   className="hidden"
                                 />
-                                <Button
-                                  type="button"
-                                  variant="outline"
+                                    <Button
+                                      type="button"
+                                      variant="outline"
                                   onClick={() => document.getElementById('materialUpload')?.click()}
                                   className="mt-3"
-                                >
-                                  <FileText className="w-4 h-4 mr-2" />
-                                  Selecionar Arquivos
-                                </Button>
+                                    >
+                                      <FileText className="w-4 h-4 mr-2" />
+                                      Selecionar Arquivos
+                                    </Button>
                                 <p className="text-xs sm:text-sm text-gray-500 mt-3">
                                   PDF, DOC, XLS até 10MB
                                 </p>
-                              </div>
+                            </div>
 
-                              {supportMaterials.length > 0 && (
-                                <div className="space-y-2">
-                                  {supportMaterials.map((material, index) => (
+                            {supportMaterials.length > 0 && (
+                              <div className="space-y-2">
+                                {supportMaterials.map((material, index) => (
                                     <div
                                       key={index}
                                       className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200"
                                     >
                                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
+                                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
                                         <span className="text-sm sm:text-base text-gray-900 truncate">{material.name}</span>
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          setSupportMaterials(supportMaterials.filter((_, i) => i !== index));
-                                        }}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                                      </Button>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSupportMaterials(supportMaterials.filter((_, i) => i !== index));
+                                      }}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
 
                             {/* Seção: O Que Você Vai Aprender (Benefícios) */}
                             <div className="space-y-4 sm:space-y-6 border-t border-gray-200 pt-6 sm:pt-8">
@@ -2716,40 +3184,40 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <div className="space-y-3 sm:space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
                                   <div className="sm:col-span-5">
-                                    <Input
-                                      placeholder="Título do benefício"
-                                      value={benefitTitle}
-                                      onChange={(e) => setBenefitTitle(e.target.value)}
+                                <Input
+                                  placeholder="Título do benefício"
+                                  value={benefitTitle}
+                                  onChange={(e) => setBenefitTitle(e.target.value)}
                                       className="text-sm sm:text-base"
-                                    />
+                                />
                                   </div>
                                   <div className="sm:col-span-5">
                                     <Input
-                                      placeholder="Descrição do benefício"
-                                      value={benefitDescription}
-                                      onChange={(e) => setBenefitDescription(e.target.value)}
+                                  placeholder="Descrição do benefício"
+                                  value={benefitDescription}
+                                  onChange={(e) => setBenefitDescription(e.target.value)}
                                       className="text-sm sm:text-base"
-                                    />
+                                />
                                   </div>
                                   <div className="sm:col-span-2">
-                                    <select
-                                      value={benefitIcon}
-                                      onChange={(e) => setBenefitIcon(e.target.value)}
+                                  <select
+                                    value={benefitIcon}
+                                    onChange={(e) => setBenefitIcon(e.target.value)}
                                       className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 text-sm sm:text-base"
-                                    >
-                                      <option value="Heart">Coração</option>
-                                      <option value="Brain">Cérebro</option>
+                                  >
+                                    <option value="Heart">Coração</option>
+                                    <option value="Brain">Cérebro</option>
                                       <option value="Award">Troféu</option>
                                       <option value="Target">Alvo</option>
                                       <option value="Sparkles">Estrela</option>
                                       <option value="CheckCircle2">Check</option>
-                                    </select>
+                                  </select>
                                   </div>
                                 </div>
-                                <Button
-                                  type="button"
+                                  <Button
+                                    type="button"
                                   variant="outline"
-                                  onClick={() => {
+                                    onClick={() => {
                                     if (benefitTitle.trim()) {
                                       setBenefits([...benefits, { icon: benefitIcon || 'Heart', title: benefitTitle, description: benefitDescription }]);
                                       setBenefitTitle('');
@@ -2761,7 +3229,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 >
                                   <Plus className="w-4 h-4 mr-2" />
                                   Adicionar Benefício
-                                </Button>
+                                  </Button>
                               </div>
 
                               {benefits.length > 0 && (
@@ -2773,7 +3241,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         key={index}
                                         className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200"
                                       >
-                                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
+                                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
                                         <div className="flex-1 min-w-0">
                                           <p className="text-sm sm:text-base font-semibold text-gray-900">{benefit.title}</p>
                                           {benefit.description && (
@@ -2815,133 +3283,133 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 <div key={moduleIndex} className="border border-gray-200 rounded-lg p-5 sm:p-6 lg:p-8 bg-gray-50">
                                   <div className="flex items-center justify-between mb-4 sm:mb-5">
                                     <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-800">Módulo {moduleIndex + 1}</h4>
-                                    <Button
-                                      type="button"
+                            <Button
+                              type="button"
                                       variant="destructive"
-                                      size="sm"
-                                      onClick={() => {
+                              size="sm"
+                              onClick={() => {
                                         const newModules = modules.filter((_, i) => i !== moduleIndex);
                                         setModules(newModules);
-                                      }}
+                              }}
                                       className="h-10 sm:h-11 w-10 sm:w-11 p-0"
-                                    >
+                            >
                                       <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    </Button>
-                                  </div>
+                            </Button>
+                          </div>
 
                                   <div className="space-y-4 sm:space-y-5">
-                                    <Input
+                                            <Input
                                       placeholder="Título do módulo"
-                                      value={module.title}
-                                      onChange={(e) => {
-                                        const newModules = [...modules];
-                                        newModules[moduleIndex].title = e.target.value;
-                                        setModules(newModules);
-                                      }}
+                                              value={module.title}
+                                              onChange={(e) => {
+                                                const newModules = [...modules];
+                                                newModules[moduleIndex].title = e.target.value;
+                                                setModules(newModules);
+                                              }}
                                       className="h-12 sm:h-14 text-base sm:text-lg"
                                     />
 
                                     <div className="space-y-4 sm:space-y-5">
-                                      {module.lessons.map((lesson, lessonIndex) => (
+                                          {module.lessons.map((lesson, lessonIndex) => (
                                         <div key={lessonIndex} className="p-4 bg-white rounded-lg border border-gray-200 space-y-3">
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <Input
+                                                    <Input
                                               placeholder="Título da aula"
-                                              value={lesson.title}
-                                              onChange={(e) => {
-                                                const newModules = [...modules];
-                                                newModules[moduleIndex].lessons[lessonIndex].title = e.target.value;
-                                                setModules(newModules);
-                                              }}
+                                                      value={lesson.title}
+                                                      onChange={(e) => {
+                                                        const newModules = [...modules];
+                                                        newModules[moduleIndex].lessons[lessonIndex].title = e.target.value;
+                                                        setModules(newModules);
+                                                      }}
                                               className="h-12 sm:h-14 text-base sm:text-lg"
                                             />
-                                            <Input
+                                                      <Input
                                               placeholder="Duração (ex: 10min)"
-                                              value={lesson.duration}
-                                              onChange={(e) => {
-                                                const newModules = [...modules];
-                                                newModules[moduleIndex].lessons[lessonIndex].duration = e.target.value;
-                                                setModules(newModules);
-                                              }}
+                                                        value={lesson.duration}
+                                                        onChange={(e) => {
+                                                          const newModules = [...modules];
+                                                          newModules[moduleIndex].lessons[lessonIndex].duration = e.target.value;
+                                                          setModules(newModules);
+                                                        }}
                                               className="h-12 sm:h-14 text-base sm:text-lg"
-                                            />
-                                          </div>
+                                                      />
+                                                    </div>
 
                                           <div className="space-y-2">
                                             <Label className="text-sm sm:text-base font-medium">Vídeo da Aula <span className="text-red-500">*</span></Label>
-                                            <div className="space-y-2">
-                                              <input
-                                                type="file"
-                                                id={`lesson-video-${moduleIndex}-${lessonIndex}`}
-                                                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
-                                                onChange={(e) => {
-                                                  const file = e.target.files?.[0];
-                                                  if (file) {
-                                                    handleLessonVideoUpload(file, moduleIndex, lessonIndex);
-                                                  }
-                                                }}
-                                                className="hidden"
-                                              />
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => document.getElementById(`lesson-video-${moduleIndex}-${lessonIndex}`)?.click()}
+                                                      <div className="space-y-2">
+                                                        <input
+                                                          type="file"
+                                                          id={`lesson-video-${moduleIndex}-${lessonIndex}`}
+                                                          accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                                                          onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                              handleLessonVideoUpload(file, moduleIndex, lessonIndex);
+                                                            }
+                                                          }}
+                                                          className="hidden"
+                                                        />
+                                                        <Button
+                                                          type="button"
+                                                          variant="outline"
+                                                          size="sm"
+                                                          onClick={() => document.getElementById(`lesson-video-${moduleIndex}-${lessonIndex}`)?.click()}
                                                 className="w-full h-12 sm:h-14 text-base sm:text-lg"
-                                                disabled={lesson.videoUrl === 'uploading...'}
-                                              >
-                                                {lesson.videoUrl === 'uploading...' ? (
-                                                  <>
+                                                          disabled={lesson.videoUrl === 'uploading...'}
+                                                        >
+                                                          {lesson.videoUrl === 'uploading...' ? (
+                                                            <>
                                                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                                    Enviando...
-                                                  </>
-                                                ) : (
-                                                  <>
+                                                              Enviando...
+                                                            </>
+                                                          ) : (
+                                                            <>
                                                     <Upload className="w-5 h-5 mr-2" />
                                                     {lesson.videoUrl && lesson.videoUrl !== 'uploading...' ? 'Trocar Vídeo' : 'Selecionar Vídeo'}
-                                                  </>
-                                                )}
-                                              </Button>
-                                              {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
-                                                <div className="mt-2">
-                                                  <video src={lesson.videoUrl} controls className="w-full rounded-lg border max-h-48" />
-                                                  <p className="text-xs text-gray-500 mt-1">Vídeo atual</p>
-                                                </div>
-                                              )}
-                                              {lesson.videoUrl === 'uploading...' && (
-                                                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                                  <p className="text-sm text-blue-600 flex items-center gap-2">
+                                                            </>
+                                                          )}
+                                                        </Button>
+                                                        {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
+                                                          <div className="mt-2">
+                                                            <video src={lesson.videoUrl} controls className="w-full rounded-lg border max-h-48" />
+                                                            <p className="text-xs text-gray-500 mt-1">Vídeo atual</p>
+                                                          </div>
+                                                        )}
+                                                        {lesson.videoUrl === 'uploading...' && (
+                                                <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)', borderColor: 'var(--theme-primary-light)' }}>
+                                                  <p className="text-sm flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                                    Enviando vídeo...
-                                                  </p>
-                                                </div>
-                                              )}
+                                                              Enviando vídeo...
+                                                            </p>
+                                                          </div>
+                                                        )}
                                               {(!lesson.videoUrl || lesson.videoUrl.trim() === "") && lesson.videoUrl !== 'uploading...' && (
-                                                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5">
-                                                  <span className="font-semibold">⚠️</span> Vídeo da aula é obrigatório
-                                                </p>
-                                              )}
-                                            </div>
-                                          </div>
+                                                        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5">
+                                                          <span className="font-semibold">⚠️</span> Vídeo da aula é obrigatório
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  </div>
 
                                           <div className="flex justify-end pt-2 border-t">
-                                            <Button
-                                              type="button"
+                                                <Button
+                                                  type="button"
                                               variant="destructive"
-                                              size="sm"
-                                              onClick={() => {
-                                                const newModules = [...modules];
+                                                  size="sm"
+                                                  onClick={() => {
+                                                    const newModules = [...modules];
                                                 newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter((_, i) => i !== lessonIndex);
-                                                setModules(newModules);
-                                              }}
+                                                    setModules(newModules);
+                                                  }}
                                               className="h-10 sm:h-11 text-sm sm:text-base"
-                                            >
+                                                >
                                               <Trash2 className="w-4 h-4 mr-2" />
                                               Remover Aula
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))}
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ))}
                                       <Button
                                         type="button"
                                         variant="outline"
@@ -2956,8 +3424,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         <Plus className="w-5 h-5 mr-2" />
                                         Adicionar Aula
                                       </Button>
+                                        </div>
                                     </div>
-                                  </div>
                                 </div>
                               ))}
 
@@ -2973,7 +3441,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 Adicionar Módulo
                               </Button>
                             </div>
-                          </div>
+                        </div>
                         </>
                       )}
                     </div>
@@ -3005,16 +3473,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[600px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
                   <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))` }}>
                         <Ticket className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
                         <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
-                          {editingCoupon ? "Editar Cupom" : "Criar Novo Cupom"}
-                        </DialogTitle>
+                      {editingCoupon ? "Editar Cupom" : "Criar Novo Cupom"}
+                    </DialogTitle>
                         <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2">
-                          {editingCoupon ? "Edite as informações do cupom abaixo" : "Preencha os dados para criar um novo cupom de desconto"}
-                        </DialogDescription>
+                      {editingCoupon ? "Edite as informações do cupom abaixo" : "Preencha os dados para criar um novo cupom de desconto"}
+                    </DialogDescription>
                       </div>
                     </div>
                   </DialogHeader>
@@ -3023,7 +3491,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     {/* Código do Cupom */}
                     <div className="space-y-2">
                       <Label htmlFor="couponCode" className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                        <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                        <Ticket className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--theme-primary)' }} />
                         Código do Cupom <span className="text-red-500">*</span>
                       </Label>
                       <Input
@@ -3039,10 +3507,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </div>
 
                     {/* Desconto e Tipo */}
-                    <div className="bg-gradient-to-br from-blue-50 to-teal-50 p-4 sm:p-6 rounded-lg border border-blue-200 space-y-4 sm:space-y-6">
-                      <div className="border-b border-blue-200 pb-2 sm:pb-3">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                          <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                    <div className="p-4 sm:p-6 rounded-lg border space-y-4 sm:space-y-6" style={{ background: `linear-gradient(to bottom right, rgba(var(--theme-primary-rgb), 0.1), rgba(var(--theme-secondary-rgb), 0.1))`, borderColor: 'var(--theme-primary-light)' }}>
+                      <div className="border-b pb-2 sm:pb-3" style={{ borderColor: 'var(--theme-primary-light)' }}>
+                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--theme-text-primary)' }}>
+                          <Percent className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--theme-primary)' }} />
                           Configuração de Desconto
                         </h3>
                       </div>
@@ -3053,34 +3521,43 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             Valor do Desconto <span className="text-red-500">*</span>
                           </Label>
                           <div className="relative">
-                            <Input
-                              id="couponDiscount"
-                              type="number"
-                              step="0.01"
-                              value={couponDiscount}
-                              onChange={(e) => setCouponDiscount(e.target.value)}
-                              placeholder={couponType === "percentage" ? "20" : "50.00"}
+                        <Input
+                          id="couponDiscount"
+                          type="number"
+                          step="0.01"
+                          value={couponDiscount}
+                          onChange={(e) => setCouponDiscount(e.target.value)}
+                          placeholder={couponType === "percentage" ? "20" : "50.00"}
                               className="h-12 sm:h-14 text-base sm:text-lg pr-12"
-                            />
+                        />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
                               {couponType === "percentage" ? "%" : "R$"}
                             </div>
                           </div>
-                        </div>
+                      </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="couponType" className="text-sm sm:text-base font-medium">
                             Tipo de Desconto
                           </Label>
-                          <select
-                            id="couponType"
-                            value={couponType}
-                            onChange={(e) => setCouponType(e.target.value as "percentage" | "fixed")}
-                            className="w-full h-12 sm:h-14 px-4 rounded-md border border-gray-300 bg-white text-base sm:text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                          >
-                            <option value="percentage">Percentual (%)</option>
-                            <option value="fixed">Valor Fixo (R$)</option>
-                          </select>
+                        <select
+                          id="couponType"
+                          value={couponType}
+                          onChange={(e) => setCouponType(e.target.value as "percentage" | "fixed")}
+                            className="w-full h-12 sm:h-14 px-4 rounded-md border border-gray-300 bg-white text-base sm:text-lg focus:ring-2 transition-all"
+                            style={{ '--tw-ring-color': 'var(--theme-primary)' } as React.CSSProperties}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--theme-primary)';
+                              e.currentTarget.style.boxShadow = '0 0 0 2px var(--theme-primary-light)';
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = '#D1D5DB';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                        >
+                          <option value="percentage">Percentual (%)</option>
+                          <option value="fixed">Valor Fixo (R$)</option>
+                        </select>
                         </div>
                       </div>
                     </div>
@@ -3100,58 +3577,58 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <Calendar className="w-4 h-4 text-gray-500" />
                             Data de Expiração
                           </Label>
-                          <Input
-                            id="couponExpires"
-                            type="date"
-                            value={couponExpires}
-                            onChange={(e) => setCouponExpires(e.target.value)}
+                        <Input
+                          id="couponExpires"
+                          type="date"
+                          value={couponExpires}
+                          onChange={(e) => setCouponExpires(e.target.value)}
                             className="h-12 sm:h-14 text-base sm:text-lg"
-                          />
+                        />
                           <p className="text-xs sm:text-sm text-gray-500">
                             Deixe em branco para não expirar
                           </p>
-                        </div>
+                      </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="couponMaxUses" className="text-sm sm:text-base font-medium flex items-center gap-2">
                             <Users className="w-4 h-4 text-gray-500" />
                             Usos Máximos
                           </Label>
-                          <Input
-                            id="couponMaxUses"
-                            type="number"
-                            value={couponMaxUses}
-                            onChange={(e) => setCouponMaxUses(e.target.value)}
-                            placeholder="Ilimitado"
+                        <Input
+                          id="couponMaxUses"
+                          type="number"
+                          value={couponMaxUses}
+                          onChange={(e) => setCouponMaxUses(e.target.value)}
+                          placeholder="Ilimitado"
                             className="h-12 sm:h-14 text-base sm:text-lg"
-                          />
+                        />
                           <p className="text-xs sm:text-sm text-gray-500">
                             Deixe em branco para uso ilimitado
                           </p>
                         </div>
                       </div>
+                      </div>
                     </div>
-                  </div>
 
                   <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t mt-6">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsCouponDialogOpen(false);
-                        resetCouponForm();
-                      }}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsCouponDialogOpen(false);
+                          resetCouponForm();
+                        }}
                       className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg"
-                    >
-                      Cancelar
-                    </Button>
+                      >
+                        Cancelar
+                      </Button>
                     <Button
                       onClick={handleSaveCoupon}
                       className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all"
                     >
                       <Save className="w-5 h-5 mr-2" />
-                      Salvar Cupom
-                    </Button>
+                        Salvar Cupom
+                      </Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -3165,7 +3642,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
                         <AlertCircle className="w-6 h-6 text-white" />
-                      </div>
+          </div>
                       <div className="flex-1">
                         <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
                           Confirmar Exclusão
@@ -3188,30 +3665,30 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           <div className="flex items-center justify-between">
                             <span className="text-xs sm:text-sm text-gray-600">Código:</span>
                             <span className="text-sm sm:text-base font-mono font-bold text-gray-900">{couponToDelete.code}</span>
-                          </div>
+              </div>
                           <div className="flex items-center justify-between">
                             <span className="text-xs sm:text-sm text-gray-600">Desconto:</span>
-                            <span className="text-sm sm:text-base font-bold text-blue-600">
+                            <span className="text-sm sm:text-base font-bold" style={{ color: 'var(--theme-primary)' }}>
                               {couponToDelete.type === "percentage"
                                 ? `${couponToDelete.discount}%`
                                 : `R$ ${couponToDelete.discount.toFixed(2)}`}
                             </span>
-                          </div>
+            </div>
                           {couponToDelete.expiresAt && (
                             <div className="flex items-center justify-between">
                               <span className="text-xs sm:text-sm text-gray-600">Expira em:</span>
                               <span className="text-sm sm:text-base text-gray-900">
                                 {new Date(couponToDelete.expiresAt).toLocaleDateString('pt-BR')}
                               </span>
-                            </div>
+            </div>
                           )}
                           <div className="flex items-center justify-between">
                             <span className="text-xs sm:text-sm text-gray-600">Usos:</span>
                             <span className="text-sm sm:text-base text-gray-900">
                               {couponToDelete.currentUses} / {couponToDelete.maxUses === 999999 ? '∞' : couponToDelete.maxUses}
                             </span>
-                          </div>
-                        </div>
+            </div>
+            </div>
                       )}
 
                       <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -3219,8 +3696,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           <span>Esta ação é permanente. Todos os dados relacionados a este cupom serão removidos.</span>
                         </p>
-                      </div>
-                    </div>
+          </div>
+        </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t mt-6">
@@ -3248,67 +3725,67 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </Dialog>
             )}
 
-            {/* Dashboard View */}
-            {mainView === "dashboard" && (
-              <section className="container mx-auto px-4 py-12">
+      {/* Dashboard View */}
+      {mainView === "dashboard" && (
+        <section className="container mx-auto px-4 py-12">
 
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold mb-2">Dashboard de Vendas</h2>
-                    <p className="text-gray-600">Análise visual do desempenho da plataforma</p>
-                  </div>
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Dashboard de Vendas</h2>
+              <p className="text-gray-600">Análise visual do desempenho da plataforma</p>
+            </div>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Button variant="outline" onClick={exportPurchases} className="w-full sm:w-auto">
-                      <Download className="w-4 h-4 mr-2" />
-                      Exportar Vendas
-                    </Button>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Vendas
+              </Button>
                     <Button variant="outline" onClick={exportCourses} className="w-full sm:w-auto">
-                      <Download className="w-4 h-4 mr-2" />
-                      Exportar Cursos
-                    </Button>
-                  </div>
-                </div>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Cursos
+              </Button>
+            </div>
+          </div>
 
-                {/* Charts */}
-                <div className="grid lg:grid-cols-2 gap-8 mb-8">
-                  {/* Line Chart - Vendas por Dia */}
-                  <Card>
-                    <CardHeader>
+          {/* Charts */}
+          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+            {/* Line Chart - Vendas por Dia */}
+            <Card>
+              <CardHeader>
                       <CardTitle>Vendas no Período Selecionado</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={salesByDay}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="vendas" stroke="#3b82f6" strokeWidth={2} name="Vendas" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salesByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="vendas" stroke="#3b82f6" strokeWidth={2} name="Vendas" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-                  {/* Bar Chart - Receita por Dia */}
-                  <Card>
-                    <CardHeader>
+            {/* Bar Chart - Receita por Dia */}
+            <Card>
+              <CardHeader>
                       <CardTitle>Receita no Período Selecionado</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={salesByDay}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
-                          <Legend />
-                          <Bar dataKey="receita" fill="#14b8a6" name="Receita (R$)" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={salesByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                    <Legend />
+                    <Bar dataKey="receita" fill="#14b8a6" name="Receita (R$)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
 
                 {/* Gráfico de Crescimento de Alunos */}
                 <Card className="mb-8">
@@ -3329,33 +3806,33 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </CardContent>
                 </Card>
 
-                {/* Pie Chart - Vendas por Curso */}
+          {/* Pie Chart - Vendas por Curso */}
                 <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Distribuição de Vendas por Curso</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <PieChart>
-                        <Pie
-                          data={revenuePerCourse.filter(c => c.sales > 0)}
-                          dataKey="sales"
-                          nameKey="courseTitle"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={120}
-                          label={(entry) => `${entry.courseTitle}: ${entry.sales}`}
-                        >
+            <CardHeader>
+              <CardTitle>Distribuição de Vendas por Curso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={revenuePerCourse.filter(c => c.sales > 0)}
+                    dataKey="sales"
+                    nameKey="courseTitle"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={120}
+                    label={(entry) => `${entry.courseTitle}: ${entry.sales}`}
+                  >
                           {revenuePerCourse.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={courseColors[index % courseColors.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+                      <Cell key={`cell-${index}`} fill={courseColors[index % courseColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
                 {/* Lista de Últimas Vendas */}
                 <Card>
@@ -3370,19 +3847,19 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {latestPurchases.map((purchase) => {
-                          const course = courses.find(c => c.id === purchase.courseId);
+                        {latestPurchases.map((purchase, idx) => {
                           const purchaseDate = new Date(purchase.date);
+                          const displayTitle = purchase.courseTitle || "Item não encontrado";
                           return (
-                            <div key={purchase.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-3">
+                            <div key={`${purchase.id}-${idx}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-3 mb-2">
-                                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                    <ShoppingCart className="w-5 h-5 text-blue-600" />
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.2)' }}>
+                                    <ShoppingCart className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <h4 className="font-semibold text-gray-900 truncate">
-                                      {course?.title || "Curso não encontrado"}
+                                      {displayTitle}
                                     </h4>
                                     <p className="text-sm text-gray-600">
                                       {purchaseDate.toLocaleDateString('pt-BR', { 
@@ -3419,24 +3896,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     )}
                   </CardContent>
                 </Card>
-              </section>
-            )}
+        </section>
+      )}
 
-            {/* Courses View */}
-            {mainView === "courses" && (
-              <section className="container mx-auto px-4 py-12">
+      {/* Courses View */}
+      {mainView === "courses" && (
+        <section className="container mx-auto px-4 py-12">
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold mb-2">Gerenciar Cursos</h2>
-                    <p className="text-gray-600">
-                      Edite ou exclua os cursos existentes
-                    </p>
+            <h2 className="text-2xl font-bold mb-2">Gerenciar Cursos</h2>
+            <p className="text-gray-600">
+              Edite ou exclua os cursos existentes
+            </p>
                   </div>
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                       <Button
                         size="lg"
-                        className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                        className="text-white w-full sm:w-auto"
+                        style={{ backgroundColor: 'var(--theme-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
                         onClick={handleNewCourse}
                       >
                         <Plus className="w-5 h-5 mr-2" />
@@ -3444,7 +3924,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </Button>
                     </DialogTrigger>
                   </Dialog>
-                </div>
+          </div>
 
                 {/* Busca, Filtros e Ordenação */}
                 {courses.length > 0 && (
@@ -3541,20 +4021,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Card>
                 )}
 
-                {courses.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-20 text-center">
-                      <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum curso cadastrado</h3>
-                      <p className="text-gray-600 mb-6">
-                        Crie seu primeiro curso para começar
-                      </p>
-                      <Button onClick={handleNewCourse} className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Criar Primeiro Curso
-                      </Button>
-                    </CardContent>
-                  </Card>
+          {courses.length === 0 ? (
+            <Card>
+              <CardContent className="py-20 text-center">
+                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold mb-2">Nenhum curso cadastrado</h3>
+                <p className="text-gray-600 mb-6">
+                  Crie seu primeiro curso para começar
+                </p>
+                      <Button onClick={handleNewCourse} style={{ backgroundColor: 'var(--theme-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
+                      >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Primeiro Curso
+                </Button>
+              </CardContent>
+            </Card>
                 ) : filteredAndSortedCourses.length === 0 ? (
                   <Card>
                     <CardContent className="py-20 text-center">
@@ -3581,18 +4064,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       return (
                         <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
                         <div className="w-full h-48 overflow-hidden">
-                          <img
-                            src={course.image}
-                            alt={course.title}
+                        <img
+                          src={course.image}
+                          alt={course.title}
                             className="w-full h-full object-cover"
-                          />
-                        </div>
+                        />
+                      </div>
                         <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                           <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="flex-1 min-w-0">
-                              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block mb-2">
-                                {course.category}
-                              </span>
+                              <span className="text-xs font-semibold px-2 py-1 rounded inline-block mb-2" style={{ color: 'var(--theme-primary)', backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)' }}>
+                              {course.category}
+                            </span>
                               <h3 className="text-lg font-bold mt-2 break-words">{course.title}</h3>
                               <p className="text-sm text-gray-600 mt-1 break-words line-clamp-2">{course.subtitle}</p>
                             </div>
@@ -3642,30 +4125,30 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <span className="font-semibold">Instrutor:</span>{" "}
                               {course.instructor}
                             </p>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEdit(course)}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(course)}
                                 className="flex-1"
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Editar
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDelete(course.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDelete(course.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
+                        </div>
                         </CardContent>
                       </Card>
                       );
                     })}
-                  </div>
+                          </div>
                 ) : (
                   /* Visualização em Tabela */
                   <Card>
@@ -3699,8 +4182,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       <div className="min-w-0">
                                         <div className="font-semibold text-gray-900 break-words">{course.title}</div>
                                         <div className="text-sm text-gray-500 truncate">{course.subtitle}</div>
-                                      </div>
-                                    </div>
+                          </div>
+                          </div>
                                   </td>
                                   <td className="px-4 py-4">
                                     <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
@@ -3716,13 +4199,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     <div className="flex items-center gap-1">
                                       <Users className="w-4 h-4 text-gray-400" />
                                       <span>{course.students}</span>
-                                    </div>
+                          </div>
                                   </td>
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-1">
                                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                      <span>{course.rating}</span>
-                                    </div>
+                            <span>{course.rating}</span>
+                          </div>
                                   </td>
                                   <td className="px-4 py-4">
                                     <span className="font-semibold text-gray-900">{stats.sales}</span>
@@ -3748,35 +4231,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
-                                    </div>
+                        </div>
                                   </td>
                                 </tr>
                               );
                             })}
                           </tbody>
                         </table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </section>
-            )}
+                    </div>
+                  </CardContent>
+                </Card>
+          )}
+        </section>
+      )}
 
-            {/* Students View */}
-            {mainView === "students" && (
+      {/* Students View */}
+      {mainView === "students" && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
+            <div>
                     <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Alunos</h2>
                     <p className="text-sm sm:text-base text-gray-600">
-                      Visualize todos os alunos e seu progresso nos cursos
-                    </p>
-                  </div>
+                Visualize todos os alunos e seu progresso nos cursos
+              </p>
+            </div>
                   <Button variant="outline" onClick={exportStudents} className="w-full sm:w-auto">
-                    <Download className="w-4 h-4 mr-2" />
-                    Exportar Alunos
-                  </Button>
-                </div>
+              <Download className="w-4 h-4 mr-2" />
+              Exportar Alunos
+            </Button>
+          </div>
 
                 {/* Busca, Filtros e Ordenação */}
                 {users.length > 0 && (
@@ -3889,16 +4372,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Card>
                 )}
 
-                {users.length === 0 ? (
-                  <Card>
+          {users.length === 0 ? (
+            <Card>
                     <CardContent className="py-12 sm:py-20 text-center px-4">
                       <Users className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg sm:text-xl font-bold mb-2">Nenhum aluno cadastrado</h3>
                       <p className="text-sm sm:text-base text-gray-600">
-                        Os alunos aparecerão aqui quando se cadastrarem na plataforma
-                      </p>
-                    </CardContent>
-                  </Card>
+                  Os alunos aparecerão aqui quando se cadastrarem na plataforma
+                </p>
+              </CardContent>
+            </Card>
                 ) : filteredAndSortedStudents.length === 0 ? (
                   <Card>
                     <CardContent className="py-20 text-center">
@@ -3925,8 +4408,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       const stats = getStudentStats(student);
                       const isActive = stats.lastAccess && (Date.now() - stats.lastAccess.getTime()) < 30 * 24 * 60 * 60 * 1000; // 30 dias
 
-                      return (
-                        <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
+                return (
+                  <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
                           <CardContent className="p-4 sm:p-6">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                               <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
@@ -3935,7 +4418,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   {isActive && (
                                     <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
                                   )}
-                                </div>
+                          </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <h3 className="text-base sm:text-lg font-bold break-words">{student.name}</h3>
@@ -3944,40 +4427,40 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     ) : (
                                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Inativo</span>
                                     )}
-                                  </div>
+                            </div>
                                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
                                     <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                                     <span className="break-all">{student.email}</span>
-                                  </div>
+                            </div>
                                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
                                     <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                                     <span>Cadastrado em: {new Date(student.registeredAt).toLocaleDateString('pt-BR')}</span>
                                     <span className="text-gray-400">•</span>
                                     <span>{stats.daysSinceRegistration} dias</span>
-                                  </div>
+                          </div>
                                   {stats.lastAccess && (
                                     <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
                                       <Activity className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                                       <span>Último acesso: {stats.lastAccess.toLocaleDateString('pt-BR')}</span>
-                                    </div>
+                        </div>
                                   )}
                                 </div>
                               </div>
                               <div className="text-left sm:text-right flex-shrink-0">
-                                <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.coursesCount}</div>
+                                <div className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--theme-primary)' }}>{stats.coursesCount}</div>
                                 <div className="text-xs sm:text-sm text-gray-600">Cursos</div>
                                 {stats.avgProgress > 0 && (
                                   <div className="text-xs sm:text-sm text-teal-600 font-semibold mt-1">
                                     {stats.avgProgress.toFixed(0)}% concluído
-                                  </div>
-                                )}
+                            </div>
+                          )}
                                 {stats.totalSpent > 0 && (
                                   <div className="text-xs sm:text-sm text-green-600 font-semibold mt-1">
                                     R$ {stats.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                   </div>
                                 )}
-                              </div>
-                            </div>
+                        </div>
+                      </div>
 
                             {/* Ações Rápidas */}
                             <div className="flex flex-wrap gap-2 mb-4 pt-4 border-t">
@@ -4005,42 +4488,42 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             </div>
 
                             {stats.purchases.length > 0 && (
-                              <div className="mt-4 pt-4 border-t">
+                        <div className="mt-4 pt-4 border-t">
                                 <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Cursos e Progresso:</p>
                                 <div className="space-y-2 sm:space-y-3">
                                   {stats.purchases.map((purchase, idx) => {
                                     const progress = stats.progressData.find(p => p.courseId === purchase.courseId);
-                                    return (
-                                      <div key={idx} className="bg-gray-50 p-3 rounded-lg">
+                              return (
+                                <div key={idx} className="bg-gray-50 p-3 rounded-lg">
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                                           <span className="text-xs sm:text-sm font-medium text-gray-900 break-words">{purchase.courseTitle}</span>
                                           <span className="text-xs text-gray-500 flex-shrink-0">R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price).toFixed(2)}</span>
-                                        </div>
-                                        {progress && (
-                                          <>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                              <div
-                                                className="bg-teal-500 h-2 rounded-full transition-all"
-                                                style={{ width: `${progress.progress}%` }}
-                                              ></div>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-1 text-xs text-gray-600">
-                                              <span>{progress.completedLessons.length} aulas concluídas</span>
-                                              <span>{progress.progress.toFixed(0)}%</span>
-                                            </div>
-                                          </>
-                                        )}
+                                  </div>
+                                  {progress && (
+                                    <>
+                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                          className="bg-teal-500 h-2 rounded-full transition-all"
+                                          style={{ width: `${progress.progress}%` }}
+                                        ></div>
                                       </div>
-                                    );
-                                  })}
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-1 text-xs text-gray-600">
+                                        <span>{progress.completedLessons.length} aulas concluídas</span>
+                                        <span>{progress.progress.toFixed(0)}%</span>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
                 ) : (
                   /* Visualização em Tabela */
                   <Card>
@@ -4067,7 +4550,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 <tr key={student.email} className="hover:bg-gray-50 transition-colors">
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm relative">
+                                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm relative" style={{ background: `linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))` }}>
                                         {student.name.charAt(0).toUpperCase()}
                                         {isActive && (
                                           <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
@@ -4162,7 +4645,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <>
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ background: `linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))` }}>
                               {selectedStudent.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
@@ -4266,160 +4749,163 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     )}
                   </DialogContent>
                 </Dialog>
-              </section>
-            )}
+        </section>
+      )}
 
-            {/* Revenue View */}
-            {mainView === "revenue" && (
-              <section className="container mx-auto px-4 py-12">
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold mb-2">Análise de Faturamento</h2>
-                  <p className="text-gray-600">
-                    Acompanhe as vendas e o desempenho financeiro da plataforma
-                  </p>
+      {/* Revenue View */}
+      {mainView === "revenue" && (
+        <section className="container mx-auto px-4 py-12">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-2">Análise de Faturamento</h2>
+            <p className="text-gray-600">
+              Acompanhe as vendas e o desempenho financeiro da plataforma
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Faturamento Total</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-green-600" />
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Faturamento Total</p>
-                          <p className="text-3xl font-bold text-green-600">
-                            R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                          <DollarSign className="w-6 h-6 text-green-600" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Total de Vendas</p>
-                          <p className="text-3xl font-bold text-blue-600">{totalSales}</p>
-                        </div>
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <ShoppingCart className="w-6 h-6 text-blue-600" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Ticket Médio</p>
-                          <p className="text-3xl font-bold text-teal-600">
-                            R$ {averageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
-                          <TrendingUp className="w-6 h-6 text-teal-600" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Total de Vendas</p>
+                    <p className="text-3xl font-bold text-blue-600">{totalSales}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <ShoppingCart className="w-6 h-6 text-blue-600" />
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Faturamento por Curso</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {revenuePerCourse.length === 0 || totalSales === 0 ? (
-                      <div className="py-12 text-center text-gray-500">
-                        <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <p>Nenhuma venda realizada ainda</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Ticket Médio</p>
+                    <p className="text-3xl font-bold text-teal-600">
+                      R$ {averageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-teal-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Faturamento por Curso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {revenuePerCourse.length === 0 || totalSales === 0 ? (
+                <div className="py-12 text-center text-gray-500">
+                  <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p>Nenhuma venda realizada ainda</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {revenuePerCourse.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900">{item.courseTitle}</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {item.sales} {item.sales === 1 ? 'venda' : 'vendas'}
+                        </p>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {revenuePerCourse.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900">{item.courseTitle}</h4>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {item.sales} {item.sales === 1 ? 'venda' : 'vendas'}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-green-600">
-                                R$ {item.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </p>
-                              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                                <div
-                                  className="bg-green-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${(item.revenue / totalRevenue) * 100}%` }}
-                                ></div>
-                              </div>
-                            </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-green-600">
+                          R$ {item.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                          <div
+                            className="bg-green-500 h-2 rounded-full transition-all"
+                            style={{ width: `${(item.revenue / totalRevenue) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {purchases.length > 0 && (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle>Últimas Transações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {paidPurchases.slice(0, 10).reverse().map((purchase) => {
+                    const finalAmount = typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price;
+                    // Garantir que o valor seja positivo (não mostrar valores negativos)
+                    const displayAmount = Math.max(0, finalAmount || 0);
+                    
+                    return (
+                      <div key={purchase.id} className="flex items-center justify-between p-3 border-b last:border-b-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Users className="w-5 h-5 text-blue-600" />
                           </div>
-                        ))}
+                          <div>
+                            <p className="font-medium text-gray-900">{purchase.userName}</p>
+                            <p className="text-sm text-gray-600">{purchase.courseTitle}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-green-600">R$ {displayAmount.toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(purchase.date).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+      )}
 
-                {purchases.length > 0 && (
-                  <Card className="mt-8">
-                    <CardHeader>
-                      <CardTitle>Últimas Transações</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {paidPurchases.slice(0, 10).reverse().map((purchase) => {
-                          const finalAmount = typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price;
-                          // Garantir que o valor seja positivo (não mostrar valores negativos)
-                          const displayAmount = Math.max(0, finalAmount || 0);
-
-                          return (
-                            <div key={purchase.id} className="flex items-center justify-between p-3 border-b last:border-b-0">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <Users className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-gray-900">{purchase.userName}</p>
-                                  <p className="text-sm text-gray-600">{purchase.courseTitle}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold text-green-600">R$ {displayAmount.toFixed(2)}</p>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(purchase.date).toLocaleDateString('pt-BR')}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </section>
-            )}
-
-            {/* Coupons View */}
-            {mainView === "coupons" && (
+      {/* Coupons View */}
+      {mainView === "coupons" && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
 
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h2 className="text-xl sm:text-2xl font-bold mb-2">Cupons de Desconto</h2>
                     <p className="text-sm sm:text-base text-gray-600">
-                      Crie e gerencie cupons promocionais
-                    </p>
+              Crie e gerencie cupons promocionais
+            </p>
                   </div>
                   <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
                     <DialogTrigger asChild>
                       <Button
                         size="lg"
-                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
+                        className="text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
+                        style={{ backgroundColor: 'var(--theme-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
                         onClick={() => {
                           resetCouponForm();
                           setIsCouponDialogOpen(true);
@@ -4430,7 +4916,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </Button>
                     </DialogTrigger>
                   </Dialog>
-                </div>
+          </div>
 
                 {/* Busca, Filtros e Ordenação */}
                 {coupons.length > 0 && (
@@ -4540,20 +5026,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Card>
                 )}
 
-                {coupons.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-20 text-center">
-                      <Ticket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum cupom criado</h3>
-                      <p className="text-gray-600 mb-6">
-                        Crie cupons de desconto para atrair mais alunos
-                      </p>
-                      <Button onClick={() => setIsCouponDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Criar Primeiro Cupom
-                      </Button>
-                    </CardContent>
-                  </Card>
+          {coupons.length === 0 ? (
+            <Card>
+              <CardContent className="py-20 text-center">
+                <Ticket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold mb-2">Nenhum cupom criado</h3>
+                <p className="text-gray-600 mb-6">
+                  Crie cupons de desconto para atrair mais alunos
+                </p>
+                      <Button onClick={() => setIsCouponDialogOpen(true)} style={{ backgroundColor: 'var(--theme-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
+                      >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Primeiro Cupom
+                </Button>
+              </CardContent>
+            </Card>
                 ) : filteredAndSortedCoupons.length === 0 ? (
                   <Card>
                     <CardContent className="py-20 text-center">
@@ -4579,7 +5068,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     {filteredAndSortedCoupons.map((coupon) => {
                       const stats = getCouponStats(coupon);
 
-                      return (
+                return (
                         <Card key={coupon.id} className={`overflow-hidden ${!coupon.active || stats.isExpired ? 'opacity-60' : ''}`}>
                           <CardContent className="p-4 sm:p-6">
                             <div className="flex items-start justify-between mb-4 gap-3">
@@ -4587,36 +5076,36 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                                   <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                                   <h3 className="text-lg sm:text-xl font-bold font-mono break-all">{coupon.code}</h3>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => copyCouponCode(coupon.code)}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyCouponCode(coupon.code)}
                                     className="h-8 w-8 p-0 flex-shrink-0"
-                                  >
-                                    {copiedCoupon === coupon.code ? (
+                            >
+                              {copiedCoupon === coupon.code ? (
                                       <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-                                    ) : (
+                              ) : (
                                       <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
-                                    )}
-                                  </Button>
-                                </div>
-                                <div className="flex items-center gap-2">
+                              )}
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
                                   <Percent className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
                                   <span className="text-xl sm:text-2xl font-bold text-blue-600">
-                                    {coupon.type === "percentage" ? `${coupon.discount}%` : `R$ ${coupon.discount.toFixed(2)}`}
-                                  </span>
-                                </div>
-                              </div>
-
+                              {coupon.type === "percentage" ? `${coupon.discount}%` : `R$ ${coupon.discount.toFixed(2)}`}
+                            </span>
+                          </div>
+                        </div>
+                        
                               <div className="flex gap-1 flex-shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingCoupon(coupon);
-                                    setCouponCode(coupon.code);
-                                    setCouponDiscount(coupon.discount.toString());
-                                    setCouponType(coupon.type);
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingCoupon(coupon);
+                              setCouponCode(coupon.code);
+                              setCouponDiscount(coupon.discount.toString());
+                              setCouponType(coupon.type);
                                     // Converter data para formato YYYY-MM-DD para o input type="date"
                                     if (coupon.expiresAt) {
                                       const date = new Date(coupon.expiresAt);
@@ -4627,72 +5116,72 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     } else {
                                       setCouponExpires("");
                                     }
-                                    setCouponMaxUses(coupon.maxUses.toString());
-                                    setIsCouponDialogOpen(true);
-                                  }}
+                              setCouponMaxUses(coupon.maxUses.toString());
+                              setIsCouponDialogOpen(true);
+                            }}
                                   className="h-8 w-8 p-0"
-                                >
+                          >
                                   <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                                   onClick={() => openDeleteCouponDialog(coupon)}
                                   className="h-8 w-8 p-0"
-                                >
+                          >
                                   <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
-                                </Button>
-                              </div>
-                            </div>
+                          </Button>
+                        </div>
+                      </div>
 
                             <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-                              {coupon.expiresAt && (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-600">Expira em:</span>
+                        {coupon.expiresAt && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Expira em:</span>
                                   <span className={`font-medium ${stats.isExpired ? 'text-red-600' : 'text-gray-900'}`}>
-                                    {new Date(coupon.expiresAt).toLocaleDateString('pt-BR')}
+                              {new Date(coupon.expiresAt).toLocaleDateString('pt-BR')}
                                     {stats.daysUntilExpiry !== null && stats.daysUntilExpiry > 0 && (
                                       <span className="text-gray-500 ml-1">({stats.daysUntilExpiry} dias)</span>
                                     )}
-                                  </span>
-                                </div>
-                              )}
+                            </span>
+                          </div>
+                        )}
 
-                              <div>
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-gray-600">Uso:</span>
-                                  <span className="font-medium text-gray-900">
-                                    {coupon.currentUses} / {coupon.maxUses === 999999 ? '∞' : coupon.maxUses}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-blue-500 h-2 rounded-full transition-all"
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-gray-600">Uso:</span>
+                            <span className="font-medium text-gray-900">
+                              {coupon.currentUses} / {coupon.maxUses === 999999 ? '∞' : coupon.maxUses}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full transition-all"
                                     style={{ width: `${Math.min(stats.usagePercent, 100)}%` }}
-                                  ></div>
-                                </div>
+                            ></div>
+                          </div>
                                 <div className="text-xs text-gray-500 mt-1">
                                   Taxa de uso: {stats.usageRate.toFixed(1)}%
                                 </div>
-                              </div>
+                        </div>
 
-                              <div className="pt-3 border-t">
-                                <button
-                                  onClick={() => toggleCouponStatus(coupon.id)}
+                        <div className="pt-3 border-t">
+                          <button
+                            onClick={() => toggleCouponStatus(coupon.id)}
                                   className={`w-full py-2 px-4 rounded-lg font-medium transition-all ${coupon.active && !stats.isExpired
-                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                >
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
                                   {coupon.active && !stats.isExpired ? '✓ Ativo' : '✕ Inativo'}
-                                </button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                          </button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
                 ) : (
                   /* Visualização em Tabela */
                   <Card>
@@ -4821,77 +5310,77 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     </CardContent>
                   </Card>
-                )}
-              </section>
-            )}
+          )}
+        </section>
+      )}
 
-            {/* Reviews View */}
-            {mainView === "reviews" && (
+      {/* Reviews View */}
+      {mainView === "reviews" && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
+            <div>
                     <h2 className="text-xl sm:text-2xl font-bold mb-2">Avaliações dos Cursos</h2>
                     <p className="text-sm sm:text-base text-gray-600">
-                      Gerencie as avaliações e comentários dos alunos
-                    </p>
-                  </div>
+                Gerencie as avaliações e comentários dos alunos
+              </p>
+            </div>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <Button
-                      variant={reviews.filter(r => !r.approved).length > 0 ? "default" : "outline"}
-                      onClick={async () => {
-                        try {
-                          const pendingResponse = await apiClient.getPendingReviews();
-                          if (pendingResponse?.reviews) {
-                            setReviews(pendingResponse.reviews.map((r: any) => ({
-                              id: r.id,
-                              courseId: r.courseId,
-                              courseTitle: r.course?.title || "Curso não encontrado",
-                              userId: r.userId,
-                              userName: r.user?.name || "Usuário",
-                              userEmail: r.user?.email || "",
-                              comment: r.comment || "",
-                              date: r.createdAt,
-                              rating: r.rating,
-                              approved: r.approved,
-                            })));
-                          }
-                        } catch (error) {
-                          console.error("Erro ao carregar avaliações pendentes:", error);
-                        }
-                      }}
+              <Button
+                variant={reviews.filter(r => !r.approved).length > 0 ? "default" : "outline"}
+                onClick={async () => {
+                  try {
+                    const pendingResponse = await apiClient.getPendingReviews();
+                    if (pendingResponse?.reviews) {
+                      setReviews(pendingResponse.reviews.map((r: any) => ({
+                        id: r.id,
+                        courseId: r.courseId,
+                        courseTitle: r.course?.title || "Curso não encontrado",
+                        userId: r.userId,
+                        userName: r.user?.name || "Usuário",
+                        userEmail: r.user?.email || "",
+                        comment: r.comment || "",
+                        date: r.createdAt,
+                        rating: r.rating,
+                        approved: r.approved,
+                      })));
+                    }
+                  } catch (error) {
+                    console.error("Erro ao carregar avaliações pendentes:", error);
+                  }
+                }}
                       className="w-full sm:w-auto"
-                    >
-                      Ver Pendentes ({reviews.filter(r => !r.approved).length})
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          const reviewsResponse = await apiClient.getAdminReviews({ page: 1, limit: 100 });
-                          if (reviewsResponse?.reviews) {
-                            setReviews(reviewsResponse.reviews.map((r: any) => ({
-                              id: r.id,
-                              courseId: r.courseId,
-                              courseTitle: r.course?.title || "Curso não encontrado",
-                              userId: r.userId,
-                              userName: r.user?.name || "Usuário",
-                              userEmail: r.user?.email || "",
-                              comment: r.comment || "",
-                              date: r.createdAt,
-                              rating: r.rating,
-                              approved: r.approved,
-                            })));
-                          }
-                        } catch (error) {
-                          console.error("Erro ao carregar todas as avaliações:", error);
-                        }
-                      }}
+              >
+                Ver Pendentes ({reviews.filter(r => !r.approved).length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const reviewsResponse = await apiClient.getAdminReviews({ page: 1, limit: 100 });
+                    if (reviewsResponse?.reviews) {
+                      setReviews(reviewsResponse.reviews.map((r: any) => ({
+                        id: r.id,
+                        courseId: r.courseId,
+                        courseTitle: r.course?.title || "Curso não encontrado",
+                        userId: r.userId,
+                        userName: r.user?.name || "Usuário",
+                        userEmail: r.user?.email || "",
+                        comment: r.comment || "",
+                        date: r.createdAt,
+                        rating: r.rating,
+                        approved: r.approved,
+                      })));
+                    }
+                  } catch (error) {
+                    console.error("Erro ao carregar todas as avaliações:", error);
+                  }
+                }}
                       className="w-full sm:w-auto"
-                    >
-                      Ver Todas
-                    </Button>
-                  </div>
-                </div>
+              >
+                Ver Todas
+              </Button>
+            </div>
+          </div>
 
                 {/* Busca, Filtros e Ordenação */}
                 {reviews.length > 0 && (
@@ -5002,16 +5491,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Card>
                 )}
 
-                {reviews.length === 0 ? (
-                  <Card>
+          {reviews.length === 0 ? (
+            <Card>
                     <CardContent className="py-12 sm:py-20 text-center px-4">
                       <MessageSquare className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg sm:text-xl font-bold mb-2">Nenhuma avaliação ainda</h3>
                       <p className="text-sm sm:text-base text-gray-600">
-                        As avaliações dos alunos aparecerão aqui
-                      </p>
-                    </CardContent>
-                  </Card>
+                  As avaliações dos alunos aparecerão aqui
+                </p>
+              </CardContent>
+            </Card>
                 ) : filteredAndSortedReviews.length === 0 ? (
                   <Card>
                     <CardContent className="py-20 text-center">
@@ -5035,43 +5524,43 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 ) : reviewViewMode === "cards" ? (
                   <div className="space-y-3 sm:space-y-4">
                     {filteredAndSortedReviews.map((review) => (
-                      <Card key={review.id} className={`overflow-hidden ${!review.approved ? 'border-l-4 border-l-yellow-500' : ''}`}>
+                <Card key={review.id} className={`overflow-hidden ${!review.approved ? 'border-l-4 border-l-yellow-500' : ''}`}>
                         <CardContent className="p-4 sm:p-6">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                             <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0">
-                                {review.userName.charAt(0).toUpperCase()}
-                              </div>
+                          {review.userName.charAt(0).toUpperCase()}
+                        </div>
                               <div className="flex-1 min-w-0">
                                 <h3 className="text-base sm:text-lg font-bold break-words">{review.userName}</h3>
                                 <p className="text-xs sm:text-sm text-gray-600 break-all">{review.userEmail}</p>
                                 <p className="text-xs sm:text-sm text-blue-600 font-medium mt-1 break-words">{review.courseTitle}</p>
-                              </div>
-                            </div>
+                        </div>
+                      </div>
 
                             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-shrink-0">
-                              <div className="flex items-center gap-1">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <Star
-                                    key={i}
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
                                     className={`w-4 h-4 sm:w-5 sm:h-5 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                                      }`}
-                                  />
-                                ))}
-                              </div>
-
-                              {!review.approved && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApproveReview(review.id)}
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        
+                          {!review.approved && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveReview(review.id)}
                                   className="bg-green-600 hover:bg-green-700 h-9 sm:h-10 text-xs sm:text-sm"
-                                >
+                            >
                                   <Check className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                                  Aprovar
-                                </Button>
-                              )}
-                            </div>
-                          </div>
+                              Aprovar
+                            </Button>
+                          )}
+                      </div>
+                    </div>
 
                           <p className="text-sm sm:text-base text-gray-700 mb-3 break-words">{review.comment}</p>
 
@@ -5080,16 +5569,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               {new Date(review.date).toLocaleDateString('pt-BR')} às {new Date(review.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                              {!review.approved && (
+                      {!review.approved && (
                                 <span className="bg-yellow-100 text-yellow-800 px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
-                                  Aguardando aprovação
-                                </span>
-                              )}
-                              {review.approved && (
+                          Aguardando aprovação
+                        </span>
+                      )}
+                      {review.approved && (
                                 <span className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
-                                  Aprovado
-                                </span>
-                              )}
+                          Aprovado
+                        </span>
+                      )}
                               <Button
                                 variant="destructive"
                                 size="sm"
@@ -5099,11 +5588,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                               </Button>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
                 ) : (
                   /* Visualização em Tabela */
                   <Card>
@@ -5194,167 +5683,241 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     </CardContent>
                   </Card>
-                )}
-              </section>
-            )}
+          )}
+        </section>
+      )}
 
-            {/* Podcasts View */}
-            {mainView === "podcasts" && (
-              <section className="container mx-auto px-4 py-12">
+      {/* Podcasts View */}
+      {mainView === "podcasts" && (
+        <section className="container mx-auto px-4 py-12">
 
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold mb-2">Gerenciar Podcasts</h2>
-                    <p className="text-gray-600">Cadastre e gerencie podcasts gratuitos</p>
-                  </div>
-                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Gerenciar Podcasts</h2>
+              <p className="text-gray-600">Cadastre e gerencie podcasts gratuitos</p>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
                       <Button
                         onClick={() => {
-                          setEditingCourse(null);
-                          setTitle("");
-                          setDescription("");
-                          setImage("");
-                          setVideoUrl("");
-                          setDuration("");
-                          setErrors({});
+                  setEditingCourse(null);
+                  setTitle("");
+                  setDescription("");
+                  setImage("");
+                  setVideoUrl("");
+                  setDuration("");
+                  setErrors({});
+                  setPodcastImageFile(null);
+                  setPodcastImageUploading(false);
                         }}
                         className="w-full sm:w-auto"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Novo Podcast
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>{editingCourse ? "Editar Podcast" : "Novo Podcast"}</DialogTitle>
-                        <DialogDescription>
-                          {editingCourse ? "Atualize as informações do podcast" : "Preencha os dados para criar um novo podcast"}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="podcast-title">Título *</Label>
-                          <Input
-                            id="podcast-title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Ex: Entendendo a Ansiedade"
-                          />
-                          {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-                        </div>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Podcast
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingCourse ? "Editar Podcast" : "Novo Podcast"}</DialogTitle>
+                  <DialogDescription>
+                    {editingCourse ? "Atualize as informações do podcast" : "Preencha os dados para criar um novo podcast"}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="podcast-title">Título *</Label>
+                    <Input
+                      id="podcast-title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Ex: Entendendo a Ansiedade"
+                    />
+                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+                  </div>
 
-                        <div>
-                          <Label htmlFor="podcast-description">Descrição</Label>
-                          <Textarea
-                            id="podcast-description"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Descrição do podcast..."
-                            rows={4}
-                          />
-                        </div>
+                  <div>
+                    <Label htmlFor="podcast-description">Descrição</Label>
+                    <Textarea
+                      id="podcast-description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Descrição do podcast..."
+                      rows={4}
+                    />
+                  </div>
 
-                        <div>
-                          <Label htmlFor="podcast-image">URL da Imagem</Label>
-                          <Input
-                            id="podcast-image"
-                            value={image}
-                            onChange={(e) => setImage(e.target.value)}
-                            placeholder="https://..."
+                  <div>
+                    <Label htmlFor="podcast-image">Imagem do Podcast</Label>
+                    <div className="space-y-2">
+                      {image && (
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
+                          <img
+                            src={image}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
                           />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="podcast-video">URL do Vídeo *</Label>
-                          <Input
-                            id="podcast-video"
-                            value={videoUrl}
-                            onChange={(e) => setVideoUrl(e.target.value)}
-                            placeholder="https://..."
-                          />
-                          {errors.videoUrl && <p className="text-red-500 text-sm mt-1">{errors.videoUrl}</p>}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="podcast-duration">Duração</Label>
-                          <Input
-                            id="podcast-duration"
-                            value={duration}
-                            onChange={(e) => setDuration(e.target.value)}
-                            placeholder="Ex: 45min"
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="podcast-active"
-                            checked={editingCourse ? (editingCourse as any).active !== false : true}
-                            onChange={(e) => {
-                              if (editingCourse) {
-                                setEditingCourse({ ...editingCourse, active: e.target.checked } as any);
-                              }
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setImage("");
+                              setPodcastImageFile(null);
                             }}
-                            className="w-4 h-4"
-                          />
-                          <Label htmlFor="podcast-active" className="cursor-pointer">
-                            Podcast ativo
-                          </Label>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-4">
-                          <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={async () => {
-                            if (!title || !videoUrl) {
-                              setErrors({
-                                title: !title ? "Título é obrigatório" : "",
-                                videoUrl: !videoUrl ? "URL do vídeo é obrigatória" : "",
-                              });
-                              return;
-                            }
-
-                            try {
-                              const podcastData = {
-                                title,
-                                description: description || undefined,
-                                image: image || undefined,
-                                videoUrl: videoUrl,
-                                duration: duration || undefined,
-                                active: editingCourse ? (editingCourse as any).active !== false : true,
-                              };
-
-                              if (editingCourse) {
-                                await apiClient.updatePodcast(editingCourse.id, podcastData);
-                                toast.success("Podcast atualizado com sucesso!");
-                              } else {
-                                await apiClient.createPodcast(podcastData);
-                                toast.success("Podcast criado com sucesso!");
-                              }
-
-                              setIsDialogOpen(false);
-                              // Recarregar podcasts
-                              const podcastsResponse = await apiClient.getPodcasts({ page: 1, limit: 100 });
-                              setPodcasts(podcastsResponse?.podcasts || []);
-                            } catch (error: any) {
-                              const validationErrors = extractValidationErrors(error);
-                              if (Object.keys(validationErrors).length > 0) {
-                                setErrors(validationErrors);
-                              } else {
-                                toast.error(handleApiError(error));
-                              }
-                            }
-                          }}>
-                            <Save className="w-4 h-4 mr-2" />
-                            {editingCourse ? "Atualizar" : "Criar"}
+                            className="absolute top-2 right-2"
+                          >
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
+                      )}
+                      <div className="flex gap-2">
+                        <label
+                          htmlFor="podcast-image-upload"
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+                            {podcastImageUploading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span className="text-sm text-gray-600">Enviando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4" />
+                                <span className="text-sm text-gray-600">
+                                  {image ? "Trocar Imagem" : "Fazer Upload da Imagem"}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </label>
+                        <input
+                          id="podcast-image-upload"
+                          type="file"
+                          accept="image/*"
+                          disabled={podcastImageUploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Validar tipo de arquivo
+                              if (!file.type.startsWith('image/')) {
+                                toast.error("Por favor, selecione apenas arquivos de imagem");
+                                return;
+                              }
+                              // Validar tamanho (máximo 5MB)
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error("A imagem deve ter no máximo 5MB");
+                                return;
+                              }
+                              setPodcastImageFile(file);
+                              handlePodcastImageUpload(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
                       </div>
-                    </DialogContent>
-                  </Dialog>
+                      {podcastImageUploading && (
+                        <div className="flex items-center gap-2 text-sm text-yellow-700">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <p>Aguardando upload da imagem...</p>
+                        </div>
+                      )}
+                      {image && !podcastImageUploading && (
+                        <p className="text-xs text-gray-500">Imagem carregada com sucesso</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="podcast-video">URL do Vídeo *</Label>
+                    <Input
+                      id="podcast-video"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="https://..."
+                    />
+                    {errors.videoUrl && <p className="text-red-500 text-sm mt-1">{errors.videoUrl}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="podcast-duration">Duração</Label>
+                    <Input
+                      id="podcast-duration"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      placeholder="Ex: 45min"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="podcast-active"
+                      checked={editingCourse ? (editingCourse as any).active !== false : true}
+                      onChange={(e) => {
+                        if (editingCourse) {
+                          setEditingCourse({ ...editingCourse, active: e.target.checked } as any);
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="podcast-active" className="cursor-pointer">
+                      Podcast ativo
+                    </Label>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={async () => {
+                      if (!title || !videoUrl) {
+                        setErrors({
+                          title: !title ? "Título é obrigatório" : "",
+                          videoUrl: !videoUrl ? "URL do vídeo é obrigatória" : "",
+                        });
+                        return;
+                      }
+
+                      try {
+                        const podcastData = {
+                          title,
+                          description: description || undefined,
+                          image: image || undefined,
+                          videoUrl: videoUrl,
+                          duration: duration || undefined,
+                          active: editingCourse ? (editingCourse as any).active !== false : true,
+                        };
+
+                        if (editingCourse) {
+                          await apiClient.updatePodcast(editingCourse.id, podcastData);
+                          toast.success("Podcast atualizado com sucesso!");
+                        } else {
+                          await apiClient.createPodcast(podcastData);
+                          toast.success("Podcast criado com sucesso!");
+                        }
+
+                        setIsDialogOpen(false);
+                        // Recarregar podcasts
+                        const podcastsResponse = await apiClient.getPodcasts({ page: 1, limit: 100 });
+                        setPodcasts(podcastsResponse?.podcasts || []);
+                      } catch (error: any) {
+                        const validationErrors = extractValidationErrors(error);
+                        if (Object.keys(validationErrors).length > 0) {
+                          setErrors(validationErrors);
+                        } else {
+                          toast.error(handleApiError(error));
+                        }
+                      }
+                    }}>
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingCourse ? "Atualizar" : "Criar"}
+                    </Button>
+                  </div>
                 </div>
+              </DialogContent>
+            </Dialog>
+          </div>
 
                 {/* Busca, Filtros e Ordenação */}
                 {podcasts.length > 0 && (
@@ -5433,26 +5996,26 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Card>
                 )}
 
-                {podcasts.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-12 text-center">
-                      <Headphones className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum podcast cadastrado</h3>
-                      <p className="text-gray-600 mb-4">Comece criando seu primeiro podcast gratuito</p>
-                      <Button onClick={() => {
-                        setEditingCourse(null);
-                        setTitle("");
-                        setDescription("");
-                        setImage("");
-                        setVideoUrl("");
-                        setDuration("");
-                        setIsDialogOpen(true);
-                      }}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Criar Primeiro Podcast
-                      </Button>
-                    </CardContent>
-                  </Card>
+          {podcasts.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Headphones className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-bold mb-2">Nenhum podcast cadastrado</h3>
+                <p className="text-gray-600 mb-4">Comece criando seu primeiro podcast gratuito</p>
+                <Button onClick={() => {
+                  setEditingCourse(null);
+                  setTitle("");
+                  setDescription("");
+                  setImage("");
+                  setVideoUrl("");
+                  setDuration("");
+                  setIsDialogOpen(true);
+                }}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Primeiro Podcast
+                </Button>
+              </CardContent>
+            </Card>
                 ) : filteredAndSortedPodcasts.length === 0 ? (
                   <Card>
                     <CardContent className="py-20 text-center">
@@ -5472,74 +6035,74 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </CardContent>
                   </Card>
                 ) : podcastViewMode === "cards" ? (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredAndSortedPodcasts.map((podcast) => (
-                      <Card key={podcast.id}>
-                        <CardContent className="p-6">
-                          {podcast.image && (
-                            <img
-                              src={podcast.image}
-                              alt={podcast.title}
-                              className="w-full h-48 object-cover rounded-lg mb-4"
-                            />
-                          )}
-                          <h3 className="font-bold text-lg mb-2">{podcast.title}</h3>
-                          {podcast.description && (
-                            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{podcast.description}</p>
-                          )}
-                          <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                            {podcast.duration && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {podcast.duration}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Headphones className="w-4 h-4" />
-                              {podcast.listens || 0} reproduções
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingCourse(podcast as any);
-                                setTitle(podcast.title);
-                                setDescription(podcast.description || "");
-                                setImage(podcast.image || "");
-                                setVideoUrl(podcast.videoUrl);
-                                setDuration(podcast.duration || "");
-                                setIsDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={async () => {
-                                if (confirm("Tem certeza que deseja excluir este podcast?")) {
-                                  try {
-                                    await apiClient.deletePodcast(podcast.id);
-                                    toast.success("Podcast excluído com sucesso!");
-                                    const podcastsResponse = await apiClient.getPodcasts({ page: 1, limit: 100 });
-                                    setPodcasts(podcastsResponse?.podcasts || []);
-                                  } catch (error) {
-                                    toast.error("Erro ao excluir podcast");
-                                  }
-                                }
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Excluir
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                <Card key={podcast.id}>
+                  <CardContent className="p-6">
+                    {podcast.image && (
+                      <img
+                        src={podcast.image}
+                        alt={podcast.title}
+                        className="w-full h-48 object-cover rounded-lg mb-4"
+                      />
+                    )}
+                    <h3 className="font-bold text-lg mb-2">{podcast.title}</h3>
+                    {podcast.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{podcast.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                      {podcast.duration && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {podcast.duration}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Headphones className="w-4 h-4" />
+                        {podcast.listens || 0} reproduções
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingCourse(podcast as any);
+                          setTitle(podcast.title);
+                          setDescription(podcast.description || "");
+                          setImage(podcast.image || "");
+                          setVideoUrl(podcast.videoUrl);
+                          setDuration(podcast.duration || "");
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (confirm("Tem certeza que deseja excluir este podcast?")) {
+                            try {
+                              await apiClient.deletePodcast(podcast.id);
+                              toast.success("Podcast excluído com sucesso!");
+                              const podcastsResponse = await apiClient.getPodcasts({ page: 1, limit: 100 });
+                              setPodcasts(podcastsResponse?.podcasts || []);
+                            } catch (error) {
+                              toast.error("Erro ao excluir podcast");
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
                 ) : (
                   /* Visualização em Tabela */
                   <Card>
@@ -5647,48 +6210,48 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     </CardContent>
                   </Card>
-                )}
-              </section>
-            )}
+          )}
+        </section>
+      )}
 
-            {/* Newsletter View */}
-            {mainView === "newsletter" && (
-              <section className="container mx-auto px-4 py-12">
+      {/* Newsletter View */}
+      {mainView === "newsletter" && (
+        <section className="container mx-auto px-4 py-12">
 
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold mb-2">Gerenciar Newsletter</h2>
-                  <p className="text-gray-600">Envie atualizações para todos os inscritos na newsletter</p>
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-2">Gerenciar Newsletter</h2>
+            <p className="text-gray-600">Envie atualizações para todos os inscritos na newsletter</p>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Total de Inscritos</p>
+                    <p className="text-3xl font-bold text-blue-600">{newsletterTotal}</p>
+                  </div>
+                  <Mail className="w-12 h-12 text-blue-200" />
                 </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Total de Inscritos</p>
-                          <p className="text-3xl font-bold text-blue-600">{newsletterTotal}</p>
-                        </div>
-                        <Mail className="w-12 h-12 text-blue-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Inscritos Ativos</p>
-                          <p className="text-3xl font-bold text-green-600">{newsletterSubscribers.length}</p>
-                        </div>
-                        <CheckCircle2 className="w-12 h-12 text-green-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Última Atualização</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Inscritos Ativos</p>
+                    <p className="text-3xl font-bold text-green-600">{newsletterSubscribers.length}</p>
+                  </div>
+                  <CheckCircle2 className="w-12 h-12 text-green-200" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Última Atualização</p>
                           {lastCampaign ? (
                             <div>
                               <p className="text-sm font-semibold text-gray-800">
@@ -5699,106 +6262,106 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               </p>
                             </div>
                           ) : (
-                            <p className="text-sm font-semibold text-gray-800">-</p>
+                    <p className="text-sm font-semibold text-gray-800">-</p>
                           )}
-                        </div>
-                        <Calendar className="w-12 h-12 text-gray-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  </div>
+                  <Calendar className="w-12 h-12 text-gray-200" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Formulário para Enviar Atualização */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Enviar Atualização da Newsletter</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="newsletter-subject">Assunto do Email *</Label>
+                  <Input
+                    id="newsletter-subject"
+                    value={newsletterSubject}
+                    onChange={(e) => setNewsletterSubject(e.target.value)}
+                    placeholder="Ex: Novidades e Dicas de Psicologia"
+                  />
                 </div>
 
-                {/* Formulário para Enviar Atualização */}
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Enviar Atualização da Newsletter</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="newsletter-subject">Assunto do Email *</Label>
-                        <Input
-                          id="newsletter-subject"
-                          value={newsletterSubject}
-                          onChange={(e) => setNewsletterSubject(e.target.value)}
-                          placeholder="Ex: Novidades e Dicas de Psicologia"
-                        />
-                      </div>
+                <div>
+                  <Label htmlFor="newsletter-content">Conteúdo *</Label>
+                  <Textarea
+                    id="newsletter-content"
+                    value={newsletterContent}
+                    onChange={(e) => setNewsletterContent(e.target.value)}
+                    placeholder="Escreva o conteúdo da newsletter aqui..."
+                    rows={10}
+                    className="font-sans"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Você pode usar HTML básico para formatação (negrito, itálico, links, etc.)
+                  </p>
+                </div>
 
-                      <div>
-                        <Label htmlFor="newsletter-content">Conteúdo *</Label>
-                        <Textarea
-                          id="newsletter-content"
-                          value={newsletterContent}
-                          onChange={(e) => setNewsletterContent(e.target.value)}
-                          placeholder="Escreva o conteúdo da newsletter aqui..."
-                          rows={10}
-                          className="font-sans"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Você pode usar HTML básico para formatação (negrito, itálico, links, etc.)
-                        </p>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="newsletter-cta-text">Texto do Botão (opcional)</Label>
+                    <Input
+                      id="newsletter-cta-text"
+                      value={newsletterCtaText}
+                      onChange={(e) => setNewsletterCtaText(e.target.value)}
+                      placeholder="Ex: Ver Mais"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newsletter-cta-link">Link do Botão (opcional)</Label>
+                    <Input
+                      id="newsletter-cta-link"
+                      value={newsletterCtaLink}
+                      onChange={(e) => setNewsletterCtaLink(e.target.value)}
+                      placeholder="Ex: https://seusite.com/artigo"
+                    />
+                  </div>
+                </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="newsletter-cta-text">Texto do Botão (opcional)</Label>
-                          <Input
-                            id="newsletter-cta-text"
-                            value={newsletterCtaText}
-                            onChange={(e) => setNewsletterCtaText(e.target.value)}
-                            placeholder="Ex: Ver Mais"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="newsletter-cta-link">Link do Botão (opcional)</Label>
-                          <Input
-                            id="newsletter-cta-link"
-                            value={newsletterCtaLink}
-                            onChange={(e) => setNewsletterCtaLink(e.target.value)}
-                            placeholder="Ex: https://seusite.com/artigo"
-                          />
-                        </div>
-                      </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 font-semibold mb-2">📧 Esta atualização será enviada para:</p>
+                  <p className="text-lg font-bold text-blue-900">{newsletterTotal} inscrito(s) ativo(s)</p>
+                </div>
 
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p className="text-sm text-blue-800 font-semibold mb-2">📧 Esta atualização será enviada para:</p>
-                        <p className="text-lg font-bold text-blue-900">{newsletterTotal} inscrito(s) ativo(s)</p>
-                      </div>
+                <Button
+                  onClick={() => {
+                    if (!newsletterSubject || !newsletterContent) {
+                      toast.error("Preencha o assunto e o conteúdo da newsletter");
+                      return;
+                    }
 
-                      <Button
-                        onClick={() => {
-                          if (!newsletterSubject || !newsletterContent) {
-                            toast.error("Preencha o assunto e o conteúdo da newsletter");
-                            return;
-                          }
+                    if (newsletterTotal === 0) {
+                      toast.error("Não há inscritos ativos na newsletter");
+                      return;
+                    }
 
-                          if (newsletterTotal === 0) {
-                            toast.error("Não há inscritos ativos na newsletter");
-                            return;
-                          }
-
-                          setShowNewsletterConfirmDialog(true);
-                        }}
-                        disabled={newsletterSending || !newsletterSubject || !newsletterContent || newsletterTotal === 0}
-                        className="w-full"
-                        size="lg"
-                      >
-                        {newsletterSending ? (
-                          <>
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="w-5 h-5 mr-2" />
-                            Enviar Newsletter para {newsletterTotal} Inscrito(s)
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    setShowNewsletterConfirmDialog(true);
+                  }}
+                  disabled={newsletterSending || !newsletterSubject || !newsletterContent || newsletterTotal === 0}
+                  className="w-full"
+                  size="lg"
+                >
+                  {newsletterSending ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-5 h-5 mr-2" />
+                      Enviar Newsletter para {newsletterTotal} Inscrito(s)
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
                 {/* Histórico de Campanhas */}
                 {newsletterCampaigns.length > 0 && (
@@ -5844,12 +6407,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Card>
                 )}
 
-                {/* Lista de Inscritos */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Inscritos na Newsletter</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+          {/* Lista de Inscritos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Inscritos na Newsletter</CardTitle>
+            </CardHeader>
+            <CardContent>
                     {newsletterSubscribers.length > 0 && (
                       <div className="mb-6 space-y-4">
                         {/* Busca */}
@@ -5936,14 +6499,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     )}
 
-                    {newsletterSubscribers.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Mail className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold mb-2">Nenhum inscrito encontrado</h3>
-                        <p className="text-gray-600">
-                          Os inscritos aparecerão aqui quando se cadastrarem na newsletter
-                        </p>
-                      </div>
+              {newsletterSubscribers.length === 0 ? (
+                <div className="text-center py-12">
+                  <Mail className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold mb-2">Nenhum inscrito encontrado</h3>
+                  <p className="text-gray-600">
+                    Os inscritos aparecerão aqui quando se cadastrarem na newsletter
+                  </p>
+                </div>
                     ) : filteredAndSortedSubscribers.length === 0 ? (
                       <div className="text-center py-12">
                         <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -5962,38 +6525,38 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </Button>
                       </div>
                     ) : subscriberViewMode === "cards" ? (
-                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-2 max-h-96 overflow-y-auto">
                         {filteredAndSortedSubscribers.map((subscriber) => (
-                          <div
-                            key={subscriber.id}
-                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Mail className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{subscriber.name || "Sem nome"}</p>
+                    <div
+                      key={subscriber.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Mail className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{subscriber.name || "Sem nome"}</p>
                                 <p className="text-sm text-gray-600 break-all">{subscriber.email}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-gray-500">
-                                {new Date(subscriber.subscribedAt).toLocaleDateString("pt-BR")}
-                              </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">
+                          {new Date(subscriber.subscribedAt).toLocaleDateString("pt-BR")}
+                        </p>
                               {subscriber.active ? (
-                                <span className="inline-block mt-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                                  Ativo
-                                </span>
+                          <span className="inline-block mt-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                            Ativo
+                          </span>
                               ) : (
                                 <span className="inline-block mt-1 bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
                                   Inativo
                                 </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                        )}
                       </div>
+                    </div>
+                  ))}
+                </div>
                     ) : (
                       /* Visualização em Tabela */
                       <div className="overflow-x-auto">
@@ -6033,9 +6596,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </tbody>
                         </table>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+              )}
+            </CardContent>
+          </Card>
 
                 {/* Modal de Detalhes da Campanha */}
                 <Dialog open={showCampaignDetails} onOpenChange={setShowCampaignDetails}>
@@ -6166,93 +6729,93 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </DialogContent>
                 </Dialog>
 
-                {/* Modal de Confirmação de Envio */}
-                <Dialog open={showNewsletterConfirmDialog} onOpenChange={setShowNewsletterConfirmDialog}>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader className="space-y-3 pb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                          <Mail className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <DialogTitle className="text-2xl font-bold text-gray-900">Confirmar Envio</DialogTitle>
-                          <DialogDescription className="text-gray-600 mt-1">
-                            Newsletter será enviada para todos os inscritos
-                          </DialogDescription>
-                        </div>
+          {/* Modal de Confirmação de Envio */}
+          <Dialog open={showNewsletterConfirmDialog} onOpenChange={setShowNewsletterConfirmDialog}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader className="space-y-3 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-2xl font-bold text-gray-900">Confirmar Envio</DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-1">
+                      Newsletter será enviada para todos os inscritos
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-6">
+                {/* Card de Detalhes */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                      <MessageCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Assunto do Email</p>
+                        <p className="text-base font-semibold text-gray-900">{newsletterSubject}</p>
                       </div>
-                    </DialogHeader>
-
-                    <div className="space-y-6 py-6">
-                      {/* Card de Detalhes */}
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-xl p-6 shadow-sm">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-                            <MessageCircle className="w-5 h-5 text-white" />
+                      <div className="pt-3 border-t border-blue-200">
+                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Destinatários</p>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Users className="w-4 h-4 text-white" />
                           </div>
-                          <div className="flex-1 space-y-3">
-                            <div>
-                              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Assunto do Email</p>
-                              <p className="text-base font-semibold text-gray-900">{newsletterSubject}</p>
-                            </div>
-                            <div className="pt-3 border-t border-blue-200">
-                              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Destinatários</p>
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <Users className="w-4 h-4 text-white" />
-                                </div>
-                                <p className="text-lg font-bold text-gray-900">{newsletterTotal} inscrito(s) ativo(s)</p>
-                              </div>
-                            </div>
-                          </div>
+                          <p className="text-lg font-bold text-gray-900">{newsletterTotal} inscrito(s) ativo(s)</p>
                         </div>
-                      </div>
-
-                      {/* Aviso */}
-                      <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-white text-xs font-bold">!</span>
-                        </div>
-                        <p className="text-sm text-amber-900 leading-relaxed">
-                          <strong className="font-semibold">Atenção:</strong> Esta ação não pode ser desfeita. Todos os inscritos ativos receberão este email imediatamente.
-                        </p>
                       </div>
                     </div>
+                  </div>
+                </div>
+                
+                {/* Aviso */}
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <p className="text-sm text-amber-900 leading-relaxed">
+                    <strong className="font-semibold">Atenção:</strong> Esta ação não pode ser desfeita. Todos os inscritos ativos receberão este email imediatamente.
+                  </p>
+                </div>
+              </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowNewsletterConfirmDialog(false)}
-                        disabled={newsletterSending}
-                        className="px-6"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          setShowNewsletterConfirmDialog(false);
-                          setNewsletterSending(true);
-                          try {
-                            const result = await apiClient.sendNewsletterUpdate({
-                              subject: newsletterSubject,
-                              content: newsletterContent,
-                              ctaText: newsletterCtaText || undefined,
-                              ctaLink: newsletterCtaLink || undefined,
-                            });
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNewsletterConfirmDialog(false)}
+                  disabled={newsletterSending}
+                  className="px-6"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setShowNewsletterConfirmDialog(false);
+                    setNewsletterSending(true);
+                    try {
+                      const result = await apiClient.sendNewsletterUpdate({
+                        subject: newsletterSubject,
+                        content: newsletterContent,
+                        ctaText: newsletterCtaText || undefined,
+                        ctaLink: newsletterCtaLink || undefined,
+                      });
 
-                            toast.success(
-                              `Newsletter enviada! ${result.stats.sent} email(s) enviado(s) com sucesso.`
-                            );
+                      toast.success(
+                        `Newsletter enviada! ${result.stats.sent} email(s) enviado(s) com sucesso.`
+                      );
+                      
+                      if (result.stats.failed > 0) {
+                        toast.warning(`${result.stats.failed} email(s) falharam ao enviar.`);
+                      }
 
-                            if (result.stats.failed > 0) {
-                              toast.warning(`${result.stats.failed} email(s) falharam ao enviar.`);
-                            }
-
-                            // Limpar formulário
-                            setNewsletterSubject("");
-                            setNewsletterContent("");
-                            setNewsletterCtaText("");
-                            setNewsletterCtaLink("");
+                      // Limpar formulário
+                      setNewsletterSubject("");
+                      setNewsletterContent("");
+                      setNewsletterCtaText("");
+                      setNewsletterCtaLink("");
 
                             // Recarregar campanhas para atualizar histórico
                             try {
@@ -6263,48 +6826,48 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             } catch (campaignError) {
                               console.error("Erro ao recarregar campanhas:", campaignError);
                             }
-                          } catch (error: any) {
-                            console.error("Erro ao enviar newsletter:", error);
-                            toast.error(error.message || "Erro ao enviar newsletter");
-                          } finally {
-                            setNewsletterSending(false);
-                          }
-                        }}
-                        disabled={newsletterSending}
-                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 shadow-lg hover:shadow-xl transition-all"
-                      >
-                        {newsletterSending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="w-4 h-4 mr-2" />
-                            Confirmar e Enviar
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </section>
-            )}
+                    } catch (error: any) {
+                      console.error("Erro ao enviar newsletter:", error);
+                      toast.error(error.message || "Erro ao enviar newsletter");
+                    } finally {
+                      setNewsletterSending(false);
+                    }
+                  }}
+                  disabled={newsletterSending}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 shadow-lg hover:shadow-xl transition-all"
+                >
+                  {newsletterSending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Confirmar e Enviar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </section>
+      )}
 
-            {/* Support View */}
-            {mainView === "support" && (
+      {/* Support View */}
+      {mainView === "support" && (
               <section className="container mx-auto px-2 sm:px-4 py-1 sm:py-2 lg:py-6 flex flex-col lg:h-auto" style={{ height: 'calc(100vh - 6rem)', minHeight: 'calc(100vh - 6rem)' }}>
                 {/* Header melhorado - Ultra compacto no mobile */}
                 <div className="mb-1 sm:mb-2 lg:mb-4 flex-shrink-0">
                   <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 mb-1 lg:mb-2">
                     <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-16 lg:h-16 rounded-md lg:rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center shadow-sm lg:shadow-lg flex-shrink-0">
                       <Headphones className="w-3 h-3 sm:w-4 sm:h-4 lg:w-8 lg:h-8 text-white" />
-                    </div>
+              </div>
                     <div className="min-w-0 flex-1">
                       <h2 className="text-sm sm:text-lg lg:text-3xl font-bold text-gray-900 leading-tight">Central de Atendimento</h2>
                       <p className="text-gray-600 text-[10px] sm:text-xs lg:text-base hidden sm:block">Gerencie e responda aos tickets de suporte</p>
-                    </div>
-                  </div>
+              </div>
+            </div>
 
                   {/* Estatísticas rápidas - Ultra compactas no mobile */}
                   <div className="grid grid-cols-4 gap-1 sm:gap-1.5 lg:gap-4 mb-1 lg:mb-2">
@@ -6361,77 +6924,77 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </CardContent>
                     </Card>
                   </div>
-                </div>
+          </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-6 flex-1 min-h-0 lg:h-auto" style={{ height: 'calc(100vh - 120px)', minHeight: '600px' }}>
-                  {/* Lista de Tickets */}
+            {/* Lista de Tickets */}
                   <div className="lg:col-span-1 flex flex-col h-full min-h-0">
                     <Card className="shadow-md border-0 flex flex-col h-full">
                       <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b flex-shrink-0 p-2 sm:p-3 lg:p-6">
                         <div className="flex items-center justify-between mb-2 lg:mb-4">
                           <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 lg:gap-2">
-                            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 text-blue-600 flex-shrink-0" />
-                            <span>Tickets</span>
+                            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                    <span>Tickets</span>
                           </CardTitle>
-                          <Button
+                    <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={() => loadSupportTickets()}
-                            disabled={supportLoading}
+                      size="sm"
+                      onClick={() => loadSupportTickets()}
+                      disabled={supportLoading}
                             className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 p-0 hover:bg-white flex-shrink-0"
-                          >
+                    >
                             <Loader2 className={`w-4 h-4 sm:w-4 sm:h-4 lg:w-4 lg:h-4 ${supportLoading ? 'animate-spin' : ''} text-gray-600`} />
-                          </Button>
+                    </Button>
                         </div>
                         {/* Filtros melhorados */}
                         <div className="flex flex-wrap gap-1.5 sm:gap-2 lg:gap-2 mb-2 lg:mb-4">
-                          <Button
-                            variant={supportTicketFilter === 'all' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSupportTicketFilter('all')}
+                    <Button
+                      variant={supportTicketFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSupportTicketFilter('all')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'all'
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                              : 'bg-white hover:bg-blue-50 border-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Todos
-                          </Button>
-                          <Button
-                            variant={supportTicketFilter === 'open' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSupportTicketFilter('open')}
+                              ? 'text-white shadow-md'
+                              : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      Todos
+                    </Button>
+                    <Button
+                      variant={supportTicketFilter === 'open' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSupportTicketFilter('open')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'open'
                               ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
                               : 'bg-white hover:bg-green-50 border-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Aberto
-                          </Button>
-                          <Button
-                            variant={supportTicketFilter === 'in_progress' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSupportTicketFilter('in_progress')}
+                      }`}
+                    >
+                      Aberto
+                    </Button>
+                    <Button
+                      variant={supportTicketFilter === 'in_progress' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSupportTicketFilter('in_progress')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'in_progress'
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                              : 'bg-white hover:bg-blue-50 border-gray-200 text-gray-700'
+                              ? 'text-white shadow-md'
+                              : 'bg-white border-gray-200'
                               }`}
                           >
                             <span className="hidden sm:inline">Em Atendimento</span>
                             <span className="sm:hidden">Atend.</span>
-                          </Button>
-                          <Button
-                            variant={supportTicketFilter === 'closed' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSupportTicketFilter('closed')}
+                    </Button>
+                    <Button
+                      variant={supportTicketFilter === 'closed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSupportTicketFilter('closed')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'closed'
                               ? 'bg-gray-600 hover:bg-gray-700 text-white shadow-md'
                               : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Fechado
-                          </Button>
-                        </div>
-                      </CardHeader>
+                      }`}
+                    >
+                      Fechado
+                    </Button>
+                  </div>
+                </CardHeader>
                       <CardContent className="p-0 flex-1 flex flex-col min-h-0 overflow-hidden">
                         {/* Busca de tickets */}
                         <div className="p-2 sm:p-3 border-b bg-white flex-shrink-0">
@@ -6445,53 +7008,53 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-3 space-y-2 lg:space-y-2 min-h-0 lg:h-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
-                          {(() => {
-                            const filteredTickets = supportTicketFilter === 'all'
-                              ? supportTickets
-                              : supportTickets.filter((ticket: any) => ticket.status === supportTicketFilter);
-
-                            if (filteredTickets.length === 0) {
-                              return (
-                                <div className="text-center py-12 text-gray-400">
-                                  <div className="relative inline-block mb-4">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-lg">
-                                      <MessageCircle className="w-8 h-8 text-gray-400" />
-                                    </div>
-                                    <div className="absolute -top-1 -right-1">
-                                      <Sparkles className="w-5 h-5 text-gray-300 animate-pulse" />
-                                    </div>
-                                  </div>
-                                  <p className="text-base font-semibold text-gray-600 mb-1">Nenhum ticket encontrado</p>
-                                  {supportTicketFilter !== 'all' && (
-                                    <p className="text-sm text-gray-500">para o filtro selecionado</p>
-                                  )}
-                                </div>
-                              );
-                            }
-
-                            return filteredTickets.map((ticket: any) => {
-                              const unreadMessages = ticket.messages?.filter((msg: any) =>
-                                msg.senderType === 'user' && !msg.read
-                              ) || [];
-                              const unreadCount = unreadMessages.length;
-
-                              return (
+                    {(() => {
+                      const filteredTickets = supportTicketFilter === 'all' 
+                        ? supportTickets 
+                        : supportTickets.filter((ticket: any) => ticket.status === supportTicketFilter);
+                      
+                      if (filteredTickets.length === 0) {
+                        return (
+                          <div className="text-center py-12 text-gray-400">
+                            <div className="relative inline-block mb-4">
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-lg">
+                                <MessageCircle className="w-8 h-8 text-gray-400" />
+                              </div>
+                              <div className="absolute -top-1 -right-1">
+                                <Sparkles className="w-5 h-5 text-gray-300 animate-pulse" />
+                              </div>
+                            </div>
+                            <p className="text-base font-semibold text-gray-600 mb-1">Nenhum ticket encontrado</p>
+                            {supportTicketFilter !== 'all' && (
+                              <p className="text-sm text-gray-500">para o filtro selecionado</p>
+                            )}
+                          </div>
+                        );
+                      }
+                      
+                      return filteredTickets.map((ticket: any) => {
+                        const unreadMessages = ticket.messages?.filter((msg: any) => 
+                          msg.senderType === 'user' && !msg.read
+                        ) || [];
+                        const unreadCount = unreadMessages.length;
+                        
+                        return (
                                 <div
-                                  key={ticket.id}
+                            key={ticket.id}
                                   className={`cursor-pointer transition-all rounded-md sm:rounded-lg lg:rounded-xl p-1.5 sm:p-2 lg:p-4 border-2 relative group ${
-                                    selectedTicket?.id === ticket.id
+                              selectedTicket?.id === ticket.id 
                                       ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100/50 shadow-sm sm:shadow-md ring-1 sm:ring-2 ring-blue-200'
                                       : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 hover:shadow-sm'
-                                  }`}
-                                  onClick={() => openSupportTicket(ticket.id)}
-                                >
-                                  {/* Indicador de mensagens não lidas */}
-                                  {unreadCount > 0 && selectedTicket?.id !== ticket.id && (
+                            }`}
+                            onClick={() => openSupportTicket(ticket.id)}
+                          >
+                            {/* Indicador de mensagens não lidas */}
+                            {unreadCount > 0 && selectedTicket?.id !== ticket.id && (
                                     <div className="absolute top-1 right-1 sm:top-2 sm:right-2 lg:top-3 lg:right-3 flex items-center gap-0.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-[9px] sm:text-[10px] lg:text-xs font-bold px-1 sm:px-1.5 lg:px-2.5 py-0.5 rounded-full shadow-md animate-pulse border border-white z-10">
                                       <div className="w-1 h-1 bg-white rounded-full animate-ping"></div>
-                                      <span>{unreadCount}</span>
-                                    </div>
-                                  )}
+                                <span>{unreadCount}</span>
+                              </div>
+                            )}
                                   
                                   <div className="flex items-start gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 lg:mb-3">
                                     {/* Avatar do usuário */}
@@ -6503,77 +7066,77 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         <h3 className="font-bold text-gray-900 text-[10px] sm:text-[11px] lg:text-sm group-hover:text-blue-700 transition-colors line-clamp-1">
                                           {ticket.subject}
                                         </h3>
-                                        {/* Ícone de status */}
+                                {/* Ícone de status */}
                                         <div className={`w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-6 lg:h-6 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0 ${ticket.status === 'open'
                                           ? 'bg-green-100'
-                                          : ticket.status === 'in_progress'
+                                    : ticket.status === 'in_progress'
                                             ? 'bg-blue-100'
                                             : 'bg-gray-100'
                                           }`}>
                                           {ticket.status === 'open' && <AlertCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-green-600" />}
                                           {ticket.status === 'in_progress' && <Headphones className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-blue-600" />}
                                           {ticket.status === 'closed' && <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-gray-600" />}
-                                        </div>
-                                      </div>
+                                </div>
+                                  </div>
                                       <p className="text-[9px] sm:text-[10px] lg:text-xs text-gray-600 mb-0.5 sm:mb-1 line-clamp-1">
                                         {ticket.user?.name || ticket.user?.email || 'Usuário'}
                                       </p>
-                                    </div>
                                   </div>
+                                </div>
                                   
                                   <div className="flex items-center justify-between pt-1 sm:pt-1.5 lg:pt-2 border-t border-gray-100">
-                                    <span
+                                <span
                                       className={`px-1 sm:px-1.5 lg:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] lg:text-xs font-semibold flex items-center gap-0.5 ${
-                                        ticket.status === 'open'
+                                    ticket.status === 'open'
                                           ? 'bg-green-100 text-green-700'
-                                          : ticket.status === 'in_progress'
+                                      : ticket.status === 'in_progress'
                                             ? 'bg-blue-100 text-blue-700'
                                             : 'bg-gray-100 text-gray-700'
-                                      }`}
-                                    >
-                                      {ticket.status === 'open' && (
-                                        <>
+                                  }`}
+                                >
+                                  {ticket.status === 'open' && (
+                                    <>
                                           <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-                                          <span>Aberto</span>
-                                        </>
-                                      )}
-                                      {ticket.status === 'in_progress' && (
-                                        <>
+                                      <span>Aberto</span>
+                                    </>
+                                  )}
+                                  {ticket.status === 'in_progress' && (
+                                    <>
                                           <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></div>
                                           <span className="hidden lg:inline">Em atendimento</span>
                                           <span className="lg:hidden">Atend.</span>
-                                        </>
-                                      )}
-                                      {ticket.status === 'closed' && (
-                                        <>
+                                    </>
+                                  )}
+                                  {ticket.status === 'closed' && (
+                                    <>
                                           <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3 lg:h-3" />
-                                          <span>Fechado</span>
-                                        </>
-                                      )}
-                                    </span>
+                                      <span>Fechado</span>
+                                    </>
+                                  )}
+                                </span>
                                     <span className="text-[9px] sm:text-[10px] lg:text-xs text-gray-500 flex items-center gap-0.5">
                                       <Clock className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3 lg:h-3" />
-                                      {(() => {
-                                        const dateStr = String(ticket.createdAt);
-                                        const utcDateStr = dateStr.endsWith('Z') ? dateStr : (dateStr.match(/[+-]\d{2}:?\d{2}$/) ? dateStr : dateStr + 'Z');
-                                        const utcDate = new Date(utcDateStr);
-                                        const brDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
+                                  {(() => {
+                                    const dateStr = String(ticket.createdAt);
+                                    const utcDateStr = dateStr.endsWith('Z') ? dateStr : (dateStr.match(/[+-]\d{2}:?\d{2}$/) ? dateStr : dateStr + 'Z');
+                                    const utcDate = new Date(utcDateStr);
+                                    const brDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
                                         return brDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                                      })()}
-                                    </span>
-                                  </div>
+                                  })()}
+                                </span>
+                              </div>
                                 </div>
-                              );
-                            });
-                          })()}
-                        </div>
-                      </CardContent>
-                    </Card>
+                        );
+                      });
+                    })()}
                   </div>
+                </CardContent>
+              </Card>
+            </div>
 
-                  {/* Área de Mensagens */}
+            {/* Área de Mensagens */}
                   <div className="lg:col-span-2 flex flex-col h-full min-h-0">
-                    {selectedTicket ? (
+              {selectedTicket ? (
                       <Card className="h-full flex flex-col shadow-xl border-0 overflow-hidden lg:h-auto" style={{ height: 'calc(100vh - 120px)', minHeight: '600px' }}>
                         {/* Header melhorado com gradiente - Compacto no mobile */}
                         <CardHeader className="border-b bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white p-1.5 sm:p-3 lg:p-4 shadow-lg sm:shadow-xl relative overflow-hidden flex-shrink-0">
@@ -6591,211 +7154,211 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   </CardTitle>
                                   <div className="flex items-center gap-1.5 sm:gap-2">
                                     {selectedTicket.status !== 'closed' && (
-                                      <div className="relative">
+                          <div className="relative">
                                         <div className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse shadow-md shadow-green-300/50"></div>
                                         <div className="absolute inset-0 w-1.5 h-1.5 bg-green-300 rounded-full animate-ping opacity-75"></div>
-                                      </div>
+                          </div>
                                     )}
                                     <span className="text-[10px] sm:text-xs text-blue-100">
                                       {selectedTicket.status === 'open' ? 'Aberto' : selectedTicket.status === 'in_progress' ? 'Em Atendimento' : 'Fechado'}
                                     </span>
-                                  </div>
+                          </div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center text-[10px] sm:text-xs lg:text-base font-bold border border-white/40 sm:border-2 shadow-md sm:shadow-lg ring-1 sm:ring-2 ring-white/20 flex-shrink-0">
-                                  {(selectedTicket.user?.name || selectedTicket.user?.email || 'U').charAt(0).toUpperCase()}
-                                </div>
+                            {(selectedTicket.user?.name || selectedTicket.user?.email || 'U').charAt(0).toUpperCase()}
+                          </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5">
                                     <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 text-blue-200 flex-shrink-0" />
                                     <p className="text-[10px] sm:text-xs lg:text-sm text-blue-100 font-semibold truncate">
-                                      {selectedTicket.user?.name || selectedTicket.user?.email}
-                                    </p>
-                                  </div>
-                                  {selectedTicket.user?.email && selectedTicket.user?.name && (
+                                {selectedTicket.user?.name || selectedTicket.user?.email}
+                              </p>
+                            </div>
+                            {selectedTicket.user?.email && selectedTicket.user?.name && (
                                     <div className="flex items-center gap-1 sm:gap-1.5">
                                       <MailIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5 text-blue-200 flex-shrink-0" />
                                       <p className="text-[9px] sm:text-xs text-blue-200 opacity-90 truncate">
-                                        {selectedTicket.user.email}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            {selectedTicket.status !== 'closed' && (
-                              <div className="flex gap-1.5 sm:gap-2 flex-shrink-0 pt-1.5 sm:pt-2 border-t border-white/20">
-                                {!selectedTicket.adminId && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={async () => {
-                                      try {
-                                        await apiClient.assignSupportTicket(selectedTicket.id);
-                                        await loadSupportTickets();
-                                        await openSupportTicket(selectedTicket.id);
-                                        toast.success('Ticket atribuído a você');
-                                      } catch (error: any) {
-                                        toast.error(error.message || 'Erro ao atribuir ticket');
-                                      }
-                                    }}
-                                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
-                                  >
-                                    <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
-                                    <span>Atribuir</span>
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await apiClient.closeSupportTicket(selectedTicket.id);
-                                      await loadSupportTickets();
-                                      await openSupportTicket(selectedTicket.id);
-                                      toast.success('Ticket fechado');
-                                    } catch (error: any) {
-                                      toast.error(error.message || 'Erro ao fechar ticket');
-                                    }
-                                  }}
-                                  className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
-                                >
-                                  <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
-                                  <span>Fechar</span>
-                                </Button>
+                                  {selectedTicket.user.email}
+                                </p>
                               </div>
                             )}
                           </div>
-                        </CardHeader>
+                        </div>
+                      </div>
+                            {selectedTicket.status !== 'closed' && (
+                              <div className="flex gap-1.5 sm:gap-2 flex-shrink-0 pt-1.5 sm:pt-2 border-t border-white/20">
+                                {!selectedTicket.adminId && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await apiClient.assignSupportTicket(selectedTicket.id);
+                                await loadSupportTickets();
+                                await openSupportTicket(selectedTicket.id);
+                                toast.success('Ticket atribuído a você');
+                              } catch (error: any) {
+                                toast.error(error.message || 'Erro ao atribuir ticket');
+                              }
+                            }}
+                                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
+                          >
+                                    <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
+                            <span>Atribuir</span>
+                          </Button>
+                        )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await apiClient.closeSupportTicket(selectedTicket.id);
+                                await loadSupportTickets();
+                                await openSupportTicket(selectedTicket.id);
+                                toast.success('Ticket fechado');
+                              } catch (error: any) {
+                                toast.error(error.message || 'Erro ao fechar ticket');
+                              }
+                            }}
+                                  className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
+                          >
+                                  <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
+                            <span>Fechar</span>
+                          </Button>
+                              </div>
+                        )}
+                    </div>
+                  </CardHeader>
                         <CardContent className="flex-1 flex flex-col overflow-hidden p-0 bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-0">
-                          {/* Mensagens com design melhorado */}
+                    {/* Mensagens com design melhorado */}
                           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6 space-y-4 sm:space-5 lg:space-y-5 min-h-0 lg:h-auto" style={{ height: 'calc(100vh - 380px)', minHeight: '450px' }}>
-                            {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
-                              <>
-                                {selectedTicket.messages.map((msg: any) => (
-                                  <div
-                                    key={msg.id}
+                      {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
+                        <>
+                          {selectedTicket.messages.map((msg: any) => (
+                            <div
+                              key={msg.id}
                                     className={`flex items-end gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'
-                                      }`}
-                                  >
-                                    {msg.senderType !== 'admin' && (
+                              }`}
+                            >
+                              {msg.senderType !== 'admin' && (
                                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
-                                        {(msg.sender?.name || msg.sender?.email || 'U').charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
-                                    <div
+                                  {(msg.sender?.name || msg.sender?.email || 'U').charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div
                                       className={`max-w-[80%] sm:max-w-[85%] lg:max-w-[75%] rounded-xl sm:rounded-2xl px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 shadow-lg transition-all hover:shadow-xl ${msg.senderType === 'admin'
-                                        ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-md'
-                                        : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md shadow-md'
-                                        }`}
-                                    >
+                                    ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-md'
+                                    : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md shadow-md'
+                                }`}
+                              >
                                       <div className={`text-xs font-bold mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100' : 'text-gray-600'
-                                        }`}>
+                                }`}>
                                         {msg.senderType === 'admin' && (
                                           <div className="w-1.5 h-1.5 bg-blue-200 rounded-full"></div>
                                         )}
                                         <span className="truncate">{msg.sender?.name || msg.sender?.email}</span>
-                                      </div>
-                                      <div className={`text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words ${msg.senderType === 'admin' ? 'text-white' : 'text-gray-800'
-                                        }`}>
-                                        {msg.content}
-                                      </div>
-                                      <div className={`text-xs mt-2 sm:mt-2.5 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100 opacity-80' : 'text-gray-500'
-                                        }`}>
-                                        <Clock className="w-3 h-3 flex-shrink-0" />
-                                        {(() => {
-                                          const dateStr = String(msg.createdAt);
-                                          const utcDateStr = dateStr.endsWith('Z') ? dateStr : (dateStr.match(/[+-]\d{2}:?\d{2}$/) ? dateStr : dateStr + 'Z');
-                                          const utcDate = new Date(utcDateStr);
-                                          const brDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
-                                          return brDate.toLocaleTimeString('pt-BR', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                          });
-                                        })()}
-                                      </div>
-                                    </div>
-                                    {msg.senderType === 'admin' && (
-                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
-                                        {(msg.sender?.name || msg.sender?.email || 'A').charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                                <div ref={messagesEndRef} />
-                              </>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-                                <div className="relative mb-6">
-                                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-xl">
-                                    <MessageSquare className="w-10 h-10 text-blue-500" />
-                                  </div>
-                                  <div className="absolute -top-1 -right-1">
-                                    <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
-                                  </div>
                                 </div>
-                                <p className="text-lg font-bold text-gray-700 mb-2">Nenhuma mensagem ainda</p>
-                                <p className="text-sm text-gray-500 text-center">Inicie a conversa enviando uma mensagem abaixo</p>
+                                      <div className={`text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words ${msg.senderType === 'admin' ? 'text-white' : 'text-gray-800'
+                                }`}>
+                                  {msg.content}
+                                </div>
+                                      <div className={`text-xs mt-2 sm:mt-2.5 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100 opacity-80' : 'text-gray-500'
+                                }`}>
+                                        <Clock className="w-3 h-3 flex-shrink-0" />
+                                  {(() => {
+                                    const dateStr = String(msg.createdAt);
+                                    const utcDateStr = dateStr.endsWith('Z') ? dateStr : (dateStr.match(/[+-]\d{2}:?\d{2}$/) ? dateStr : dateStr + 'Z');
+                                    const utcDate = new Date(utcDateStr);
+                                    const brDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
+                                    return brDate.toLocaleTimeString('pt-BR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    });
+                                  })()}
+                                </div>
                               </div>
-                            )}
+                              {msg.senderType === 'admin' && (
+                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
+                                  {(msg.sender?.name || msg.sender?.email || 'A').charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          <div ref={messagesEndRef} />
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                          <div className="relative mb-6">
+                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-xl">
+                              <MessageSquare className="w-10 h-10 text-blue-500" />
+                            </div>
+                            <div className="absolute -top-1 -right-1">
+                              <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
+                            </div>
                           </div>
+                          <p className="text-lg font-bold text-gray-700 mb-2">Nenhuma mensagem ainda</p>
+                          <p className="text-sm text-gray-500 text-center">Inicie a conversa enviando uma mensagem abaixo</p>
+                        </div>
+                      )}
+                    </div>
 
-                          {/* Input melhorado */}
-                          {selectedTicket.status !== 'closed' && (
+                    {/* Input melhorado */}
+                    {selectedTicket.status !== 'closed' && (
                             <div className="p-1.5 sm:p-3 lg:p-4 bg-white border-t border-gray-200 sm:border-t-2 shadow-lg sm:shadow-2xl flex-shrink-0">
                               <div className="flex gap-1.5 sm:gap-2 lg:gap-3 items-end">
-                                <div className="flex-1 relative">
+                          <div className="flex-1 relative">
                                   <Textarea
-                                    value={supportMessage}
-                                    onChange={(e) => setSupportMessage(e.target.value)}
+                              value={supportMessage}
+                              onChange={(e) => setSupportMessage(e.target.value)}
                                     onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
-                                        sendSupportMessage();
-                                      }
-                                    }}
-                                    placeholder="Digite sua resposta..."
-                                    disabled={supportLoading}
+                                  sendSupportMessage();
+                                }
+                              }}
+                              placeholder="Digite sua resposta..."
+                              disabled={supportLoading}
                                     rows={1}
                                     className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-3 rounded-md sm:rounded-lg lg:rounded-xl border border-gray-200 sm:border-2 focus:border-blue-500 focus:ring-1 sm:focus:ring-2 focus:ring-blue-200 transition-all text-xs sm:text-sm lg:text-base resize-none min-h-[38px] sm:min-h-[42px] lg:min-h-[48px] max-h-32"
-                                  />
-                                </div>
-                                <Button
-                                  onClick={sendSupportMessage}
-                                  disabled={supportLoading || !supportMessage.trim()}
+                            />
+                          </div>
+                          <Button
+                            onClick={sendSupportMessage}
+                            disabled={supportLoading || !supportMessage.trim()}
                                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-2.5 sm:px-4 lg:px-6 py-1.5 sm:py-2 lg:py-3 rounded-md sm:rounded-lg lg:rounded-xl shadow-md sm:shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed h-auto min-w-[38px] sm:min-w-[42px] lg:min-w-[60px] flex-shrink-0"
-                                >
-                                  {supportLoading ? (
+                          >
+                            {supportLoading ? (
                                     <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 animate-spin" />
-                                  ) : (
+                            ) : (
                                     <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
-                                  )}
-                                </Button>
-                              </div>
+                            )}
+                          </Button>
+                        </div>
                               <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 ml-0.5 hidden sm:block">
                                 Pressione Enter para enviar • Shift+Enter para nova linha
                               </p>
-                            </div>
-                          )}
+                      </div>
+                    )}
 
-                          {selectedTicket.status === 'closed' && (
-                            <div className="p-5 bg-gradient-to-r from-gray-100 to-gray-50 border-t border-gray-200 text-center">
-                              <div className="inline-flex items-center gap-3 text-gray-600 bg-white px-6 py-3 rounded-full shadow-md border border-gray-200">
-                                <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>
-                                <span className="text-sm font-semibold">Esta conversa foi fechada</span>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ) : (
+                    {selectedTicket.status === 'closed' && (
+                      <div className="p-5 bg-gradient-to-r from-gray-100 to-gray-50 border-t border-gray-200 text-center">
+                        <div className="inline-flex items-center gap-3 text-gray-600 bg-white px-6 py-3 rounded-full shadow-md border border-gray-200">
+                          <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>
+                          <span className="text-sm font-semibold">Esta conversa foi fechada</span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
                       <Card className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50 shadow-xl border-0">
                         <div className="text-center px-4 sm:px-6 max-w-md">
                           <div className="relative inline-block mb-4 sm:mb-6">
                             <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-2xl ring-2 sm:ring-4 ring-blue-50 animate-pulse">
                               <MessageCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-blue-500" />
-                            </div>
+                    </div>
                             <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2">
                               <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-400 animate-pulse" />
                             </div>
@@ -6816,13 +7379,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               📊 Histórico completo
                             </div>
                           </div>
-                        </div>
-                      </Card>
-                    )}
                   </div>
-                </div>
-              </section>
-            )}
+                </Card>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
             {/* Home Content View */}
             {mainView === "home-content" && (
@@ -6832,11 +7395,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   <p className="text-sm sm:text-base text-gray-600">
                     Edite o conteúdo da página inicial da plataforma
                   </p>
-                </div>
+    </div>
 
                 {homeContentLoading ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
                   </div>
                 ) : (
                   <Card>
@@ -6856,10 +7419,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <button
                               key={tab.id}
                               onClick={() => setHomeContentTab(tab.id as any)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${homeContentTab === tab.id
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                }`}
+                              // Aqui os botoes tem que ser com aquele roxo linear igual o do hero section
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base text-white`}
+                              style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))';
+                              }}
                             >
                               <IconComponent className="w-4 h-4" />
                               {tab.label}
@@ -7450,76 +8018,331 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 Adicionar Card
                               </Button>
                             </div>
-                            <div className="space-y-4">
-                              {ctaBenefitCards.map((card, index) => (
-                                <Card key={index} className="p-4">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label className="text-sm font-medium">Ícone</Label>
-                                      <Input
-                                        value={card.icon}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].icon = e.target.value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
-                                        placeholder="Heart, Shield, Award"
-                                        className="mt-2"
-                                      />
+                            <div className="space-y-6">
+                              {ctaBenefitCards.map((card, index) => {
+                                const IconComponent = (LucideIcons as any)[card.icon] || LucideIcons.Heart;
+                                const iconColorClass = card.iconColor || "red-400";
+                                
+                                // Helper para obter cor RGB baseada na classe Tailwind
+                                const getColorValue = (colorClass: string) => {
+                                  const colorMap: { [key: string]: string } = {
+                                    'red-400': '#f87171',
+                                    'green-400': '#4ade80',
+                                    'blue-400': '#60a5fa',
+                                    'yellow-400': '#facc15',
+                                    'purple-400': '#a78bfa',
+                                    'pink-400': '#f472b6',
+                                    'indigo-400': '#818cf8',
+                                    'teal-400': '#2dd4bf',
+                                  };
+                                  return colorMap[colorClass] || '#f87171';
+                                };
+
+                                const iconColor = getColorValue(iconColorClass);
+                                
+                                // Helper para converter hex para Tailwind aproximado (melhorado)
+                                const convertHexToTailwind = (hex: string): string => {
+                                  // Se já for uma classe Tailwind, retornar como está
+                                  if (!hex.startsWith('#')) {
+                                    return hex;
+                                  }
+                                  
+                                  // Mapeamento de cores conhecidas
+                                  const colorMap: { [key: string]: string } = {
+                                    '#f87171': 'red-400',
+                                    '#4ade80': 'green-400',
+                                    '#60a5fa': 'blue-400',
+                                    '#facc15': 'yellow-400',
+                                    '#a78bfa': 'purple-400',
+                                    '#f472b6': 'pink-400',
+                                    '#818cf8': 'indigo-400',
+                                    '#2dd4bf': 'teal-400',
+                                  };
+                                  
+                                  // Se estiver no mapa, retornar
+                                  if (colorMap[hex.toLowerCase()]) {
+                                    return colorMap[hex.toLowerCase()];
+                                  }
+                                  
+                                  // Converter RGB para aproximar Tailwind
+                                  const r = parseInt(hex.slice(1, 3), 16);
+                                  const g = parseInt(hex.slice(3, 5), 16);
+                                  const b = parseInt(hex.slice(5, 7), 16);
+                                  
+                                  // Encontrar a cor Tailwind mais próxima baseada em RGB
+                                  const colors = [
+                                    { name: 'red-400', r: 248, g: 113, b: 113 },
+                                    { name: 'green-400', r: 74, g: 222, b: 128 },
+                                    { name: 'blue-400', r: 96, g: 165, b: 250 },
+                                    { name: 'yellow-400', r: 250, g: 204, b: 21 },
+                                    { name: 'purple-400', r: 167, g: 139, b: 250 },
+                                    { name: 'pink-400', r: 244, g: 114, b: 182 },
+                                    { name: 'indigo-400', r: 129, g: 140, b: 248 },
+                                    { name: 'teal-400', r: 45, g: 212, b: 191 },
+                                  ];
+                                  
+                                  let closest = colors[0];
+                                  let minDistance = Infinity;
+                                  
+                                  colors.forEach(color => {
+                                    const distance = Math.sqrt(
+                                      Math.pow(r - color.r, 2) +
+                                      Math.pow(g - color.g, 2) +
+                                      Math.pow(b - color.b, 2)
+                                    );
+                                    if (distance < minDistance) {
+                                      minDistance = distance;
+                                      closest = color;
+                                    }
+                                  });
+                                  
+                                  return closest.name;
+                                };
+                                const baseColor = iconColorClass.split('-')[0];
+                                const lightColorMap: { [key: string]: string } = {
+                                  'red': '#fee2e2',
+                                  'green': '#dcfce7',
+                                  'blue': '#dbeafe',
+                                  'yellow': '#fef9c3',
+                                  'purple': '#f3e8ff',
+                                  'pink': '#fce7f3',
+                                  'indigo': '#e0e7ff',
+                                  'teal': '#ccfbf1',
+                                };
+                                const lightColor = lightColorMap[baseColor] || '#fee2e2';
+                                
+                                return (
+                                  <Card key={index} className="overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all shadow-lg hover:shadow-xl">
+                                    <div className="bg-gradient-to-br from-gray-50 to-white p-6">
+                                      {/* Preview do Card */}
+                                      <div className="mb-6 p-6 bg-white rounded-xl border-2 border-dashed border-gray-200 shadow-inner">
+                                        <div className="flex items-center gap-4">
+                                          <div 
+                                            className="w-16 h-16 rounded-xl flex items-center justify-center shadow-md border-2"
+                                            style={{ 
+                                              backgroundColor: lightColor,
+                                              borderColor: iconColor
+                                            }}
+                                          >
+                                            <IconComponent className="w-8 h-8" style={{ color: iconColor }} />
+                                          </div>
+                                          <div className="flex-1">
+                                            <h4 className="text-lg font-bold text-gray-900 mb-1">
+                                              {card.title || "Título do Card"}
+                                            </h4>
+                                            <p className="text-sm text-gray-600">
+                                              {card.subtitle || "Subtítulo do card"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Campos de Edição */}
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                            Ícone
+                                          </Label>
+                                          <Select
+                                            value={card.icon}
+                                            onValueChange={(value) => {
+                                              const newCards = [...ctaBenefitCards];
+                                              newCards[index].icon = value;
+                                              setCtaBenefitCards(newCards);
+                                            }}
+                                          >
+                                            <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                                              <div className="flex items-center gap-2">
+                                                {card.icon && (() => {
+                                                  const PreviewIcon = (LucideIcons as any)[card.icon] || LucideIcons.Heart;
+                                                  return <PreviewIcon className="w-4 h-4" />;
+                                                })()}
+                                                <SelectValue placeholder="Selecione um ícone">
+                                                  {card.icon || "Selecione um ícone"}
+                                                </SelectValue>
+                                              </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="Heart">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Heart className="w-4 h-4" />
+                                                  <span>Heart (Coração)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Shield">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Shield className="w-4 h-4" />
+                                                  <span>Shield (Escudo)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Award">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Award className="w-4 h-4" />
+                                                  <span>Award (Troféu)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Star">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Star className="w-4 h-4" />
+                                                  <span>Star (Estrela)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="CheckCircle">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.CheckCircle className="w-4 h-4" />
+                                                  <span>CheckCircle (Check)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Zap">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Zap className="w-4 h-4" />
+                                                  <span>Zap (Raio)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Lock">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Lock className="w-4 h-4" />
+                                                  <span>Lock (Cadeado)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Clock">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Clock className="w-4 h-4" />
+                                                  <span>Clock (Relógio)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Users">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Users className="w-4 h-4" />
+                                                  <span>Users (Usuários)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Brain">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Brain className="w-4 h-4" />
+                                                  <span>Brain (Cérebro)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Target">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Target className="w-4 h-4" />
+                                                  <span>Target (Alvo)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Rocket">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Rocket className="w-4 h-4" />
+                                                  <span>Rocket (Foguete)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Sparkles">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Sparkles className="w-4 h-4" />
+                                                  <span>Sparkles (Brilho)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="Gift">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.Gift className="w-4 h-4" />
+                                                  <span>Gift (Presente)</span>
+                                                </div>
+                                              </SelectItem>
+                                              <SelectItem value="TrendingUp">
+                                                <div className="flex items-center gap-2">
+                                                  <LucideIcons.TrendingUp className="w-4 h-4" />
+                                                  <span>TrendingUp (Crescimento)</span>
+                                                </div>
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <p className="text-xs text-gray-500">Escolha um ícone da lista</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                            Cor do Ícone
+                                          </Label>
+                                          <div className="flex gap-2">
+                                            <Input
+                                              type="color"
+                                              value={iconColor}
+                                              onChange={(e) => {
+                                                const hexColor = e.target.value;
+                                                // Converter hex para Tailwind aproximado
+                                                const tailwindColor = convertHexToTailwind(hexColor);
+                                                const newCards = [...ctaBenefitCards];
+                                                newCards[index].iconColor = tailwindColor;
+                                                setCtaBenefitCards([...newCards]); // Criar novo array para forçar re-render
+                                              }}
+                                              className="h-10 w-20 cursor-pointer border-gray-300 rounded-md"
+                                              title="Escolha uma cor"
+                                            />
+                                            <Input
+                                              value={card.iconColor}
+                                              onChange={(e) => {
+                                                const newCards = [...ctaBenefitCards];
+                                                newCards[index].iconColor = e.target.value;
+                                                setCtaBenefitCards([...newCards]); // Criar novo array para forçar re-render
+                                              }}
+                                              placeholder="red-400"
+                                              className="flex-1 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                                            />
+                                          </div>
+                                          <p className="text-xs text-gray-500">Use o seletor de cor ou digite uma cor Tailwind</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                            Título
+                                          </Label>
+                                          <Input
+                                            value={card.title}
+                                            onChange={(e) => {
+                                              const newCards = [...ctaBenefitCards];
+                                              newCards[index].title = e.target.value;
+                                              setCtaBenefitCards(newCards);
+                                            }}
+                                            placeholder="Acesso Imediato"
+                                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                            Subtítulo
+                                          </Label>
+                                          <Input
+                                            value={card.subtitle}
+                                            onChange={(e) => {
+                                              const newCards = [...ctaBenefitCards];
+                                              newCards[index].subtitle = e.target.value;
+                                              setCtaBenefitCards(newCards);
+                                            }}
+                                            placeholder="Comece agora mesmo"
+                                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Botão Remover */}
+                                      <div className="mt-6 pt-4 border-t border-gray-200">
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => {
+                                            setCtaBenefitCards(ctaBenefitCards.filter((_, i) => i !== index));
+                                          }}
+                                          className="w-full sm:w-auto hover:scale-105 transition-transform shadow-md"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Remover Card
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Cor do Ícone</Label>
-                                      <Input
-                                        value={card.iconColor}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].iconColor = e.target.value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
-                                        placeholder="red-400"
-                                        className="mt-2"
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Título</Label>
-                                      <Input
-                                        value={card.title}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].title = e.target.value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
-                                        placeholder="Acesso Imediato"
-                                        className="mt-2"
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Subtítulo</Label>
-                                      <Input
-                                        value={card.subtitle}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].subtitle = e.target.value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
-                                        placeholder="Comece agora"
-                                        className="mt-2"
-                                      />
-                                    </div>
-                                  </div>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => {
-                                      setCtaBenefitCards(ctaBenefitCards.filter((_, i) => i !== index));
-                                    }}
-                                    className="mt-4"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Remover Card
-                                  </Button>
-                                </Card>
-                              ))}
+                                  </Card>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
@@ -7548,6 +8371,1238 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </CardContent>
                   </Card>
                 )}
+              </section>
+            )}
+
+            {/* Theme Management Section */}
+            {/* Products View */}
+            {mainView === "products" && (
+              <section className="container mx-auto px-4 py-6 sm:py-12">
+                <div className="mb-6 sm:mb-8 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Produtos</h2>
+                    <p className="text-sm sm:text-base text-gray-600">
+                      Adicione, edite e remova produtos físicos e digitais
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setEditingProduct(null);
+                      setIsDialogOpen(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Produto
+                  </Button>
+                </div>
+
+                {/* Filters */}
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-[200px]">
+                      <Input
+                        placeholder="Buscar produtos..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <select
+                      value={productTypeFilter}
+                      onChange={(e) => setProductTypeFilter(e.target.value as any)}
+                      className="px-4 py-2 border rounded-lg"
+                    >
+                      <option value="all">Todos os Tipos</option>
+                      <option value="physical">Físicos</option>
+                      <option value="digital">Digitais</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Products List */}
+                {products.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                      <p className="text-gray-600">Nenhum produto cadastrado ainda.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {products
+                      .filter((product) => {
+                        if (productSearch && !product.title.toLowerCase().includes(productSearch.toLowerCase())) {
+                          return false;
+                        }
+                        if (productTypeFilter !== "all" && product.type !== productTypeFilter) {
+                          return false;
+                        }
+                        return true;
+                      })
+                      .map((product) => (
+                        <Card key={product.id}>
+                          <CardContent className="p-6">
+                            {/* Imagem do Produto */}
+                            {product.image && (
+                              <div className="mb-4">
+                                <ImageWithFallback
+                                  src={product.image}
+                                  alt={product.title}
+                                  className="w-full h-48 object-cover rounded-lg border"
+                                />
+                              </div>
+                            )}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex-1">
+                                <h3 className="font-bold text-lg mb-2">{product.title}</h3>
+                                <div className="flex gap-2 mb-2">
+                                  <Badge className={product.type === 'physical' ? 'bg-blue-600' : 'bg-purple-600'}>
+                                    {product.type === 'physical' ? 'Físico' : 'Digital'}
+                                  </Badge>
+                                  {!product.active && <Badge variant="outline">Inativo</Badge>}
+                                </div>
+                                <p className="text-gray-600 text-sm mb-2">
+                                  R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
+                                </p>
+                                {product.type === 'physical' && (
+                                  <p className="text-sm text-gray-500">Estoque: {product.stock || 0}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingProduct(product);
+                                  setIsDialogOpen(true);
+                                }}
+                              >
+                                <Edit className="w-4 h-4 mr-1" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  if (confirm("Tem certeza que deseja remover este produto?")) {
+                                    try {
+                                      await apiClient.deleteProduct(product.id);
+                                      toast.success("Produto removido com sucesso");
+                                      loadProducts();
+                                    } catch (error: any) {
+                                      toast.error(error.message || "Erro ao remover produto");
+                                    }
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Remover
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                )}
+
+                {/* Product Dialog */}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingProduct ? "Editar Produto" : "Novo Produto"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Título *</Label>
+                        <Input
+                          value={editingProduct?.title || ""}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })}
+                          placeholder="Nome do produto"
+                        />
+                      </div>
+                      <div>
+                        <Label>Descrição</Label>
+                        <Textarea
+                          value={editingProduct?.description || ""}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                          placeholder="Descrição do produto"
+                          rows={4}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Preço *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editingProduct?.price || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <Label>Preço Original</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editingProduct?.originalPrice || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, originalPrice: parseFloat(e.target.value) })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Tipo *</Label>
+                        <select
+                          value={editingProduct?.type || "physical"}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, type: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        >
+                          <option value="physical">Físico</option>
+                          <option value="digital">Digital</option>
+                        </select>
+                      </div>
+                      {editingProduct?.type === 'physical' && (
+                        <div>
+                          <Label>Estoque</Label>
+                          <Input
+                            type="number"
+                            value={editingProduct?.stock || 0}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value) })}
+                            placeholder="0"
+                          />
+                        </div>
+                      )}
+                      {editingProduct?.type === 'digital' && (
+                        <div>
+                          <Label>URL do Arquivo Digital</Label>
+                          <Input
+                            value={editingProduct?.digitalFileUrl || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, digitalFileUrl: e.target.value })}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <Label>Categoria</Label>
+                        <Input
+                          value={editingProduct?.category || ""}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                          placeholder="Ex: Livros, E-books"
+                        />
+                      </div>
+                      <div>
+                        <Label>Autor/Instrutor</Label>
+                        <Input
+                          value={editingProduct?.author || ""}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, author: e.target.value })}
+                          placeholder="Nome do autor ou instrutor"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Quantidade de Páginas</Label>
+                          <Input
+                            type="number"
+                            value={editingProduct?.pages || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, pages: e.target.value ? parseInt(e.target.value) : undefined })}
+                            placeholder="Ex: 300"
+                          />
+                        </div>
+                        <div>
+                          <Label>Avaliação (0-5)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="5"
+                            value={editingProduct?.rating || ""}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, rating: e.target.value ? parseFloat(e.target.value) : undefined })}
+                            placeholder="0.0"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Imagem Principal *</Label>
+                        <input
+                          type="file"
+                          id="product-image-upload"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setProductImageFile(file);
+                              handleProductImageUpload(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById('product-image-upload')?.click()}
+                          disabled={productImageUploading}
+                          className="w-full h-12"
+                        >
+                          {productImageUploading ? (
+                            <>
+                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-5 h-5 mr-2" />
+                              {productImageFile ? (productImageFile.name.length > 25 ? productImageFile.name.substring(0, 25) + '...' : productImageFile.name) : 'Selecionar Imagem'}
+                            </>
+                          )}
+                        </Button>
+                        {editingProduct?.image && editingProduct.image.trim() && (editingProduct.image.startsWith('http://') || editingProduct.image.startsWith('https://')) && (
+                          <div className="mt-3">
+                            <img 
+                              src={editingProduct.image} 
+                              alt="Preview" 
+                              className="w-full h-48 object-cover rounded-lg border"
+                              onError={(e) => {
+                                console.error('Erro ao carregar imagem:', editingProduct.image);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            <p className="text-sm text-gray-500 mt-2">Imagem atual</p>
+                            <p className="text-xs mt-1 break-all text-gray-400">{editingProduct.image}</p>
+                          </div>
+                        )}
+                        {editingProduct?.image && editingProduct.image.trim() && !editingProduct.image.startsWith('http://') && !editingProduct.image.startsWith('https://') && (
+                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <p className="text-sm text-yellow-700">Aguardando URL da imagem...</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-4">
+                        <Button
+                          onClick={async () => {
+                            // Verificar se ainda está fazendo upload
+                            if (productImageUploading) {
+                              toast.error("Aguarde o upload da imagem concluir antes de salvar.");
+                              return;
+                            }
+
+                            // Verificar se a imagem foi enviada antes de salvar (apenas ao criar novo produto)
+                            const hasValidImage = editingProduct?.image && editingProduct.image.trim() && (editingProduct.image.startsWith('http://') || editingProduct.image.startsWith('https://'));
+                            if (!editingProduct?.id && !hasValidImage) {
+                              toast.error("Por favor, faça o upload da imagem antes de salvar o produto.");
+                              return;
+                            }
+
+                            try {
+                              if (editingProduct?.id) {
+                                await apiClient.updateProduct(editingProduct.id, editingProduct);
+                                toast.success("Produto atualizado com sucesso");
+                              } else {
+                                await apiClient.createProduct(editingProduct);
+                                toast.success("Produto criado com sucesso");
+                              }
+                              setIsDialogOpen(false);
+                              setEditingProduct(null);
+                              setProductImageFile(null);
+                              loadProducts();
+                            } catch (error: any) {
+                              toast.error(error.message || "Erro ao salvar produto");
+                            }
+                          }}
+                          className="flex-1"
+                          disabled={productImageUploading}
+                        >
+                          {productImageUploading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Aguardando upload...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Salvar
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsDialogOpen(false);
+                            setEditingProduct(null);
+                            setProductImageFile(null);
+                          }}
+                          disabled={productImageUploading}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </section>
+            )}
+
+            {/* Sales View - Gerenciar Vendas e Rastreamento */}
+            {mainView === "sales" && (
+              <section className="container mx-auto px-4 py-6 sm:py-12">
+                <div className="mb-6 sm:mb-8">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Vendas</h2>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Visualize vendas com produtos físicos e adicione códigos de rastreamento
+                  </p>
+                </div>
+
+                {salesLoading ? (
+                  <div className="flex justify-center items-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                ) : allPurchases.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                      <p className="text-gray-600">Nenhuma venda com produtos físicos encontrada.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    {/* Busca, Filtros e Ordenação */}
+                    <Card className="mb-6">
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="space-y-4">
+                          {/* Busca */}
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <Input
+                              type="text"
+                              placeholder="Buscar por cliente, email ou ID da compra..."
+                              value={salesSearch}
+                              onChange={(e) => setSalesSearch(e.target.value)}
+                              className="pl-10 h-10 sm:h-11"
+                            />
+                          </div>
+
+                          {/* Filtros e Ordenação */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            {/* Filtro por Status */}
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Status</Label>
+                              <select
+                                value={salesStatusFilter}
+                                onChange={(e) => setSalesStatusFilter(e.target.value as any)}
+                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="all">Todos</option>
+                                <option value="with-proof">Com Comprovante</option>
+                                <option value="without-proof">Sem Comprovante</option>
+                              </select>
+                            </div>
+
+                            {/* Filtro por Data */}
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Período</Label>
+                              <select
+                                value={salesDateFilter}
+                                onChange={(e) => setSalesDateFilter(e.target.value as any)}
+                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="all">Todos</option>
+                                <option value="7d">Últimos 7 dias</option>
+                                <option value="30d">Últimos 30 dias</option>
+                                <option value="90d">Últimos 90 dias</option>
+                                <option value="month">Este mês</option>
+                                <option value="year">Este ano</option>
+                              </select>
+                            </div>
+
+                            {/* Ordenar por */}
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                              <select
+                                value={salesSortBy}
+                                onChange={(e) => setSalesSortBy(e.target.value as any)}
+                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="date">Data</option>
+                                <option value="total">Total</option>
+                                <option value="customer">Cliente</option>
+                                <option value="products">Nº Produtos</option>
+                              </select>
+                            </div>
+
+                            {/* Ordem */}
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                              <Button
+                                variant="outline"
+                                onClick={() => setSalesSortOrder(salesSortOrder === "asc" ? "desc" : "asc")}
+                                className="w-full h-10 sm:h-11"
+                              >
+                                <ArrowUpDown className="w-4 h-4 mr-2" />
+                                {salesSortOrder === "asc" ? "Crescente" : "Decrescente"}
+                              </Button>
+                            </div>
+
+                            {/* Visualização */}
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant={salesViewMode === "cards" ? "default" : "outline"}
+                                  onClick={() => setSalesViewMode("cards")}
+                                  className="flex-1 h-10 sm:h-11"
+                                >
+                                  <Grid3x3 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant={salesViewMode === "table" ? "default" : "outline"}
+                                  onClick={() => setSalesViewMode("table")}
+                                  className="flex-1 h-10 sm:h-11"
+                                >
+                                  <List className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Contador de resultados */}
+                          <div className="text-sm text-gray-600">
+                            Mostrando {filteredAndSortedSales.length} de {allPurchases.length} vendas
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {filteredAndSortedSales.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-20 text-center">
+                          <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-xl font-bold mb-2">Nenhuma venda encontrada</h3>
+                          <p className="text-gray-600 mb-6">
+                            Tente ajustar os filtros de busca
+                          </p>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSalesSearch("");
+                              setSalesStatusFilter("all");
+                              setSalesDateFilter("all");
+                            }}
+                          >
+                            Limpar Filtros
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : salesViewMode === "cards" ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        {filteredAndSortedSales.map((purchase: any) => (
+                          <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1 min-w-0">
+                                  <CardTitle className="text-base sm:text-lg mb-1">Compra #{purchase.id.substring(0, 8)}</CardTitle>
+                                  <p className="text-xs sm:text-sm text-gray-600 truncate">
+                                    <strong>{purchase.user?.name || 'N/A'}</strong>
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {purchase.user?.email || 'N/A'}
+                              </p>
+                            </div>
+                                <Badge className="bg-green-500 text-white flex-shrink-0 ml-2">
+                              {purchase.paymentStatus === 'paid' ? 'Pago' : purchase.paymentStatus}
+                            </Badge>
+                          </div>
+                              <div className="flex flex-col gap-1 text-xs sm:text-sm text-gray-600 mt-2">
+                                <p>
+                                  <Calendar className="w-3 h-3 inline mr-1" />
+                                  {purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  }) : 'N/A'}
+                                </p>
+                                <p className="font-semibold text-green-600">
+                                  R$ {((typeof purchase.finalAmount === 'string' ? parseFloat(purchase.finalAmount) : purchase.finalAmount) || 0).toFixed(2)}
+                                </p>
+                          </div>
+                        </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-3">
+                                <h3 className="font-semibold text-sm mb-2">Produtos Físicos:</h3>
+                            {purchase.physicalProducts.map((pp: any) => (
+                                  <div key={pp.id} className="border rounded-lg p-3 bg-gray-50">
+                                    <div className="mb-2">
+                                      <h4 className="font-semibold text-sm">{pp.product?.title || 'Produto'}</h4>
+                                      <p className="text-xs text-gray-600">
+                                        Qtd: {pp.quantity || 0} | R$ {((typeof pp.price === 'string' ? parseFloat(pp.price) : pp.price) || (typeof pp.priceAtPurchase === 'string' ? parseFloat(pp.priceAtPurchase) : pp.priceAtPurchase) || 0).toFixed(2)}
+                                      </p>
+                                </div>
+
+                                {/* Comprovante de envio */}
+                                {(() => {
+                                  const tracking = pp.tracking || pp.shippingTracking;
+                                  const trackingId = tracking?.id;
+                                  
+                                  return (
+                                    <div className="mt-2 pt-2 border-t">
+                                      <p className="text-xs font-semibold text-gray-700 mb-1">Comprovante de Envio:</p>
+                                      
+                                      {tracking?.proofOfDeliveryUrl ? (
+                                        <div className="space-y-1">
+                                          <a
+                                            href={tracking.proofOfDeliveryUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 text-xs underline flex items-center gap-1"
+                                          >
+                                            <FileText className="w-3 h-3" />
+                                            Ver comprovante
+                                          </a>
+                                          {tracking.deliveredAt && (
+                                            <p className="text-xs text-gray-600">
+                                              Entregue: {new Date(tracking.deliveredAt).toLocaleDateString('pt-BR')}
+                                          </p>
+                                        )}
+                                      </div>
+                                      ) : (
+                                        <div className="space-y-2">
+                                          {trackingId ? (
+                                            <>
+                                              <Input
+                                                type="file"
+                                                accept="image/*,.pdf"
+                                                onChange={(e) => {
+                                                  const file = e.target.files?.[0];
+                                                  if (file) {
+                                                    setProofFiles(prev => ({
+                                                      ...prev,
+                                                      [trackingId]: file
+                                                    }));
+                                                  }
+                                                }}
+                                                className="text-xs h-7"
+                                              />
+                                              {proofFiles[trackingId] && (
+                                      <Button
+                                        size="sm"
+                                                  onClick={() => handleUploadProof(trackingId)}
+                                                  disabled={uploadingProof === trackingId}
+                                                  className="h-6 text-xs w-full"
+                                                >
+                                                  {uploadingProof === trackingId ? (
+                                                    <>
+                                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                      Enviando...
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Upload className="w-3 h-3 mr-1" />
+                                                      Enviar
+                                                    </>
+                                                  )}
+                                      </Button>
+                                              )}
+                                            </>
+                                ) : (
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedProductPurchase(pp);
+                                                setProofFile(null);
+                                                setProofDialogOpen(true);
+                                      }}
+                                              className="bg-blue-600 hover:bg-blue-700 h-7 text-xs w-full"
+                                              size="sm"
+                                    >
+                                              <FileText className="w-3 h-3 mr-1" />
+                                              Adicionar Comprovante
+                                    </Button>
+                                          )}
+                                  </div>
+                                )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                    ) : (
+                      /* Visualização em Tabela */
+                      <Card>
+                        <CardContent className="p-0">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compra</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produtos</th>
+                                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredAndSortedSales.map((purchase: any) => (
+                                  <tr key={purchase.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-4">
+                                      <div className="text-sm font-semibold text-gray-900">#{purchase.id.substring(0, 8)}</div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="text-sm text-gray-900">{purchase.user?.name || 'N/A'}</div>
+                                      <div className="text-xs text-gray-500">{purchase.user?.email || 'N/A'}</div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="text-sm text-gray-900">
+                                        {purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <span className="font-semibold text-green-600">
+                                        R$ {((typeof purchase.finalAmount === 'string' ? parseFloat(purchase.finalAmount) : purchase.finalAmount) || 0).toFixed(2)}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <Badge className="bg-green-500 text-white">
+                                        {purchase.paymentStatus === 'paid' ? 'Pago' : purchase.paymentStatus}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="text-sm text-gray-900">
+                                        {purchase.physicalProducts?.length || 0} produto(s)
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          // Expandir detalhes ou abrir modal
+                                          const purchaseElement = document.getElementById(`purchase-${purchase.id}`);
+                                          if (purchaseElement) {
+                                            purchaseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                          }
+                                        }}
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
+
+                {/* Dialog para adicionar comprovante de envio */}
+                <Dialog open={proofDialogOpen} onOpenChange={setProofDialogOpen}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Adicionar Comprovante de Envio
+                      </DialogTitle>
+                      <DialogDescription className="mt-3">
+                        {selectedProductPurchase && (
+                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-start gap-3">
+                              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Package className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-base mb-1">
+                                  {selectedProductPurchase.product?.title}
+                                </p>
+                            {allPurchases.find(p => p.physicalProducts?.some((pp: any) => pp.id === selectedProductPurchase.id)) && (
+                                  <div className="space-y-1">
+                                    <p className="text-sm text-gray-600 flex items-center gap-1">
+                                      <User className="w-4 h-4" />
+                                      <span className="font-medium">
+                                        {allPurchases.find(p => p.physicalProducts?.some((pp: any) => pp.id === selectedProductPurchase.id))?.user?.name}
+                                      </span>
+                                    </p>
+                                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                                      <Mail className="w-4 h-4" />
+                                      {allPurchases.find(p => p.physicalProducts?.some((pp: any) => pp.id === selectedProductPurchase.id))?.user?.email}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-5 mt-4">
+                      {/* Comprovante de Envio */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Comprovante de Envio
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+                          <div className="flex flex-col items-center justify-center gap-3">
+                            {proofFile ? (
+                              <div className="w-full">
+                                <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        {proofFile.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {(proofFile.size / 1024).toFixed(2)} KB
+                                      </p>
+                      </div>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setProofFile(null)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <Upload className="w-8 h-8 text-gray-400" />
+                                <div className="text-center">
+                                  <p className="text-sm text-gray-600 mb-1">
+                                    Clique para selecionar ou arraste o arquivo aqui
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Formatos aceitos: PDF, JPG, PNG (máx. 10MB)
+                                  </p>
+                                </div>
+                        <Input
+                                  type="file"
+                                  accept="image/*,.pdf"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      if (file.size > 10 * 1024 * 1024) {
+                                        toast.error("O arquivo deve ter no máximo 10MB");
+                                        return;
+                                      }
+                                      setProofFile(file);
+                                    }
+                                  }}
+                                  className="hidden"
+                                  id="proof-file-input"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => document.getElementById('proof-file-input')?.click()}
+                                  className="mt-2"
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Selecionar Arquivo
+                                </Button>
+                              </>
+                            )}
+                      </div>
+                        </div>
+                      </div>
+
+                      {/* Botões de Ação */}
+                      <div className="flex gap-3 pt-2 border-t">
+                        <Button
+                          onClick={handleAddProof}
+                          disabled={salesLoading || !proofFile}
+                          className="flex-1 h-11"
+                        >
+                          {salesLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Enviar Comprovante
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setProofDialogOpen(false);
+                            setProofFile(null);
+                            setSelectedProductPurchase(null);
+                          }}
+                          className="h-11"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </section>
+            )}
+
+            {mainView === "theme" && (
+              <section className="container mx-auto px-4 py-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="w-5 h-5" />
+                      Gerenciar Paleta de Cores
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Personalize as cores do seu site. As alterações serão aplicadas em tempo real.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {themeLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+                      </div>
+                    ) : (
+                      <>
+                        {/* Cores Principais */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold border-b pb-2">Cores Principais</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Cor Primária</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.primary}
+                                  onChange={(e) => updateColor('primary', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.primary}
+                                  onChange={(e) => updateColor('primary', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#3B82F6"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Primária Escura (Hover)</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.primaryDark}
+                                  onChange={(e) => updateColor('primaryDark', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.primaryDark}
+                                  onChange={(e) => updateColor('primaryDark', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#2563EB"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Primária Clara</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.primaryLight}
+                                  onChange={(e) => updateColor('primaryLight', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.primaryLight}
+                                  onChange={(e) => updateColor('primaryLight', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#60A5FA"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cores Secundárias */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold border-b pb-2">Cores Secundárias</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Cor Secundária</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.secondary}
+                                  onChange={(e) => updateColor('secondary', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.secondary}
+                                  onChange={(e) => updateColor('secondary', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#10B981"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Secundária Escura</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.secondaryDark}
+                                  onChange={(e) => updateColor('secondaryDark', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.secondaryDark}
+                                  onChange={(e) => updateColor('secondaryDark', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#059669"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cores de Texto */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold border-b pb-2">Cores de Texto</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Texto Principal</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.textPrimary}
+                                  onChange={(e) => updateColor('textPrimary', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.textPrimary}
+                                  onChange={(e) => updateColor('textPrimary', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#1F2937"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Texto Secundário</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.textSecondary}
+                                  onChange={(e) => updateColor('textSecondary', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.textSecondary}
+                                  onChange={(e) => updateColor('textSecondary', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#6B7280"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cores de Fundo */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold border-b pb-2">Cores de Fundo</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Fundo Principal</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.background}
+                                  onChange={(e) => updateColor('background', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.background}
+                                  onChange={(e) => updateColor('background', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#FFFFFF"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Fundo Secundário</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.backgroundSecondary}
+                                  onChange={(e) => updateColor('backgroundSecondary', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.backgroundSecondary}
+                                  onChange={(e) => updateColor('backgroundSecondary', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#F9FAFB"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cores de Status */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold border-b pb-2">Cores de Status</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Destaque (Accent)</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.accent}
+                                  onChange={(e) => updateColor('accent', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.accent}
+                                  onChange={(e) => updateColor('accent', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#F59E0B"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Sucesso</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.success}
+                                  onChange={(e) => updateColor('success', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.success}
+                                  onChange={(e) => updateColor('success', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#10B981"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Erro/Perigo</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.danger}
+                                  onChange={(e) => updateColor('danger', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.danger}
+                                  onChange={(e) => updateColor('danger', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#EF4444"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Informação</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.info}
+                                  onChange={(e) => updateColor('info', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.info}
+                                  onChange={(e) => updateColor('info', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#6366F1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cor de Borda */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold border-b pb-2">Bordas</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Cor da Borda</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={themeColors.border}
+                                  onChange={(e) => updateColor('border', e.target.value)}
+                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                />
+                                <Input
+                                  value={themeColors.border}
+                                  onChange={(e) => updateColor('border', e.target.value)}
+                                  className="flex-1"
+                                  placeholder="#E5E7EB"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Preview */}
+                        <div className="space-y-4 border-t pt-6">
+                          <h3 className="text-lg font-semibold">Preview das Cores</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="p-4 rounded-lg" style={{ backgroundColor: themeColors.primary, color: '#fff' }}>
+                              <p className="font-semibold">Primária</p>
+                              <p className="text-sm opacity-90">{themeColors.primary}</p>
+                            </div>
+                            <div className="p-4 rounded-lg" style={{ backgroundColor: themeColors.secondary, color: '#fff' }}>
+                              <p className="font-semibold">Secundária</p>
+                              <p className="text-sm opacity-90">{themeColors.secondary}</p>
+                            </div>
+                            <div className="p-4 rounded-lg border-2" style={{ borderColor: themeColors.border, backgroundColor: themeColors.background }}>
+                              <p className="font-semibold" style={{ color: themeColors.textPrimary }}>Fundo</p>
+                              <p className="text-sm" style={{ color: themeColors.textSecondary }}>{themeColors.background}</p>
+                            </div>
+                            <div className="p-4 rounded-lg" style={{ backgroundColor: themeColors.accent, color: '#fff' }}>
+                              <p className="font-semibold">Destaque</p>
+                              <p className="text-sm opacity-90">{themeColors.accent}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Save Button */}
+                        <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
+                          <Button
+                            onClick={saveTheme}
+                            disabled={themeSaving}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            {themeSaving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Salvando...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4 mr-2" />
+                                Salvar Cores
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               </section>
             )}
           </div>

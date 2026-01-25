@@ -34,8 +34,8 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
   
   if (!hasContent) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-12">
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--theme-background)' }}>
+        <div className="container mx-auto px-4 pt-24 pb-12">
           <Button
             variant="ghost"
             className="mb-6"
@@ -72,10 +72,21 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
   const completedCourses = purchasedCourses.filter(c => c.progress === 100).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--theme-background)' }}>
       {/* Header */}
-      <section className="bg-gradient-to-br from-blue-600 to-teal-700 text-white pt-24 pb-12">
-        <div className="container mx-auto px-4">
+      <section 
+        className="relative text-white overflow-hidden pt-24 pb-12"
+        style={{
+          background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
+        }}
+      >
+        <div className="absolute inset-0 bg-black/20"></div>
+        
+        {/* Decorative elements */}
+        <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}></div>
+        
+        <div className="relative container mx-auto px-4" style={{ paddingTop: '6rem' }}>
           <Button
             variant="ghost"
             className="text-white hover:bg-white/10 mb-6"
@@ -86,7 +97,7 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
           </Button>
 
           <h1 className="text-4xl lg:text-5xl font-bold mb-4">Meus Cursos</h1>
-          <p className="text-xl text-blue-100 mb-8">
+          <p className="text-xl mb-8" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
             Continue sua jornada de aprendizado e transformação
           </p>
 
@@ -94,32 +105,32 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="font-bold text-3xl mb-1">{purchasedCourses.length}</div>
-              <div className="text-sm text-blue-100">Cursos Adquiridos</div>
+              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Cursos Adquiridos</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="font-bold text-3xl mb-1">{podcasts.length}</div>
-              <div className="text-sm text-blue-100">Podcasts</div>
+              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Podcasts</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="font-bold text-3xl mb-1">{completedCourses}</div>
-              <div className="text-sm text-blue-100">Cursos Concluídos</div>
+              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Cursos Concluídos</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="font-bold text-3xl mb-1">{Math.round(totalProgress)}%</div>
-              <div className="text-sm text-blue-100">Progresso Médio</div>
+              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Progresso Médio</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="font-bold text-3xl mb-1">
                 {purchasedCourses.reduce((acc, c) => acc + c.completedLessons, 0)}
               </div>
-              <div className="text-sm text-blue-100">Aulas Assistidas</div>
+              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Aulas Assistidas</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Course List */}
-      <section className="container mx-auto px-4 py-12">
+      <section className="container mx-auto px-4 py-12" style={{ backgroundColor: 'var(--theme-background)' }}>
         {purchasedCourses.length > 0 && (
           <>
             <div className="mb-8">

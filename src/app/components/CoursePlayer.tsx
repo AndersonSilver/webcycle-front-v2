@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Course } from "../data/courses";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "../../services/apiClient";
 import { toast } from "sonner";
+import { useVideoProtection } from "../../hooks/useVideoProtection";
 
 interface CoursePlayerProps {
   course: Course;
@@ -65,6 +66,12 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
   const [videoStartWatchTime, setVideoStartWatchTime] = useState(0); // Tempo assistido quando o vídeo começou
   const [actualVideoDuration, setActualVideoDuration] = useState<number | null>(null); // Duração real do vídeo do YouTube
   const [useDirectUrl, setUseDirectUrl] = useState(false); // Fallback para URL direta do Azure
+  
+  // Ref para o elemento de vídeo para proteção
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Aplicar proteções de vídeo
+  useVideoProtection(videoRef);
 
   // Verificar se o aluno já avaliou o curso
   useEffect(() => {
@@ -527,19 +534,39 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
   };
 
   // Helper para converter URL do Azure para endpoint de streaming
-  const getStreamingUrl = (azureUrl: string): string => {
+  const getStreamingUrl = (azureUrl: string, lessonId?: string | null): string => {
     // Se já for uma URL do Azure Blob Storage, converter para endpoint de streaming
     if (azureUrl && azureUrl.includes('blob.core.windows.net')) {
       try {
+        // Obter token de autenticação
+        const sessionData = localStorage.getItem('SESSION');
+        const token = sessionData ? JSON.parse(sessionData)?.token : null;
+        
+        if (!token) {
+          console.warn('⚠️ Token não encontrado, vídeo pode não carregar');
+        }
+        
         // Usar query parameter em vez de path parameter para URLs longas
         const encodedUrl = encodeURIComponent(azureUrl);
         const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-        const streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
-        console.log('🔄 Convertendo para streaming URL:', streamingUrl);
+        let streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
+        
+        // Adicionar token na URL para autenticação (necessário porque <video> não envia headers)
+        if (token) {
+          streamingUrl += `&token=${encodeURIComponent(token)}`;
+        }
+        
+        // Adicionar lessonId para verificação de acesso
+        if (lessonId) {
+          streamingUrl += `&lessonId=${lessonId}`;
+        }
+        
+        console.log('🔄 Convertendo para streaming URL (com autenticação)');
         return streamingUrl;
       } catch (error) {
-        console.error('❌ Erro ao converter URL para streaming, usando URL direta:', error);
-        return azureUrl; // Fallback para URL direta
+        console.error('❌ Erro ao converter URL para streaming:', error);
+        // Não usar fallback direto - forçar erro para manter segurança
+        throw new Error('Erro ao gerar URL de streaming protegida');
       }
     }
     // Se for YouTube ou outra URL, retornar como está
@@ -985,15 +1012,19 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
                     ) : (
                       // Player de vídeo HTML5 para outros formatos
                     <video
+                        ref={videoRef}
                         src={useDirectUrl 
                           ? (currentLesson?.videoUrl || '') 
-                          : getStreamingUrl(currentLesson?.videoUrl || '')
+                          : getStreamingUrl(currentLesson?.videoUrl || '', currentLessonId)
                         }
                       controls
+                      controlsList="nodownload noremoteplayback"
                       className="w-full h-full"
                       preload="auto"
                       playsInline
                       crossOrigin="anonymous"
+                      disablePictureInPicture
+                      onContextMenu={(e) => e.preventDefault()}
                       onTimeUpdate={async (e) => {
                         const video = e.currentTarget;
                         const currentTime = Math.floor(video.currentTime);
@@ -1055,17 +1086,17 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
                           const videoElement = e.currentTarget;
                           const error = videoElement.error;
                           
-                          // Se ainda não estiver usando URL direta e der erro, tentar URL direta
-                          if (!useDirectUrl && currentLesson?.videoUrl && currentLesson.videoUrl.includes('blob.core.windows.net')) {
-                            console.warn('⚠️ Erro no streaming, tentando URL direta do Azure...');
-                            setUseDirectUrl(true);
-                            return;
-                          }
+                          // NÃO usar fallback direto - manter segurança máxima
+                          // Se der erro, mostrar mensagem ao usuário
+                          console.error('❌ Erro ao carregar vídeo protegido:', error);
+                          toast.error('Erro ao carregar vídeo. Verifique sua conexão e tente novamente.');
                           
-                          console.error('❌ Erro ao carregar vídeo:', {
-                            url: currentLesson?.videoUrl,
-                            error: error,
-                            errorCode: error?.code
+                          // Log detalhado para debug
+                          console.error('Detalhes do erro:', {
+                            code: error?.code,
+                            message: error?.message,
+                            videoUrl: currentLesson?.videoUrl,
+                            lessonId: currentLessonId
                           });
                         }}
                       />

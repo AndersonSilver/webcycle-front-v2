@@ -314,7 +314,8 @@ class ApiClient {
   // ==================== COMPRAS ====================
 
   async checkout(data: {
-    courses: string[];
+    courses?: string[];
+    products?: Array<{ productId: string; quantity: number }>;
     paymentMethod: 'pix' | 'boleto' | 'credit_card';
     couponCode?: string;
   }) {
@@ -525,6 +526,67 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify({ images }),
       }
+    );
+  }
+
+  // ==================== AVALIAÇÕES DE PRODUTOS ====================
+
+  async getProductReviews(productId: string) {
+    return this.request<{
+      reviews: Array<{
+        id: string;
+        userId: string;
+        userName: string;
+        rating: number;
+        comment: string;
+        helpful: number;
+        images: string[];
+        createdAt: string;
+      }>;
+      averageRating: number;
+      totalReviews: number;
+      starDistribution: Array<{
+        stars: number;
+        count: number;
+        percentage: number;
+      }>;
+    }>(`/product-reviews/product/${productId}`, {
+      requiresAuth: false,
+    });
+  }
+
+  async getMyProductReview(productId: string) {
+    return this.request<{
+      review: {
+        id: string;
+        userId: string;
+        userName: string;
+        rating: number;
+        comment: string;
+        helpful: number;
+        images: string[];
+        approved: boolean;
+        createdAt: string;
+      } | null;
+    }>(`/product-reviews/my-review/${productId}`);
+  }
+
+  async createProductReview(data: {
+    productId: string;
+    rating: number;
+    comment: string;
+    images?: string[];
+  }) {
+    return this.request<{ review: any }>('/product-reviews', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async markProductReviewHelpful(reviewId: string) {
+    return this.request<{ message: string; review: any }>(
+      `/product-reviews/${reviewId}/helpful`,
+      { method: 'POST' }
     );
   }
 
@@ -1610,6 +1672,234 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  // ==================== THEME MANAGEMENT ====================
+
+  async getTheme() {
+    return this.request<{
+      id: string;
+      active: boolean;
+      primary: string;
+      primaryDark: string;
+      primaryLight: string;
+      secondary: string;
+      secondaryDark: string;
+      textPrimary: string;
+      textSecondary: string;
+      background: string;
+      backgroundSecondary: string;
+      border: string;
+      accent: string;
+      danger: string;
+      success: string;
+      info: string;
+      createdAt: string;
+      updatedAt: string;
+    }>('/theme/public', { requiresAuth: false });
+  }
+
+  async getAdminTheme() {
+    return this.request<{
+      id: string;
+      active: boolean;
+      primary: string;
+      primaryDark: string;
+      primaryLight: string;
+      secondary: string;
+      secondaryDark: string;
+      textPrimary: string;
+      textSecondary: string;
+      background: string;
+      backgroundSecondary: string;
+      border: string;
+      accent: string;
+      danger: string;
+      success: string;
+      info: string;
+      createdAt: string;
+      updatedAt: string;
+    }>('/theme/admin');
+  }
+
+  async updateTheme(data: {
+    primary?: string;
+    primaryDark?: string;
+    primaryLight?: string;
+    secondary?: string;
+    secondaryDark?: string;
+    textPrimary?: string;
+    textSecondary?: string;
+    background?: string;
+    backgroundSecondary?: string;
+    border?: string;
+    accent?: string;
+    danger?: string;
+    success?: string;
+    info?: string;
+  }) {
+    return this.request<{
+      message: string;
+      theme: any;
+    }>('/theme/admin', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ==================== PRODUTOS ====================
+
+  async getProducts(params?: {
+    page?: number;
+    limit?: number;
+    type?: 'physical' | 'digital';
+    category?: string;
+    active?: boolean;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.type) queryParams.append('type', params.type);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.active !== undefined) queryParams.append('active', params.active.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      products: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/products${query ? `?${query}` : ''}`, { requiresAuth: false });
+  }
+
+  async getProductById(id: string) {
+    return this.request<{ product: any }>(`/products/${id}`, { requiresAuth: false });
+  }
+
+  async getProductsByCategory(category: string, params?: { page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      products: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/products/category/${category}${query ? `?${query}` : ''}`, { requiresAuth: false });
+  }
+
+  async getProductsByType(type: 'physical' | 'digital', params?: { page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      products: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/products/type/${type}${query ? `?${query}` : ''}`, { requiresAuth: false });
+  }
+
+  // Admin - Produtos
+  async createProduct(data: {
+    title: string;
+    description?: string;
+    price: number;
+    originalPrice?: number;
+    image: string;
+    images?: string[];
+    type: 'physical' | 'digital';
+    category?: string;
+    stock?: number;
+    digitalFileUrl?: string;
+    specifications?: Record<string, any>;
+    author?: string;
+    pages?: number;
+    rating?: number;
+  }) {
+    return this.request<{ product: any }>('/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProduct(id: string, data: {
+    title?: string;
+    description?: string;
+    price?: number;
+    originalPrice?: number;
+    image?: string;
+    images?: string[];
+    type?: 'physical' | 'digital';
+    category?: string;
+    stock?: number;
+    active?: boolean;
+    digitalFileUrl?: string;
+    specifications?: Record<string, any>;
+    author?: string;
+    pages?: number;
+    rating?: number;
+  }) {
+    return this.request<{ product: any }>(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProduct(id: string) {
+    return this.request<{ message: string }>(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== TRACKING ====================
+
+  async getMyTrackings() {
+    return this.request<{ trackings: any[] }>('/tracking/my-trackings');
+  }
+
+  async getTracking(id: string) {
+    return this.request<{ tracking: any }>(`/tracking/${id}`);
+  }
+
+  async addTrackingCode(productPurchaseId: string, data: { trackingCode?: string; carrier?: string }) {
+    return this.request<any>(`/tracking/product-purchase/${productPurchaseId}/add-tracking`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async uploadProofOfDelivery(trackingId: string, file: File) {
+    const formData = new FormData();
+    formData.append('proof', file);
+
+    const response = await fetch(`${API_BASE_URL}/tracking/${trackingId}/upload-proof`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.getToken()}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao fazer upload do comprovante');
+    }
+
+    return response.json();
   }
 }
 

@@ -19,6 +19,10 @@ export const router = createBrowserRouter([
     element: <App />,
   },
   {
+    path: "/minhas-compras",
+    element: <App />,
+  },
+  {
     path: "/auth/callback",
     element: <App />,
   },
@@ -56,6 +60,14 @@ export const router = createBrowserRouter([
   },
   {
     path: "/image-landing",
+    element: <App />,
+  },
+  {
+    path: "/produtos",
+    element: <App />,
+  },
+  {
+    path: "/produto/:id",
     element: <App />,
   },
   {

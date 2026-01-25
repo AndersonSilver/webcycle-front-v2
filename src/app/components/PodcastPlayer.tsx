@@ -74,7 +74,10 @@ export function PodcastPlayer({ podcastId, onBack }: PodcastPlayerProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div 
+            className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: 'var(--theme-primary)', borderTopColor: 'transparent' }}
+          ></div>
           <p className="text-gray-600 text-lg">Carregando podcast...</p>
         </div>
       </div>
@@ -90,7 +93,18 @@ export function PodcastPlayer({ podcastId, onBack }: PodcastPlayerProps) {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Podcast não encontrado</h2>
           <p className="text-gray-600 mb-6">O podcast que você está procurando não existe ou foi removido.</p>
-          <Button onClick={onBack} className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            onClick={onBack} 
+            style={{
+              backgroundColor: 'var(--theme-primary)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--theme-primary)';
+            }}
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar para Meus Cursos
           </Button>
@@ -102,10 +116,21 @@ export function PodcastPlayer({ podcastId, onBack }: PodcastPlayerProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header com gradiente e imagem */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-teal-700 text-white pt-24 pb-16 overflow-hidden">
+      <section 
+        className="relative text-white pt-24 pb-16 overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
+        }}
+      >
         {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl"></div>
+        <div 
+          className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl"
+          style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}
+        ></div>
+        <div 
+          className="absolute bottom-0 left-0 w-96 h-96 rounded-full blur-3xl"
+          style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}
+        ></div>
         
         <div className="relative container mx-auto px-4">
           <Button

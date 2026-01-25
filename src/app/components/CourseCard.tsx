@@ -40,7 +40,10 @@ export function CourseCard({ course, onViewDetails }: CourseCardProps) {
       </div>
       
       <CardContent className="p-6" onClick={() => onViewDetails(course.id)}>
-        <h3 className="font-bold text-xl mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
+        <h3 className="font-bold text-xl mb-2 line-clamp-2 transition-colors" style={{ color: 'var(--theme-text-primary)' }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
+        >
           {course.title}
         </h3>
         
@@ -81,7 +84,7 @@ export function CourseCard({ course, onViewDetails }: CourseCardProps) {
               R$ {originalPrice.toFixed(2)}
             </div>
           )}
-          <div className="font-bold text-2xl text-blue-600">
+          <div className="font-bold text-2xl" style={{ color: 'var(--theme-primary)' }}>
             R$ {price.toFixed(2)}
           </div>
         </div>

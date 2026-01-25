@@ -2,31 +2,37 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { HomeHero } from "./components/HomeHero";
 import { CourseCatalog } from "./components/CourseCatalog";
+import { ProductCatalog } from "./components/ProductCatalog";
+import { ProductDetail } from "./components/ProductDetail";
 import { PodcastSection } from "./components/PodcastSection";
 import { CourseDetail } from "./components/CourseDetail";
 import { Checkout } from "./components/Checkout";
 import { Login } from "./components/Login";
 import { MyCourses } from "./components/MyCourses";
+import { MyPurchases } from "./components/MyPurchases";
 import { CoursePlayer } from "./components/CoursePlayer";
 import { PodcastPlayer } from "./components/PodcastPlayer";
 import { AdminPanel } from "./components/AdminPanel";
 import { Cart } from "./components/Cart";
 import { SupportChat } from "./components/SupportChat";
 import { ImageLandingPage } from "./components/ImageLandingPage";
+import { BackendOffline } from "./components/BackendOffline";
 import desenvolvasecastImg from "./components/laminas/desenvolvasecast.png";
 import livroImg from "./components/laminas/livro.png";
 import manualautoconfiancaImg from "./components/laminas/manualautoconfiança.png";
 import mentoriaImg from "./components/laminas/mentoria.png";
+import iconImg from "./components/laminas/icon.png";
 import { Button } from "./components/ui/button";
 import { Toaster } from "./components/ui/sonner";
-import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2, Package } from "lucide-react";
 import { Course } from "./data/courses";
 import { toast } from "sonner";
 import { apiClient } from "../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 import { useHomeContent } from "../hooks/useHomeContent";
+import { useTheme } from "../hooks/useTheme";
 
-type View = "home" | "detail" | "checkout" | "my-courses" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending" | "image-landing";
+type View = "home" | "detail" | "checkout" | "my-courses" | "my-purchases" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending" | "image-landing" | "products" | "product-detail";
 
 interface UserData {
   name: string;
@@ -52,7 +58,10 @@ export default function App() {
     if (path === "/") return "home";
     if (path === "/checkout") return "checkout";
     if (path === "/meus-cursos") return "my-courses";
+    if (path === "/minhas-compras") return "my-purchases";
     if (path === "/admin") return "admin";
+    if (path === "/produtos") return "products";
+    if (path.startsWith("/produto/")) return "product-detail";
     if (path === "/purchase/success") return "purchase-success";
     if (path === "/purchase/failure") return "purchase-failure";
     if (path === "/purchase/pending") return "purchase-pending";
@@ -66,10 +75,6 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState<View>(getCurrentView());
 
-  // Atualizar view quando a rota mudar
-  useEffect(() => {
-    setCurrentView(getCurrentView());
-  }, [location.pathname]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -78,6 +83,7 @@ export default function App() {
   const [myPodcasts, setMyPodcasts] = useState<any[]>([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [cartItems, setCartItems] = useState<Course[]>([]);
+  const [cartProducts, setCartProducts] = useState<Array<{ productId: string; quantity: number }>>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [publicReviews, setPublicReviews] = useState<Array<{
     id: string;
@@ -91,9 +97,79 @@ export default function App() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [unsubscribeStatus, setUnsubscribeStatus] = useState<"loading" | "success" | "error" | null>(null);
+  const [footerCourses, setFooterCourses] = useState<Course[]>([]);
+  const [footerProducts, setFooterProducts] = useState<Array<{ id: string; title: string }>>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
   const catalogRef = useRef<HTMLDivElement>(null);
   const userDataLoadingRef = useRef(false); // Flag para evitar múltiplas chamadas simultâneas
   const { content: homeContent } = useHomeContent();
+  useTheme(); // Carregar e aplicar tema dinâmico (aplica CSS variables automaticamente)
+
+  // Escutar atualizações do carrinho de produtos
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      try {
+        const cartProductsData = JSON.parse(localStorage.getItem('CART_PRODUCTS') || '[]');
+        setCartProducts(cartProductsData);
+      } catch (error) {
+        console.error("Erro ao carregar produtos do carrinho:", error);
+      }
+    };
+
+    // Carregar produtos do carrinho na montagem
+    handleCartUpdate();
+
+    // Escutar evento de atualização
+    window.addEventListener('cartUpdated', handleCartUpdate);
+
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, []);
+
+  // Verificar se o backend está online
+  useEffect(() => {
+    // @ts-ignore - Vite environment variables
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    // O endpoint /health está na raiz, não em /api
+    const BASE_URL = API_BASE_URL.replace('/api', '');
+    
+    const checkBackendHealth = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // Timeout de 3 segundos
+        
+        const response = await fetch(`${BASE_URL}/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          setBackendOffline(false);
+        } else {
+          setBackendOffline(true);
+        }
+      } catch (error: any) {
+        // Erro de rede - backend está offline
+        if (error.name !== 'AbortError') {
+          setBackendOffline(true);
+        }
+      }
+    };
+
+    // Verificar imediatamente
+    checkBackendHealth();
+
+    // Verificar a cada 5 segundos
+    const interval = setInterval(checkBackendHealth, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Helper function para renderizar ícones dinamicamente
   const getIconComponent = (iconName: string) => {
@@ -115,6 +191,7 @@ export default function App() {
   // Atualizar view quando a URL mudar
   useEffect(() => {
     const newView = getCurrentView();
+    console.log('🔄 useEffect - Rota mudou:', location.pathname, '-> View:', newView);
     setCurrentView(newView);
     
     // Carregar curso se necessário
@@ -183,15 +260,64 @@ export default function App() {
       }
       
       if (finalPaymentStatus === 'success' || finalPaymentStatus === 'approved') {
-        toast.success("Pagamento aprovado!", {
-          description: "Redirecionando para seus cursos...",
-        });
-        // Recarregar cursos comprados
-        handlePurchaseComplete();
-        // Redirecionar para meus cursos após 2 segundos
-        setTimeout(() => {
-          navigate("/meus-cursos");
-        }, 2000);
+        // Buscar compras do usuário para verificar o tipo de compra mais recente
+        apiClient.getMyPurchases()
+          .then(response => {
+            const purchases = response.purchases || [];
+            // Encontrar a compra mais recente que corresponde ao paymentId ou prefId
+            const matchingPurchase = purchases.find((p: any) => 
+              p.paymentId === paymentId || p.paymentId === prefId
+            ) || purchases[0]; // Se não encontrar, usar a mais recente
+            
+            if (matchingPurchase) {
+              const hasCourses = matchingPurchase.courses && matchingPurchase.courses.length > 0;
+              const hasProducts = matchingPurchase.products && matchingPurchase.products.length > 0;
+              
+              let redirectPath = "/meus-cursos";
+              let redirectMessage = "Redirecionando para seus cursos...";
+              
+              if (hasCourses && !hasProducts) {
+                redirectPath = "/meus-cursos";
+                redirectMessage = "Redirecionando para seus cursos...";
+              } else if (hasProducts && !hasCourses) {
+                redirectPath = "/minhas-compras";
+                redirectMessage = "Redirecionando para suas compras...";
+              } else if (hasCourses && hasProducts) {
+                redirectPath = "/meus-cursos";
+                redirectMessage = "Redirecionando para seus cursos...";
+              }
+              
+              toast.success("Pagamento aprovado!", {
+                description: redirectMessage,
+              });
+              
+              // Recarregar cursos comprados
+              handlePurchaseComplete();
+              
+              setTimeout(() => {
+                navigate(redirectPath);
+              }, 2000);
+            } else {
+              // Fallback: redirecionar para meus-cursos
+              toast.success("Pagamento aprovado!", {
+                description: "Redirecionando...",
+              });
+              handlePurchaseComplete();
+              setTimeout(() => {
+                navigate("/meus-cursos");
+              }, 2000);
+            }
+          })
+          .catch(() => {
+            // Em caso de erro, redirecionar para meus-cursos por padrão
+            toast.success("Pagamento aprovado!", {
+              description: "Redirecionando...",
+            });
+            handlePurchaseComplete();
+            setTimeout(() => {
+              navigate("/meus-cursos");
+            }, 2000);
+          });
       } else if (finalPaymentStatus === 'failure' || finalPaymentStatus === 'rejected') {
         toast.error("Pagamento não aprovado", {
           description: "Tente novamente ou escolha outra forma de pagamento.",
@@ -201,13 +327,40 @@ export default function App() {
           navigate("/");
         }, 3000);
       } else if (finalPaymentStatus === 'pending') {
-        toast.info("Pagamento pendente", {
-          description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
-        });
-        // Redirecionar para meus cursos após 2 segundos
-        setTimeout(() => {
-          navigate("/meus-cursos");
-        }, 2000);
+        // Para pending, também verificar o tipo de compra
+        apiClient.getMyPurchases()
+          .then(response => {
+            const purchases = response.purchases || [];
+            const matchingPurchase = purchases.find((p: any) => 
+              p.paymentId === paymentId || p.paymentId === prefId
+            ) || purchases[0];
+            
+            let redirectPath = "/meus-cursos";
+            if (matchingPurchase) {
+              const hasCourses = matchingPurchase.courses && matchingPurchase.courses.length > 0;
+              const hasProducts = matchingPurchase.products && matchingPurchase.products.length > 0;
+              
+              if (hasProducts && !hasCourses) {
+                redirectPath = "/minhas-compras";
+              }
+            }
+            
+            toast.info("Pagamento pendente", {
+              description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
+            });
+            
+            setTimeout(() => {
+              navigate(redirectPath);
+            }, 2000);
+          })
+          .catch(() => {
+            toast.info("Pagamento pendente", {
+              description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
+            });
+            setTimeout(() => {
+              navigate("/meus-cursos");
+            }, 2000);
+          });
       }
     }
   }, [navigate, location.pathname]);
@@ -328,6 +481,43 @@ export default function App() {
       loadPublicReviews();
     }
   }, [currentView]);
+
+  // Carregar cursos para o footer
+  useEffect(() => {
+    const loadFooterCourses = async () => {
+      try {
+        const response = await apiClient.getCourses({ page: 1, limit: 10 });
+        if (response?.courses) {
+          setFooterCourses(response.courses);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar cursos para o footer:", error);
+        // Manter array vazio em caso de erro
+      }
+    };
+
+    loadFooterCourses();
+  }, []);
+
+  // Carregar produtos para o footer
+  useEffect(() => {
+    const loadFooterProducts = async () => {
+      try {
+        const response = await apiClient.getProducts({ page: 1, limit: 5, active: true });
+        if (response?.products) {
+          setFooterProducts(response.products.map((p: any) => ({
+            id: p.id,
+            title: p.title
+          })));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar produtos para o footer:", error);
+        // Manter array vazio em caso de erro
+      }
+    };
+
+    loadFooterProducts();
+  }, []);
 
   // Verificar se há usuário logado e carregar dados da API
   useEffect(() => {
@@ -659,14 +849,20 @@ export default function App() {
       return;
     }
 
-    if (cartItems.length === 0) {
+    if (cartItems.length === 0 && cartProducts.length === 0) {
       toast.error("Seu carrinho está vazio");
       return;
     }
 
-    // Criar um array de cursos para checkout
-    // Por enquanto vamos processar todos de uma vez
-    navigate("/checkout");
+    // Navegar para checkout com produtos do carrinho se houver
+    navigate("/checkout", {
+      state: cartProducts.length > 0 ? {
+        products: cartProducts.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity
+        }))
+      } : undefined
+    });
   };
 
   const handleContinueShopping = () => {
@@ -676,18 +872,31 @@ export default function App() {
     }, 100);
   };
 
+  // Se o backend estiver offline, mostrar apenas a página de erro
+  if (backendOffline) {
+    return <BackendOffline />;
+  }
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--theme-background)' }}>
       {/* Header */}
       {currentView !== "image-landing" && (
-      <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-40">
+      <header className="fixed top-0 left-0 right-0 bg-white/100 backdrop-blur-sm border-b border-gray-200 z-40">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <button
               onClick={() => navigate("/")}
-              className="font-bold text-2xl text-blue-600 hover:text-blue-700 transition-colors"
+              className="flex items-center gap-2 transition-opacity hover:opacity-80"
             >
-              WebCycle
+              <img src={iconImg} alt="Icon" width={50} height={50} className="object-contain" />
+              <span 
+                className="font-bold text-2xl"
+                style={{ color: 'var(--theme-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary-dark)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+              >
+                Culture Builders
+              </span>
             </button>
 
             {/* User Menu */}
@@ -746,6 +955,20 @@ export default function App() {
                         >
                           <BookOpen className="w-4 h-4" />
                           Meus Cursos
+                        </button>
+                        <button
+                          onClick={() => {
+                            console.log('🔗 Clicou em Minhas Compras (desktop)');
+                            setUserMenuOpen(false);
+                            navigate("/minhas-compras");
+                            setTimeout(() => {
+                              window.scrollTo(0, 0);
+                            }, 100);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <Package className="w-4 h-4" />
+                          Minhas Compras
                         </button>
                         <button
                           className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
@@ -824,13 +1047,33 @@ export default function App() {
                         setMobileMenuOpen(false);
                         window.scrollTo(0, 0);
                       }}
-                      className="text-gray-700 hover:text-blue-600 transition-colors text-left flex items-center gap-2"
+                      className="transition-colors text-left flex items-center gap-2"
+                      style={{ color: 'var(--theme-text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
                     >
                       <BookOpen className="w-4 h-4" />
                       Meus Cursos
                     </button>
                     <button
-                      className="text-gray-700 hover:text-blue-600 transition-colors text-left flex items-center gap-2"
+                      onClick={() => {
+                        navigate("/minhas-compras");
+                        setMobileMenuOpen(false);
+                        window.scrollTo(0, 0);
+                      }}
+                      className="transition-colors text-left flex items-center gap-2"
+                      style={{ color: 'var(--theme-text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
+                    >
+                      <Package className="w-4 h-4" />
+                      Minhas Compras
+                    </button>
+                    <button
+                      className="transition-colors text-left flex items-center gap-2"
+                      style={{ color: 'var(--theme-text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
                     >
                       <User className="w-4 h-4" />
                       Meu Perfil
@@ -841,7 +1084,10 @@ export default function App() {
                           handleOpenAdminPanel();
                           setMobileMenuOpen(false);
                         }}
-                        className="text-gray-700 hover:text-blue-600 transition-colors text-left flex items-center gap-2"
+                        className="transition-colors text-left flex items-center gap-2"
+                      style={{ color: 'var(--theme-text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
                       >
                         <Settings className="w-4 h-4" />
                         Painel Admin
@@ -852,7 +1098,10 @@ export default function App() {
                         handleLogout();
                         setMobileMenuOpen(false);
                       }}
-                      className="text-gray-700 hover:text-blue-600 transition-colors text-left flex items-center gap-2"
+                      className="transition-colors text-left flex items-center gap-2"
+                      style={{ color: 'var(--theme-text-primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
                     >
                       <LogOut className="w-4 h-4" />
                       Sair
@@ -888,18 +1137,45 @@ export default function App() {
               <CourseCatalog onViewDetails={handleViewDetails} />
             </div>
 
+            {/* Products Section */}
+            <div className="py-20 bg-gray-50">
+              <ProductCatalog
+                onViewDetails={(productId) => navigate(`/produto/${productId}`)}
+                onAddToCart={(productId) => {
+                  navigate("/checkout", {
+                    state: {
+                      products: [{ productId, quantity: 1 }],
+                    },
+                  });
+                }}
+              />
+            </div>
+
             {/* Podcasts Section */}
             <PodcastSection />
 
             {/* About Section */}
             {homeContent?.whyChooseUs && (
-              <section id="sobre" className="py-20 bg-gradient-to-b from-white to-gray-50">
+              <section 
+                id="sobre" 
+                className="py-20"
+                style={{
+                  background: `linear-gradient(to bottom, var(--theme-background) 0%, var(--theme-background-secondary) 100%)`
+                }}
+              >
                 <div className="container mx-auto px-4">
                   <div className="max-w-5xl mx-auto text-center">
                     <div className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
                       {homeContent.whyChooseUs.badge}
                     </div>
-                    <h2 className="text-3xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
+                    <h2 
+                      className="text-3xl lg:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                      }}
+                    >
                       {homeContent.whyChooseUs.title}
                     </h2>
                     <p className="text-xl text-gray-600 mb-16 max-w-3xl mx-auto">
@@ -940,14 +1216,24 @@ export default function App() {
 
             {/* Testimonials Section */}
             {homeContent?.testimonials && (
-              <section className="py-20 bg-white">
+              <section 
+                className="py-20"
+                style={{ backgroundColor: 'var(--theme-background)' }}
+              >
                 <div className="container mx-auto px-4">
                   <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
                       <div className="inline-block px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold mb-6">
                         {homeContent.testimonials.badge}
                       </div>
-                      <h2 className="text-3xl lg:text-5xl font-bold mb-6">
+                      <h2 
+                        className="text-3xl lg:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                        style={{
+                          background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}
+                      >
                         {homeContent.testimonials.title}
                       </h2>
                       <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -1070,10 +1356,17 @@ export default function App() {
 
             {/* Newsletter Section */}
             {homeContent?.newsletter && (
-              <section className="py-20 bg-gradient-to-br from-blue-600 via-teal-600 to-blue-700 text-white relative overflow-hidden">
-                <div className="absolute inset-0 bg-black/10"></div>
-                <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+              <section 
+                className="py-20 text-white relative overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
+                }}
+              >
+                <div className="absolute inset-0 bg-black/20"></div>
+                
+                {/* Decorative elements */}
+                <div className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}></div>
                 
                 <div className="container mx-auto px-4 relative z-10">
                   <div className="max-w-3xl mx-auto text-center">
@@ -1081,7 +1374,7 @@ export default function App() {
                     <h2 className="text-3xl lg:text-5xl font-bold mb-6">
                       {homeContent.newsletter.title}
                     </h2>
-                    <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+                    <p className="text-xl mb-8 max-w-2xl mx-auto" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                       {homeContent.newsletter.subtitle}
                     </p>
                   
@@ -1120,14 +1413,18 @@ export default function App() {
                       type="submit"
                       size="lg"
                       disabled={newsletterLoading || !newsletterEmail}
-                      className="bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-xl px-6 sm:px-8 h-14 sm:h-16 w-full sm:w-auto whitespace-nowrap font-semibold disabled:opacity-50 text-sm sm:text-base rounded-md"
+                      // quero colocar isso no background do button linear-gradient(135deg, hsl(250 75% 60%), hsl(280 70% 65%))
+                      style={{ background: 'linear-gradient(135deg, hsl(250 75% 60%), hsl(280 70% 65%))' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60%), hsl(280 70% 65%))'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65%), hsl(280 70% 60%))'}
+                      className="text-white shadow-xl px-6 sm:px-8 h-14 sm:h-16 w-full sm:w-auto whitespace-now nowrap font-semibold disabled:opacity-100 text-sm sm:text-base rounded-md"
                     >
                       <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       {newsletterLoading ? "Enviando..." : "Inscrever-se"}
                     </Button>
                   </form>
                   
-                    <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-blue-100">
+                    <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                       {homeContent.newsletter.features.map((feature, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <CheckCircle2 className="w-5 h-5 text-yellow-300" />
@@ -1167,10 +1464,12 @@ export default function App() {
                             handleExplore();
                           }
                         }}
-                        className="bg-white text-blue-700 hover:bg-blue-50 shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform"
+                        className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
+                        style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
                       >
                         {homeContent.cta?.primaryButton?.text}
-                        <ArrowRight className="ml-2 w-5 h-5" />
                       </Button>
                       <Button
                         size="lg"
@@ -1181,7 +1480,19 @@ export default function App() {
                             handleExplore();
                           }
                         }}
-                        className="border-2 border-white text-white hover:bg-white hover:text-blue-700 bg-transparent text-lg px-10 py-6"
+                        className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
+                        style={{ 
+                          background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))',
+                          color: 'white'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))';
+                          e.currentTarget.style.color = 'white';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))';
+                          e.currentTarget.style.color = 'white';
+                        }}
                       >
                         {homeContent.cta?.secondaryButton?.text}
                       </Button>
@@ -1243,6 +1554,32 @@ export default function App() {
               onWatchPodcast={handleWatchPodcast}
               onBack={handleBackToHome}
             />
+        )}
+
+        {currentView === "my-purchases" && (
+          <>
+            {console.log('✅ Renderizando MyPurchases, currentView:', currentView, 'pathname:', location.pathname)}
+            <MyPurchases
+              onBack={handleBackToHome}
+            />
+          </>
+        )}
+
+        {currentView === "products" && (
+          <ProductCatalog
+            onViewDetails={(productId) => navigate(`/produto/${productId}`)}
+            onAddToCart={(productId) => {
+              navigate("/checkout", {
+                state: {
+                  products: [{ productId, quantity: 1 }],
+                },
+              });
+            }}
+          />
+        )}
+
+        {currentView === "product-detail" && (
+          <ProductDetail />
         )}
 
         {currentView === "player" && selectedCourse && (
@@ -1430,7 +1767,10 @@ export default function App() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="font-bold text-xl text-white mb-4">WebCycle</div>
+              <div className="font-bold text-xl text-white mb-4 flex items-center gap-2">
+                <img src={iconImg} alt="Icon" width={50} height={50} className="object-contain" />
+                <span>Culture Builders</span>
+              </div>
               <p className="text-sm">
                 Transformando vidas através do conhecimento em psicologia aplicada.
               </p>
@@ -1438,42 +1778,90 @@ export default function App() {
             <div>
               <h4 className="font-semibold text-white mb-4">Cursos</h4>
               <ul className="space-y-2 text-sm">
-                <li><button onClick={handleBackToHome} className="hover:text-white">Todos os Cursos</button></li>
-                <li><a href="#" className="hover:text-white">Relacionamentos</a></li>
-                <li><a href="#" className="hover:text-white">Ansiedade</a></li>
-                <li><a href="#" className="hover:text-white">Autoestima</a></li>
+                <li>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleBackToHome();
+                      setTimeout(() => {
+                        catalogRef.current?.scrollIntoView({ behavior: "smooth" });
+                      }, 100);
+                    }} 
+                    className="hover:text-white transition-colors"
+                  >
+                    Todos os Cursos
+                  </a>
+                </li>
+                {footerCourses.map((course) => (
+                  <li key={course.id}>
+                    <a 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleViewDetails(course.id);
+                      }} 
+                      className="hover:text-white transition-colors cursor-pointer"
+                    >
+                      {course.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-white mb-4">Produtos Exclusivos</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate("/produtos");
+                      window.scrollTo(0, 0);
+                    }} 
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    Todos os Produtos
+                  </a>
+                </li>
+                {footerProducts.map((product) => (
+                  <li key={product.id}>
+                    <a 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate(`/produto/${product.id}`);
+                        window.scrollTo(0, 0);
+                      }} 
+                      className="hover:text-white transition-colors cursor-pointer"
+                    >
+                      {product.title}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Suporte</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white">Central de Ajuda</a></li>
-                <li><a href="#" className="hover:text-white">FAQ</a></li>
                 <li>
                   <a href="mailto:contato@psicoedu.com" className="hover:text-white flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    contato@psicoedu.com
+                    tiago.bonifacio@culturebuilders.com.br
                   </a>
                 </li>
                 <li>
                   <a href="tel:+5511999999999" className="hover:text-white flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    (11) 99999-9999
+                    (11) 9 7984-9146
                   </a>
                 </li>
               </ul>
             </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white">Termos de Uso</a></li>
-                <li><a href="#" className="hover:text-white">Política de Privacidade</a></li>
-                <li><a href="#" className="hover:text-white">Política de Reembolso</a></li>
-              </ul>
-            </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>© 2025 WebCycle. Todos os direitos reservados.</p>
+            <p>© 2025 Culture Builders. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

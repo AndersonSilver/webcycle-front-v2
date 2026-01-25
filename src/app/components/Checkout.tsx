@@ -1,15 +1,25 @@
 import { Course } from "../data/courses";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { CheckCircle2, CreditCard, Lock, X, ShoppingCart, QrCode, Copy, Check } from "lucide-react";
+import { CheckCircle2, Lock, ShoppingCart, X, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "../../services/apiClient";
 import { handleApiError } from "../../utils/errorHandler";
 // ✅ CHECKOUT PRO: Não precisa mais do formulário de cartão
+
+interface Product {
+  id: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  image: string;
+  type: 'physical' | 'digital';
+}
 
 interface CheckoutProps {
   courses: Course[];
@@ -17,67 +27,488 @@ interface CheckoutProps {
 }
 
 export function Checkout({ courses, onBack }: CheckoutProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<"credit_card" | "pix" | "boleto">("credit_card");
+  const [paymentMethod] = useState<"credit_card" | "pix" | "boleto">("credit_card");
   const [pixCode, setPixCode] = useState<string | null>(null);
   const [purchaseId, setPurchaseId] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    cpf: "",
-    installments: "1"
-  });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
-  // Carregar dados do usuário
+  const loadProducts = useCallback(async (productItems: Array<{ productId: string; quantity: number }>) => {
+    try {
+      setProductsLoading(true);
+      const loadedProducts: Product[] = [];
+      
+      for (const item of productItems) {
+        try {
+          const response = await apiClient.getProductById(item.productId);
+          if (response.product) {
+            loadedProducts.push({
+              ...response.product,
+              // Repetir o produto conforme a quantidade
+            });
+            // Adicionar múltiplas vezes se quantity > 1
+            for (let i = 1; i < item.quantity; i++) {
+              loadedProducts.push({ ...response.product });
+            }
+          } else {
+            console.warn(`Produto ${item.productId} não encontrado`);
+            toast.error(`Produto não encontrado. Removendo do carrinho.`);
+          }
+        } catch (error: any) {
+          console.error(`Erro ao carregar produto ${item.productId}:`, error);
+          toast.error(`Erro ao carregar produto. Verifique se o produto ainda está disponível.`);
+        }
+      }
+      
+      if (loadedProducts.length === 0 && productItems.length > 0) {
+        toast.error("Nenhum produto pôde ser carregado. Redirecionando...");
+        setTimeout(() => {
+          navigate("/");
+        }, 2000);
+        return;
+      }
+      
+      setProducts(loadedProducts);
+    } catch (error) {
+      console.error("Erro ao carregar produtos:", error);
+      toast.error("Erro ao carregar produtos. Tente novamente.");
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [navigate]);
+
+
+  // Carregar produtos do location.state ou do localStorage (carrinho)
   useEffect(() => {
-    const loadUserData = async () => {
+    const state = location.state as { products?: Array<{ productId: string; quantity: number }> };
+    
+    if (state?.products && state.products.length > 0) {
+      // Produtos vindos do state (compra direta)
+      loadProducts(state.products);
+    } else {
+      // Tentar carregar do carrinho (localStorage)
       try {
-        const userResponse = await apiClient.getCurrentUser();
-        setFormData(prev => ({
-          ...prev,
-          name: userResponse.user.name,
-          email: userResponse.user.email,
-        }));
+        const cartProducts = JSON.parse(localStorage.getItem('CART_PRODUCTS') || '[]');
+        if (cartProducts.length > 0) {
+          loadProducts(cartProducts);
+        }
       } catch (error) {
-        console.error("Erro ao carregar dados do usuário:", error);
+        console.error("Erro ao carregar produtos do carrinho:", error);
+      }
+    }
+  }, [location.state, loadProducts]);
+
+  // Monitorar status da compra via polling quando o modal de pagamento estiver aberto
+  useEffect(() => {
+    if (!showPaymentModal || !purchaseId) return;
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let attempts = 0;
+    const maxAttempts = 120; // 60 segundos (120 * 500ms)
+
+    const checkPurchaseStatus = async () => {
+      try {
+        attempts++;
+        console.log(`🔍 Verificando status da compra ${purchaseId} (tentativa ${attempts}/${maxAttempts})...`);
+        
+        const response = await apiClient.getPurchaseById(purchaseId);
+        const purchase = response.purchase;
+        
+        if (purchase) {
+          const status = purchase.paymentStatus;
+          console.log(`📊 Status atual da compra: ${status}`);
+          
+          // Se o pagamento foi aprovado ou está pendente
+          if (status === 'paid' || status === 'approved') {
+            console.log('✅ Pagamento aprovado! Fechando modal e redirecionando...');
+            
+            // Limpar carrinho de produtos do localStorage
+            try {
+              localStorage.removeItem('CART_PRODUCTS');
+            } catch (error) {
+              console.warn("Erro ao limpar carrinho de produtos:", error);
+            }
+            
+            // Fechar modal
+            setShowPaymentModal(false);
+            setPaymentUrl(null);
+            
+            // Limpar intervalo
+            if (pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+            }
+            
+            // Verificar se a compra contém cursos ou produtos para decidir o redirecionamento
+            const hasCourses = purchase.courses && purchase.courses.length > 0;
+            const hasProducts = purchase.products && purchase.products.length > 0;
+            
+            let redirectPath = "/";
+            let redirectMessage = "Redirecionando...";
+            
+            if (hasCourses && !hasProducts) {
+              // Apenas cursos
+              redirectPath = "/meus-cursos";
+              redirectMessage = "Redirecionando para seus cursos...";
+            } else if (hasProducts && !hasCourses) {
+              // Apenas produtos
+              redirectPath = "/minhas-compras";
+              redirectMessage = "Redirecionando para suas compras...";
+            } else if (hasCourses && hasProducts) {
+              // Tem ambos - priorizar cursos
+              redirectPath = "/meus-cursos";
+              redirectMessage = "Redirecionando para seus cursos...";
+            }
+            
+            toast.success("Pagamento aprovado!", {
+              description: redirectMessage,
+            });
+            
+            setTimeout(() => {
+              navigate(redirectPath);
+            }, 1500);
+            
+            return;
+          }
+          
+          // Se o pagamento falhou
+          if (status === 'failed' || status === 'rejected') {
+            console.log('❌ Pagamento rejeitado! Fechando modal...');
+            
+            setShowPaymentModal(false);
+            setPaymentUrl(null);
+            
+            if (pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+            }
+            
+            toast.error("Pagamento não aprovado", {
+              description: "Tente novamente ou escolha outra forma de pagamento.",
+            });
+            
+            setTimeout(() => {
+              navigate("/");
+            }, 3000);
+            
+            return;
+          }
+          
+          // Se o pagamento está pendente e já tentamos várias vezes, informar o usuário
+          if (status === 'pending' && attempts >= 30) {
+            console.log('⏳ Pagamento ainda pendente após várias tentativas...');
+            // Continuamos verificando, mas não fechamos o modal ainda
+          }
+        }
+        
+        // Se excedeu o número máximo de tentativas, parar o polling
+        if (attempts >= maxAttempts) {
+          console.log('⏱️ Tempo limite atingido. Parando verificação...');
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+          
+          // Informar ao usuário que pode fechar o modal e verificar depois
+          toast.info("Verificação de pagamento em andamento", {
+            description: "O pagamento está sendo processado. Você receberá um email quando for confirmado.",
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status da compra:', error);
+        // Continuar tentando mesmo em caso de erro
       }
     };
-    loadUserData();
-  }, []);
+
+    // Começar a verificar após 3 segundos (dar tempo para o usuário iniciar o pagamento)
+    // Depois verificar a cada 2 segundos
+    const startPolling = setTimeout(() => {
+      checkPurchaseStatus(); // Primeira verificação
+      pollInterval = setInterval(checkPurchaseStatus, 2000); // Verificar a cada 2 segundos
+    }, 3000);
+
+    return () => {
+      clearTimeout(startPolling);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [showPaymentModal, purchaseId, navigate]);
+
+  // Monitorar mudanças na URL do iframe quando o pagamento for concluído (fallback)
+  useEffect(() => {
+    if (!showPaymentModal || !iframeRef.current || !purchaseId) return;
+
+    const iframe = iframeRef.current;
+    let checkInterval: ReturnType<typeof setInterval> | null = null;
+
+    const checkIframeUrl = () => {
+      try {
+        // Tentar acessar a URL do iframe (pode falhar por CORS, mas tentamos)
+        const iframeUrl = iframe.contentWindow?.location.href;
+        
+        if (iframeUrl) {
+          // Verificar se a URL contém rotas de retorno do Mercado Pago
+          const url = new URL(iframeUrl);
+          const pathname = url.pathname;
+          const searchParams = url.searchParams;
+          
+          // Verificar se é uma rota de retorno do pagamento
+          if (pathname.includes('/purchase/') || searchParams.has('payment_status') || searchParams.has('pref_id')) {
+            const paymentStatus = searchParams.get('payment_status') || 
+                                 (pathname.includes('/success') ? 'success' : 
+                                  pathname.includes('/failure') ? 'failure' : 
+                                  pathname.includes('/pending') ? 'pending' : null);
+            
+            const prefId = searchParams.get('pref_id') || searchParams.get('preference_id');
+            const paymentId = searchParams.get('payment_id');
+
+            if (paymentStatus) {
+              console.log('🔔 Pagamento concluído no iframe:', { paymentStatus, prefId, paymentId });
+              
+              // Fechar modal
+              setShowPaymentModal(false);
+              setPaymentUrl(null);
+              
+              // Redirecionar página principal para a rota apropriada
+              if (paymentStatus === 'success' || paymentStatus === 'approved') {
+                // Se temos purchaseId, buscar a compra para decidir o redirecionamento
+                if (purchaseId) {
+                  apiClient.getPurchaseById(purchaseId)
+                    .then(response => {
+                      const purchase = response.purchase;
+                      const hasCourses = purchase.courses && purchase.courses.length > 0;
+                      const hasProducts = purchase.products && purchase.products.length > 0;
+                      
+                      let redirectPath = "/";
+                      let redirectMessage = "Redirecionando...";
+                      
+                      if (hasCourses && !hasProducts) {
+                        redirectPath = "/meus-cursos";
+                        redirectMessage = "Redirecionando para seus cursos...";
+                      } else if (hasProducts && !hasCourses) {
+                        redirectPath = "/minhas-compras";
+                        redirectMessage = "Redirecionando para suas compras...";
+                      } else if (hasCourses && hasProducts) {
+                        redirectPath = "/meus-cursos";
+                        redirectMessage = "Redirecionando para seus cursos...";
+                      }
+                      
+                      toast.success("Pagamento aprovado!", {
+                        description: redirectMessage,
+                      });
+                      
+                      setTimeout(() => {
+                        navigate(redirectPath);
+                      }, 1500);
+                    })
+                    .catch(() => {
+                      // Em caso de erro, redirecionar para meus-cursos por padrão
+                      toast.success("Pagamento aprovado!", {
+                        description: "Redirecionando...",
+                      });
+                      setTimeout(() => {
+                        navigate("/meus-cursos");
+                      }, 1500);
+                    });
+                } else {
+                  // Sem purchaseId, redirecionar para meus-cursos por padrão
+                  toast.success("Pagamento aprovado!", {
+                    description: "Redirecionando...",
+                  });
+                  setTimeout(() => {
+                    navigate("/meus-cursos");
+                  }, 1500);
+                }
+              } else if (paymentStatus === 'failure' || paymentStatus === 'rejected') {
+                toast.error("Pagamento não aprovado", {
+                  description: "Tente novamente ou escolha outra forma de pagamento.",
+                });
+                setTimeout(() => {
+                  navigate("/");
+                }, 3000);
+              } else if (paymentStatus === 'pending') {
+                // Para pending, também verificar o tipo de compra se tiver purchaseId
+                if (purchaseId) {
+                  apiClient.getPurchaseById(purchaseId)
+                    .then(response => {
+                      const purchase = response.purchase;
+                      const hasCourses = purchase.courses && purchase.courses.length > 0;
+                      const hasProducts = purchase.products && purchase.products.length > 0;
+                      
+                      let redirectPath = "/meus-cursos";
+                      if (hasProducts && !hasCourses) {
+                        redirectPath = "/minhas-compras";
+                      }
+                      
+                      toast.info("Pagamento pendente", {
+                        description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
+                      });
+                      setTimeout(() => {
+                        navigate(redirectPath);
+                      }, 2000);
+                    })
+                    .catch(() => {
+                      toast.info("Pagamento pendente", {
+                        description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
+                      });
+                      setTimeout(() => {
+                        navigate("/meus-cursos");
+                      }, 2000);
+                    });
+                } else {
+                  toast.info("Pagamento pendente", {
+                    description: "Aguardando confirmação do pagamento. Você será notificado quando o pagamento for confirmado.",
+                  });
+                  setTimeout(() => {
+                    navigate("/meus-cursos");
+                  }, 2000);
+                }
+              }
+              
+              // Limpar intervalo
+              if (checkInterval) {
+                clearInterval(checkInterval);
+                checkInterval = null;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Erro de CORS é esperado - o iframe pode bloquear acesso à URL
+        // Continuamos tentando ou usamos mensagens postMessage como fallback
+      }
+    };
+
+    // Verificar URL do iframe a cada 500ms (menos frequente, já que temos polling)
+    checkInterval = setInterval(checkIframeUrl, 1000);
+
+    // Também escutar mensagens postMessage do iframe (fallback)
+    const handleMessage = (event: MessageEvent) => {
+      // Verificar se a mensagem vem do iframe do Mercado Pago
+      if (event.data && typeof event.data === 'object') {
+        const data = event.data;
+        if (data.type === 'payment_completed' || data.payment_status) {
+          const paymentStatus = data.payment_status || data.status;
+          console.log('🔔 Mensagem de pagamento recebida:', paymentStatus);
+          
+          setShowPaymentModal(false);
+          setPaymentUrl(null);
+          
+          if (paymentStatus === 'success' || paymentStatus === 'approved') {
+            toast.success("Pagamento aprovado!", {
+              description: "Redirecionando para seus cursos...",
+            });
+            setTimeout(() => {
+              navigate("/meus-cursos");
+            }, 1500);
+          } else if (paymentStatus === 'failure' || paymentStatus === 'rejected') {
+            toast.error("Pagamento não aprovado", {
+              description: "Tente novamente ou escolha outra forma de pagamento.",
+            });
+            setTimeout(() => {
+              navigate("/");
+            }, 3000);
+          }
+          
+          if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = null;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [showPaymentModal, purchaseId, navigate]);
+
+  // Prevenir scroll horizontal quando o modal estiver aberto
+  useEffect(() => {
+    if (showPaymentModal) {
+      // Desabilitar scroll horizontal no body
+      document.body.style.overflowX = 'hidden';
+      document.body.style.maxWidth = '100vw';
+      document.documentElement.style.overflowX = 'hidden';
+      document.documentElement.style.maxWidth = '100vw';
+    } else {
+      // Restaurar scroll quando fechar o modal
+      document.body.style.overflowX = '';
+      document.body.style.maxWidth = '';
+      document.documentElement.style.overflowX = '';
+      document.documentElement.style.maxWidth = '';
+    }
+
+    return () => {
+      // Limpar estilos ao desmontar
+      document.body.style.overflowX = '';
+      document.body.style.maxWidth = '';
+      document.documentElement.style.overflowX = '';
+      document.documentElement.style.maxWidth = '';
+    };
+  }, [showPaymentModal]);
 
   // ✅ CHECKOUT PRO: Não precisa criar checkout antecipadamente
   // O checkout será criado quando o usuário clicar em "Continuar para Pagamento"
 
-  // Calcular totais
-  // Converter preços para número (podem vir como string da API)
-  const totalOriginal = courses.reduce((acc, course) => {
+  // Calcular totais dos cursos
+  const coursesTotalOriginal = courses.reduce((acc, course) => {
     const price = typeof course.price === 'string' ? parseFloat(course.price) : course.price;
     const originalPrice = course.originalPrice 
       ? (typeof course.originalPrice === 'string' ? parseFloat(course.originalPrice) : course.originalPrice)
       : price;
     return acc + originalPrice;
   }, 0);
-  // Valor atual dos cursos (já com desconto do curso aplicado)
-  const totalCurrent = courses.reduce((acc, course) => {
+  
+  const coursesTotalCurrent = courses.reduce((acc, course) => {
     const price = typeof course.price === 'string' ? parseFloat(course.price) : course.price;
     return acc + price;
   }, 0);
+
+  // Calcular totais dos produtos
+  const productsTotalOriginal = products.reduce((acc, product) => {
+    const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+    const originalPrice = product.originalPrice 
+      ? (typeof product.originalPrice === 'string' ? parseFloat(product.originalPrice) : product.originalPrice)
+      : price;
+    return acc + originalPrice;
+  }, 0);
   
-  // Desconto do curso (diferença entre original e atual)
-  const courseDiscount = totalOriginal - totalCurrent;
+  const productsTotalCurrent = products.reduce((acc, product) => {
+    const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+    return acc + price;
+  }, 0);
+
+  // Totais combinados
+  const totalOriginal = coursesTotalOriginal + productsTotalOriginal;
+  const totalCurrent = coursesTotalCurrent + productsTotalCurrent;
   
-  // Desconto do cupom (calculado sobre o valor JÁ COM DESCONTO do curso)
+  // Desconto (diferença entre original e atual)
+  const discount = totalOriginal - totalCurrent;
+  
+  // Desconto do cupom (calculado sobre o valor JÁ COM DESCONTO)
   const couponDiscount = discountAmount;
   
   // Total final = valor atual - desconto do cupom
   const totalWithDiscount = totalCurrent - couponDiscount;
   
-  // Economia total (desconto do curso + desconto do cupom)
-  const totalSavings = courseDiscount + couponDiscount;
+  // Economia total (desconto + desconto do cupom)
+  const totalSavings = discount + couponDiscount;
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -86,11 +517,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
     }
 
     try {
-      // Usar totalCurrent (valor já com desconto do curso) para validar o cupom
-      const totalCurrent = courses.reduce((acc, course) => {
-        const price = typeof course.price === 'string' ? parseFloat(course.price) : course.price;
-        return acc + price;
-      }, 0);
+      // Usar totalCurrent (valor já com desconto) para validar o cupom
       const response = await apiClient.validateCoupon(couponCode, totalCurrent);
       if (response.valid) {
         setCouponApplied(true);
@@ -107,8 +534,32 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
   const handleCheckout = async () => {
     try {
       setIsProcessing(true);
+      
+      // Validar se há pelo menos um curso ou produto
+      const hasCourses = courses && courses.length > 0;
+      const hasProducts = products && products.length > 0;
+      
+      if (!hasCourses && !hasProducts) {
+        toast.error("Adicione pelo menos um item ao carrinho");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Preparar produtos para o checkout (agrupar por ID e quantidade)
+      const productMap = new Map<string, number>();
+      products.forEach(product => {
+        const count = productMap.get(product.id) || 0;
+        productMap.set(product.id, count + 1);
+      });
+      
+      const productItems = Array.from(productMap.entries()).map(([productId, quantity]) => ({
+        productId,
+        quantity,
+      }));
+
       const response = await apiClient.checkout({
-        courses: courses.map(c => c.id),
+        courses: hasCourses ? courses.map(c => c.id) : undefined,
+        products: productItems.length > 0 ? productItems : undefined,
         paymentMethod: paymentMethod,
         couponCode: couponApplied ? couponCode : undefined,
       });
@@ -133,37 +584,27 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         return;
       }
 
-      // ✅ CHECKOUT PRO: Abrir Mercado Pago em nova aba (para cartão)
+      // ✅ CHECKOUT PRO: Abrir Mercado Pago em modal/iframe na mesma página
       if (response.payment.paymentLink) {
-        console.log("🚀 Abrindo Checkout Pro em nova aba:", response.payment.paymentLink);
-        console.log("🔍 URL completa:", response.payment.paymentLink);
-        console.log("🔍 É sandbox?", response.payment.paymentLink.includes('sandbox'));
+        console.log("🚀 Abrindo Checkout Pro em modal:", response.payment.paymentLink);
         
-        // Verificar se é sandbox (importante para testes)
-        if (!response.payment.paymentLink.includes('sandbox')) {
-          console.warn("⚠️ ATENÇÃO: URL não é sandbox! Pode não funcionar em testes.");
-        }
+        // Adicionar parâmetros para forçar modo mobile/responsivo
+        const url = new URL(response.payment.paymentLink);
+        url.searchParams.set('mobile', 'true');
+        url.searchParams.set('responsive', 'true');
         
-        toast.info("Abrindo página de pagamento do Mercado Pago em nova aba...");
-        // Abrir Checkout Pro do Mercado Pago em nova aba
-        const newWindow = window.open(response.payment.paymentLink, '_blank', 'noopener,noreferrer');
-        
-        if (!newWindow) {
-          toast.error("Por favor, permita pop-ups para este site e tente novamente.");
-          setIsProcessing(false);
-          return;
-        }
-        
-        // Monitorar quando a nova aba fechar ou quando o pagamento for concluído
-        // O App.tsx já monitora os parâmetros de retorno na URL
+        // Abrir checkout em modal/iframe na mesma página
+        setPaymentUrl(url.toString());
+        setShowPaymentModal(true);
         setIsProcessing(false);
-        toast.success("Página de pagamento aberta! Complete o pagamento na nova aba.");
       } else {
         console.warn("⚠️ paymentLink não retornado. Verifique se o backend está configurado para Checkout Pro.");
         toast.error("Erro ao gerar link de pagamento. Tente novamente.");
         setIsProcessing(false);
       }
     } catch (error: any) {
+      console.error("Erro ao processar checkout:", error);
+      
       // Verificar se é erro de curso já comprado
       if (error?.response?.data?.message?.includes('já possui')) {
         toast.error(error.response.data.message, {
@@ -177,32 +618,119 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         return;
       }
       
+      // Verificar se é erro de produto não encontrado ou sem estoque
+      if (error?.message?.includes('produto') || error?.response?.data?.message?.includes('produto')) {
+        toast.error(error.response?.data?.message || error.message || "Erro ao processar produtos", {
+          description: "Verifique se os produtos estão disponíveis.",
+        });
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Verificar se é erro de validação
+      if (error?.response?.status === 400) {
+        toast.error(error.response?.data?.message || "Dados inválidos. Verifique os itens do carrinho.");
+        setIsProcessing(false);
+        return;
+      }
+      
       handleApiError(error, "Erro ao processar checkout");
       setIsProcessing(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await handleCheckout();
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const formatCPF = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-      .replace(/(-\d{2})\d+?$/, "$1");
-  };
 
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+    <>
+      {/* Modal de Pagamento do Mercado Pago */}
+      {showPaymentModal && paymentUrl && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-[100] flex flex-col overflow-hidden"
+          style={{ 
+            overflowX: 'hidden',
+            maxWidth: '100vw',
+            width: '100%'
+          }}
+        >
+          {/* Header do Modal - Mobile: fixo no topo */}
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-white flex-shrink-0">
+            <h2 className="text-base sm:text-lg font-semibold">Finalizar Pagamento</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setShowPaymentModal(false);
+                setPaymentUrl(null);
+              }}
+              className="h-8 w-8 sm:h-10 sm:w-10"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Button>
+          </div>
+          
+          {/* Container do iframe - Ocupa todo o espaço restante */}
+          <div 
+            className="flex-1 overflow-hidden relative bg-white min-w-0" 
+            style={{ 
+              overflowX: 'hidden',
+              maxWidth: '100%',
+              width: '100%'
+            }}
+          >
+            <iframe
+              ref={iframeRef}
+              src={paymentUrl}
+              className="w-full h-full border-0"
+              title="Pagamento Mercado Pago"
+              allow="payment; fullscreen"
+              sandbox="allow-forms allow-scripts allow-same-origin allow-top-navigation allow-popups allow-popups-to-escape-sandbox allow-modals"
+              style={{
+                width: '100%',
+                maxWidth: '100vw',
+                height: '100%',
+                border: 'none',
+                overflow: 'auto',
+                display: 'block',
+                boxSizing: 'border-box'
+              }}
+              scrolling="yes"
+              onLoad={() => {
+                // Quando o iframe carrega, verificar se já foi redirecionado
+                if (iframeRef.current) {
+                  try {
+                    const iframeUrl = iframeRef.current.contentWindow?.location.href;
+                    if (iframeUrl && (iframeUrl.includes('/purchase/') || iframeUrl.includes('payment_status'))) {
+                      // Se já está em uma rota de retorno, processar imediatamente
+                      console.log('🔔 Iframe carregou em rota de retorno:', iframeUrl);
+                    }
+                  } catch (error) {
+                    // CORS - esperado, continuamos com o polling
+                  }
+                }
+              }}
+            />
+            
+            {/* Botão de fallback caso iframe não funcione */}
+            <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-10">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+                  setShowPaymentModal(false);
+                  setPaymentUrl(null);
+                }}
+                className="bg-white shadow-lg text-xs sm:text-sm h-7 sm:h-9 px-2 sm:px-4"
+              >
+                Abrir em nova aba
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
       <Card className="w-full max-w-6xl my-2 sm:my-4 md:my-8 relative max-h-[95vh] overflow-y-auto">
         <Button
           variant="ghost"
@@ -218,7 +746,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
             <div className="flex-1">
               <CardTitle className="text-xl sm:text-2xl mb-1 sm:mb-2">Finalizar Compra</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Escolha a forma de pagamento e complete seus dados
+                Revise seu pedido e finalize o pagamento
               </CardDescription>
             </div>
             {/* Logo Mercado Pago */}
@@ -232,117 +760,196 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         </CardHeader>
 
         <CardContent className="p-3 sm:p-6">
-          <div className="grid lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            {/* Formulário - 2 colunas */}
-            <div className="lg:col-span-2">
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-6">
-                {/* Informações Pessoais */}
-                <Card className="border-2">
-                  <CardHeader className="p-3 sm:p-6">
-                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Informações Pessoais
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Nome Completo *</Label>
-                        <Input
-                          id="name"
-                          name="name"
-                          placeholder="João Silva"
-                          value={formData.name}
-                          onChange={handleChange}
-                          required
+          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+            {/* Resumo do Pedido - 1 coluna - Primeiro no mobile */}
+            <div className="order-1 lg:order-2 space-y-3 sm:space-y-4">
+              <Card className="bg-gradient-to-br from-blue-50 to-teal-50 border-2 border-blue-200 lg:sticky lg:top-2 sm:top-4">
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Resumo do Pedido
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    {courses.length > 0 && products.length > 0 
+                      ? `${courses.length} ${courses.length === 1 ? 'curso' : 'cursos'} e ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`
+                      : courses.length > 0
+                      ? `${courses.length} ${courses.length === 1 ? 'curso' : 'cursos'}`
+                      : products.length > 0
+                      ? `${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`
+                      : '0 cursos'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
+                  {/* Lista de Cursos e Produtos */}
+                  <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
+                    {courses.map((course) => (
+                      <div key={course.id} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-blue-200 last:border-b-0">
+                        <img 
+                          src={course.image} 
+                          alt={course.title}
+                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
                         />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1">{course.title}</h4>
+                          <p className="text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">{course.instructor}</p>
+                          <p className="text-xs sm:text-sm font-bold text-green-600">
+                            R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}
+                          </p>
+                        </div>
                       </div>
+                    ))}
+                    {products.map((product, index) => (
+                      <div key={`${product.id}-${index}`} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-blue-200 last:border-b-0">
+                        <img 
+                          src={product.image} 
+                          alt={product.title}
+                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1">{product.title}</h4>
+                          <p className="text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">{product.type === 'physical' ? 'Produto Físico' : 'Produto Digital'}</p>
+                          <p className="text-xs sm:text-sm font-bold text-green-600">
+                            R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {productsLoading && (
+                      <div className="text-xs text-gray-500 text-center py-2">Carregando produtos...</div>
+                    )}
+                  </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="cpf">CPF *</Label>
+                  <Separator />
+
+                  {/* Campo de Cupom */}
+                  <div className="space-y-1.5 sm:space-y-2">
+                    {!couponApplied ? (
+                      <div className="flex gap-1.5 sm:gap-2">
                         <Input
-                          id="cpf"
-                          name="cpf"
-                          placeholder="000.000.000-00"
-                          value={formData.cpf}
-                          onChange={(e) => {
-                            setFormData({ ...formData, cpf: formatCPF(e.target.value) });
+                          placeholder="Código do cupom"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          className="flex-1 text-xs sm:text-sm h-8 sm:h-10"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          variant="outline"
+                          className="whitespace-nowrap text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-4"
+                        >
+                          Aplicar
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                          <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
+                          <span className="text-xs sm:text-sm font-semibold text-green-800 truncate">
+                            Cupom: {couponCode}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setCouponApplied(false);
+                            setCouponCode("");
+                            setDiscountAmount(0);
                           }}
-                          maxLength={14}
-                          required
-                        />
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs flex-shrink-0"
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Totais */}
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className={totalSavings > 0 ? "line-through text-gray-500" : "font-semibold"}>
+                        R$ {totalOriginal.toFixed(2)}
+                      </span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="text-green-700 font-semibold">Desconto:</span>
+                        <span className="text-green-700 font-semibold">-R$ {discount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="text-green-700 font-semibold">Desconto do Cupom:</span>
+                        <span className="text-green-700 font-semibold">-R$ {couponDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-sm sm:text-base md:text-lg">Total</span>
+                      <span className="font-bold text-lg sm:text-xl md:text-2xl text-blue-600">R$ {totalWithDiscount.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {totalSavings > 0 && (
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 sm:p-3 rounded-lg">
+                      <p className="text-xs sm:text-sm font-bold mb-0.5 sm:mb-1">
+                        🎉 Você está economizando R$ {totalSavings.toFixed(2)}!
+                      </p>
+                      <p className="text-[10px] sm:text-xs opacity-90">
+                        {discount > 0 && couponDiscount > 0 
+                          ? `R$ ${discount.toFixed(2)} de desconto + R$ ${couponDiscount.toFixed(2)} de desconto do cupom`
+                          : discount > 0 
+                            ? `Desconto aplicado`
+                            : `Desconto do cupom aplicado`
+                        }
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
+                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                      Incluso no seu pedido:
+                    </h4>
+                    <div className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <span>Acesso vitalício</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <span>Certificados digitais</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <span>Material complementar</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <span>Suporte com instrutores</span>
                       </div>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="joao@email.com"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
+            {/* Formulário - 2 colunas - Segundo no mobile */}
+            <div className="order-2 lg:order-1 lg:col-span-2">
+              <div className="space-y-3 sm:space-y-4 md:space-y-6">
                 {/* Métodos de Pagamento */}
                 <Card className="border-2">
                   <CardHeader className="p-3 sm:p-6">
                     <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                       <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                      Método de Pagamento
+                      Finalizar Pagamento
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-6 pt-0">
-                    {/* Seleção de método de pagamento */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("credit_card")}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          paymentMethod === "credit_card"
-                            ? "border-blue-600 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <CreditCard className={`w-6 h-6 mx-auto mb-2 ${
-                          paymentMethod === "credit_card" ? "text-blue-600" : "text-gray-400"
-                        }`} />
-                        <p className="text-sm font-semibold">Cartão</p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("pix")}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          paymentMethod === "pix"
-                            ? "border-green-600 bg-green-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <QrCode className={`w-6 h-6 mx-auto mb-2 ${
-                          paymentMethod === "pix" ? "text-green-600" : "text-gray-400"
-                        }`} />
-                        <p className="text-sm font-semibold">PIX</p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("boleto")}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          paymentMethod === "boleto"
-                            ? "border-purple-600 bg-purple-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <CreditCard className={`w-6 h-6 mx-auto mb-2 ${
-                          paymentMethod === "boleto" ? "text-purple-600" : "text-gray-400"
-                        }`} />
-                        <p className="text-sm font-semibold">Boleto</p>
-                      </button>
-                    </div>
 
                     {/* Se PIX foi gerado, mostrar QR code */}
                     {pixCode ? (
@@ -426,11 +1033,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                               Finalizar Pagamento
                             </h3>
                             <p className="text-gray-600 text-xs sm:text-sm">
-                              {paymentMethod === "pix" 
-                                ? "Você verá o QR Code do PIX após confirmar"
-                                : paymentMethod === "boleto"
-                                ? "Você receberá o boleto para pagamento"
-                                : "Você será redirecionado para uma página segura de pagamento"}
+                              Você será redirecionado para uma página segura de pagamento
                             </p>
                           </div>
 
@@ -457,8 +1060,8 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           <Button
                             type="button"
                             onClick={handleCheckout}
-                            disabled={isProcessing}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                            disabled={isProcessing || productsLoading || (products.length === 0 && courses.length === 0)}
+                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isProcessing ? (
                               <div className="flex items-center justify-center gap-3">
@@ -467,13 +1070,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-3">
-                                <span>
-                                  {paymentMethod === "pix" 
-                                    ? "Gerar QR Code PIX"
-                                    : paymentMethod === "boleto"
-                                    ? "Gerar Boleto"
-                                    : "Continuar para Pagamento"}
-                                </span>
+                                <span>Continuar para Pagamento</span>
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
@@ -504,173 +1101,12 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                     <span>Criptografado</span>
                   </div>
                 </div>
-              </form>
-            </div>
-
-            {/* Resumo do Pedido - 1 coluna */}
-            <div className="space-y-3 sm:space-y-4">
-              <Card className="bg-gradient-to-br from-blue-50 to-teal-50 border-2 border-blue-200 sticky top-2 sm:top-4">
-                <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Resumo do Pedido
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    {courses.length} {courses.length === 1 ? 'curso' : 'cursos'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
-                  {/* Lista de Cursos */}
-                  <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
-                    {courses.map((course) => (
-                      <div key={course.id} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-blue-200 last:border-b-0">
-                        <img 
-                          src={course.image} 
-                          alt={course.title}
-                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1">{course.title}</h4>
-                          <p className="text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">{course.instructor}</p>
-                          <p className="text-xs sm:text-sm font-bold text-green-600">
-                            R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Separator />
-
-                  {/* Campo de Cupom */}
-                  <div className="space-y-1.5 sm:space-y-2">
-                    {!couponApplied ? (
-                      <div className="flex gap-1.5 sm:gap-2">
-                        <Input
-                          placeholder="Código do cupom"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          className="flex-1 text-xs sm:text-sm h-8 sm:h-10"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleApplyCoupon}
-                          variant="outline"
-                          className="whitespace-nowrap text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-4"
-                        >
-                          Aplicar
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                          <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm font-semibold text-green-800 truncate">
-                            Cupom: {couponCode}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setCouponApplied(false);
-                            setCouponCode("");
-                            setDiscountAmount(0);
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs flex-shrink-0"
-                        >
-                          Remover
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  {/* Totais */}
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className={totalSavings > 0 ? "line-through text-gray-500" : "font-semibold"}>
-                        R$ {totalOriginal.toFixed(2)}
-                      </span>
-                    </div>
-                    {courseDiscount > 0 && (
-                      <div className="flex justify-between text-xs sm:text-sm">
-                        <span className="text-green-700 font-semibold">Desconto do Curso:</span>
-                        <span className="text-green-700 font-semibold">-R$ {courseDiscount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {couponDiscount > 0 && (
-                      <div className="flex justify-between text-xs sm:text-sm">
-                        <span className="text-green-700 font-semibold">Desconto do Cupom:</span>
-                        <span className="text-green-700 font-semibold">-R$ {couponDiscount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-sm sm:text-base md:text-lg">Total</span>
-                      <span className="font-bold text-lg sm:text-xl md:text-2xl text-blue-600">R$ {totalWithDiscount.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  {totalSavings > 0 && (
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 sm:p-3 rounded-lg">
-                      <p className="text-xs sm:text-sm font-bold mb-0.5 sm:mb-1">
-                        🎉 Você está economizando R$ {totalSavings.toFixed(2)}!
-                      </p>
-                      <p className="text-[10px] sm:text-xs opacity-90">
-                        {courseDiscount > 0 && couponDiscount > 0 
-                          ? `R$ ${courseDiscount.toFixed(2)} de desconto do curso + R$ ${couponDiscount.toFixed(2)} de desconto do cupom`
-                          : courseDiscount > 0 
-                            ? `Desconto do curso aplicado`
-                            : `Desconto do cupom aplicado`
-                        }
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
-                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-                      Incluso no seu pedido:
-                    </h4>
-                    <div className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
-                        <span>Acesso vitalício</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
-                        <span>Certificados digitais</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
-                        <span>Material complementar</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
-                        <span>Suporte com instrutores</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200">
-                    <p className="text-xs sm:text-sm font-semibold text-green-800 flex items-center gap-1.5 sm:gap-2">
-                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                      Garantia de 7 dias
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">
-                      100% do seu dinheiro de volta
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }
