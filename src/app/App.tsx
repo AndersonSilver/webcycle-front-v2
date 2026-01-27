@@ -10,6 +10,7 @@ import { Checkout } from "./components/Checkout";
 import { Login } from "./components/Login";
 import { MyCourses } from "./components/MyCourses";
 import { MyPurchases } from "./components/MyPurchases";
+import { MyProfile } from "./components/MyProfile";
 import { CoursePlayer } from "./components/CoursePlayer";
 import { PodcastPlayer } from "./components/PodcastPlayer";
 import { AdminPanel } from "./components/AdminPanel";
@@ -32,7 +33,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 import { useHomeContent } from "../hooks/useHomeContent";
 import { useTheme } from "../hooks/useTheme";
 
-type View = "home" | "detail" | "checkout" | "my-courses" | "my-purchases" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending" | "image-landing" | "products" | "product-detail";
+type View = "home" | "detail" | "checkout" | "my-courses" | "my-purchases" | "my-profile" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending" | "image-landing" | "products" | "product-detail";
 
 interface UserData {
   name: string;
@@ -59,6 +60,7 @@ export default function App() {
     if (path === "/checkout") return "checkout";
     if (path === "/meus-cursos") return "my-courses";
     if (path === "/minhas-compras") return "my-purchases";
+    if (path === "/meu-perfil") return "my-profile";
     if (path === "/admin") return "admin";
     if (path === "/produtos") return "products";
     if (path.startsWith("/produto/")) return "product-detail";
@@ -971,6 +973,11 @@ export default function App() {
                           Minhas Compras
                         </button>
                         <button
+                          onClick={() => {
+                            navigate("/meu-perfil");
+                            setUserMenuOpen(false);
+                            window.scrollTo(0, 0);
+                          }}
                           className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                         >
                           <User className="w-4 h-4" />
@@ -1070,6 +1077,11 @@ export default function App() {
                       Minhas Compras
                     </button>
                     <button
+                      onClick={() => {
+                        navigate("/meu-perfil");
+                        setMobileMenuOpen(false);
+                        window.scrollTo(0, 0);
+                      }}
                       className="transition-colors text-left flex items-center gap-2"
                       style={{ color: 'var(--theme-text-primary)' }}
                       onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
@@ -1563,6 +1575,12 @@ export default function App() {
               onBack={handleBackToHome}
             />
           </>
+        )}
+
+        {currentView === "my-profile" && (
+          <MyProfile
+            onBack={handleBackToHome}
+          />
         )}
 
         {currentView === "products" && (

@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { CheckCircle2, Lock, ShoppingCart, X, Copy } from "lucide-react";
+import { CheckCircle2, Lock, ShoppingCart, X, Copy, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "../../services/apiClient";
 import { handleApiError } from "../../utils/errorHandler";
@@ -41,6 +41,18 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
   const [purchaseId, setPurchaseId] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  
+  // Endereço de envio para produtos físicos
+  const [shippingAddress, setShippingAddress] = useState({
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zipCode: "",
+  });
+  const [addressLoaded, setAddressLoaded] = useState(false);
 
   const loadProducts = useCallback(async (productItems: Array<{ productId: string; quantity: number }>) => {
     try {
@@ -87,6 +99,35 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
   }, [navigate]);
 
 
+  // Carregar endereço do perfil se houver produtos físicos
+  const loadShippingAddress = useCallback(async () => {
+    const hasPhysicalProducts = products.some(p => p.type === 'physical');
+    if (!hasPhysicalProducts) {
+      setAddressLoaded(true);
+      return;
+    }
+
+    try {
+      const response = await apiClient.getProfile();
+      const user = response.user;
+      if (user) {
+        setShippingAddress({
+          street: user.addressStreet || "",
+          number: user.addressNumber || "",
+          complement: user.addressComplement || "",
+          neighborhood: user.addressNeighborhood || "",
+          city: user.addressCity || "",
+          state: user.addressState || "",
+          zipCode: user.addressZipCode || "",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao carregar endereço:", error);
+    } finally {
+      setAddressLoaded(true);
+    }
+  }, [products]);
+
   // Carregar produtos do location.state ou do localStorage (carrinho)
   useEffect(() => {
     const state = location.state as { products?: Array<{ productId: string; quantity: number }> };
@@ -106,6 +147,13 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
       }
     }
   }, [location.state, loadProducts]);
+
+  // Carregar endereço quando produtos forem carregados
+  useEffect(() => {
+    if (products.length > 0) {
+      loadShippingAddress();
+    }
+  }, [products, loadShippingAddress]);
 
   // Monitorar status da compra via polling quando o modal de pagamento estiver aberto
   useEffect(() => {
@@ -545,6 +593,17 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         return;
       }
 
+      // Validar endereço se houver produtos físicos
+      const hasPhysicalProducts = products.some(p => p.type === 'physical');
+      if (hasPhysicalProducts) {
+        if (!shippingAddress.street || !shippingAddress.number || !shippingAddress.neighborhood || 
+            !shippingAddress.city || !shippingAddress.state || !shippingAddress.zipCode) {
+          toast.error("Por favor, preencha todos os campos obrigatórios do endereço de envio");
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // Preparar produtos para o checkout (agrupar por ID e quantidade)
       const productMap = new Map<string, number>();
       products.forEach(product => {
@@ -557,11 +616,38 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         quantity,
       }));
 
+      // Salvar endereço no perfil se houver produtos físicos
+      if (hasPhysicalProducts) {
+        try {
+          await apiClient.updateProfile({
+            addressStreet: shippingAddress.street,
+            addressNumber: shippingAddress.number,
+            addressComplement: shippingAddress.complement || undefined,
+            addressNeighborhood: shippingAddress.neighborhood,
+            addressCity: shippingAddress.city,
+            addressState: shippingAddress.state,
+            addressZipCode: shippingAddress.zipCode,
+          });
+        } catch (error) {
+          console.error("Erro ao salvar endereço no perfil:", error);
+          // Não bloquear o checkout se falhar ao salvar no perfil
+        }
+      }
+
       const response = await apiClient.checkout({
         courses: hasCourses ? courses.map(c => c.id) : undefined,
         products: productItems.length > 0 ? productItems : undefined,
         paymentMethod: paymentMethod,
         couponCode: couponApplied ? couponCode : undefined,
+        shippingAddress: hasPhysicalProducts ? {
+          street: shippingAddress.street,
+          number: shippingAddress.number,
+          complement: shippingAddress.complement,
+          neighborhood: shippingAddress.neighborhood,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          zipCode: shippingAddress.zipCode,
+        } : undefined,
       });
 
       setDiscountAmount(response.discountAmount || 0);
@@ -1017,6 +1103,100 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-teal-50 opacity-50"></div>
                         
                         <div className="relative space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
+                          {/* Seção de Endereço de Envio (apenas para produtos físicos) */}
+                          {products.some(p => p.type === 'physical') && addressLoaded && (
+                            <Card className="bg-white/90 backdrop-blur-sm border-2 border-blue-200">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
+                                  Endereço de Envio
+                                </CardTitle>
+                                <CardDescription className="text-xs sm:text-sm">
+                                  Confirme o endereço para entrega dos produtos físicos
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-3 sm:space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                                  <div className="md:col-span-2">
+                                    <Label htmlFor="shipping-street" className="text-xs sm:text-sm">Rua *</Label>
+                                    <Input
+                                      id="shipping-street"
+                                      value={shippingAddress.street}
+                                      onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
+                                      placeholder="Nome da rua"
+                                      className="text-xs sm:text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="shipping-number" className="text-xs sm:text-sm">Número *</Label>
+                                    <Input
+                                      id="shipping-number"
+                                      value={shippingAddress.number}
+                                      onChange={(e) => setShippingAddress({ ...shippingAddress, number: e.target.value })}
+                                      placeholder="123"
+                                      className="text-xs sm:text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label htmlFor="shipping-complement" className="text-xs sm:text-sm">Complemento</Label>
+                                  <Input
+                                    id="shipping-complement"
+                                    value={shippingAddress.complement}
+                                    onChange={(e) => setShippingAddress({ ...shippingAddress, complement: e.target.value })}
+                                    placeholder="Apto, Bloco, etc."
+                                    className="text-xs sm:text-sm"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                  <div>
+                                    <Label htmlFor="shipping-neighborhood" className="text-xs sm:text-sm">Bairro *</Label>
+                                    <Input
+                                      id="shipping-neighborhood"
+                                      value={shippingAddress.neighborhood}
+                                      onChange={(e) => setShippingAddress({ ...shippingAddress, neighborhood: e.target.value })}
+                                      placeholder="Nome do bairro"
+                                      className="text-xs sm:text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="shipping-zipcode" className="text-xs sm:text-sm">CEP *</Label>
+                                    <Input
+                                      id="shipping-zipcode"
+                                      value={shippingAddress.zipCode}
+                                      onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })}
+                                      placeholder="00000-000"
+                                      className="text-xs sm:text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                  <div>
+                                    <Label htmlFor="shipping-city" className="text-xs sm:text-sm">Cidade *</Label>
+                                    <Input
+                                      id="shipping-city"
+                                      value={shippingAddress.city}
+                                      onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
+                                      placeholder="Nome da cidade"
+                                      className="text-xs sm:text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="shipping-state" className="text-xs sm:text-sm">Estado *</Label>
+                                    <Input
+                                      id="shipping-state"
+                                      value={shippingAddress.state}
+                                      onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value.toUpperCase() })}
+                                      placeholder="UF"
+                                      maxLength={2}
+                                      className="text-xs sm:text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
                           {/* Ícone central */}
                           <div className="flex justify-center">
                             <div className="relative">

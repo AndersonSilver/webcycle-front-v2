@@ -623,7 +623,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
 
     if (mainView === "home-content") {
-      loadHomeContent();
+      // Apenas carregar conteúdo da home em desenvolvimento
+      if (import.meta.env.DEV) {
+        loadHomeContent();
+      } else {
+        // Em produção, redirecionar para dashboard
+        setMainView("dashboard");
+      }
     }
     if (mainView === "products") {
       loadProducts();
@@ -2543,7 +2549,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 { id: "podcasts", label: "Podcasts", icon: Headphones },
                 { id: "newsletter", label: "Newsletter", icon: Mail },
                 { id: "support", label: "Suporte", icon: MessageCircle },
-                { id: "home-content", label: "Conteúdo", icon: Sparkles },
+                ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = mainView === item.id;
@@ -2593,7 +2599,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               { id: "podcasts", label: "Podcasts", icon: Headphones },
               { id: "newsletter", label: "Newsletter", icon: Mail },
               { id: "support", label: "Suporte", icon: MessageCircle },
-              { id: "home-content", label: "Conteúdo", icon: Sparkles },
+              ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
               { id: "theme", label: "Tema", icon: Palette },
             ].map((item) => {
               const Icon = item.icon;
@@ -7387,8 +7393,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </section>
       )}
 
-            {/* Home Content View */}
-            {mainView === "home-content" && (
+            {/* Home Content View - Apenas em desenvolvimento */}
+            {mainView === "home-content" && import.meta.env.DEV && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8">
                   <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Conteúdo da Home</h2>
@@ -8475,7 +8481,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setEditingProduct(product);
+                                  // Garantir que valores numéricos sejam números válidos
+                                  setEditingProduct({
+                                    ...product,
+                                    price: product.price ? (typeof product.price === 'string' ? parseFloat(product.price) : product.price) : undefined,
+                                    originalPrice: product.originalPrice ? (typeof product.originalPrice === 'string' ? parseFloat(product.originalPrice) : product.originalPrice) : undefined,
+                                    rating: product.rating !== undefined && product.rating !== null ? (typeof product.rating === 'string' ? parseFloat(product.rating) : product.rating) : undefined,
+                                    stock: product.stock !== undefined && product.stock !== null ? (typeof product.stock === 'string' ? parseInt(product.stock) : product.stock) : undefined,
+                                  });
                                   setIsDialogOpen(true);
                                 }}
                               >
@@ -8549,8 +8562,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <Input
                               type="number"
                               step="0.01"
-                              value={editingProduct?.price || ""}
-                              onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
+                              value={editingProduct?.price !== undefined && editingProduct?.price !== null ? editingProduct.price : ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEditingProduct({ 
+                                  ...editingProduct, 
+                                  price: value === "" ? undefined : (isNaN(parseFloat(value)) ? undefined : parseFloat(value))
+                                });
+                              }}
                               placeholder="0.00"
                               className="h-10 sm:h-11 text-sm sm:text-base"
                             />
@@ -8560,8 +8579,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <Input
                               type="number"
                               step="0.01"
-                              value={editingProduct?.originalPrice || ""}
-                              onChange={(e) => setEditingProduct({ ...editingProduct, originalPrice: parseFloat(e.target.value) })}
+                              value={editingProduct?.originalPrice !== undefined && editingProduct?.originalPrice !== null ? editingProduct.originalPrice : ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEditingProduct({ 
+                                  ...editingProduct, 
+                                  originalPrice: value === "" ? undefined : (isNaN(parseFloat(value)) ? undefined : parseFloat(value))
+                                });
+                              }}
                               placeholder="0.00"
                               className="h-10 sm:h-11 text-sm sm:text-base"
                             />
@@ -8706,8 +8731,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               step="0.1"
                               min="0"
                               max="5"
-                              value={editingProduct?.rating || ""}
-                              onChange={(e) => setEditingProduct({ ...editingProduct, rating: e.target.value ? parseFloat(e.target.value) : undefined })}
+                              value={editingProduct?.rating !== undefined && editingProduct?.rating !== null ? editingProduct.rating : ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEditingProduct({ 
+                                  ...editingProduct, 
+                                  rating: value === "" ? undefined : (isNaN(parseFloat(value)) ? undefined : parseFloat(value))
+                                });
+                              }}
                               placeholder="0.0"
                               className="h-10 sm:h-11 text-sm sm:text-base"
                             />
@@ -8822,11 +8853,68 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             }
 
                             try {
+                              // Garantir que valores numéricos sejam números válidos ou não sejam enviados
+                              const productData: any = { ...editingProduct };
+                              
+                              // Converter e validar price
+                              if (editingProduct.price !== undefined && editingProduct.price !== null) {
+                                const priceNum = typeof editingProduct.price === 'string' ? parseFloat(editingProduct.price) : Number(editingProduct.price);
+                                if (!isNaN(priceNum) && priceNum >= 0) {
+                                  productData.price = priceNum;
+                                } else {
+                                  delete productData.price;
+                                }
+                              } else {
+                                delete productData.price;
+                              }
+
+                              // Converter e validar originalPrice
+                              if (editingProduct.originalPrice !== undefined && editingProduct.originalPrice !== null) {
+                                const originalPriceNum = typeof editingProduct.originalPrice === 'string' ? parseFloat(editingProduct.originalPrice) : Number(editingProduct.originalPrice);
+                                if (!isNaN(originalPriceNum) && originalPriceNum >= 0) {
+                                  productData.originalPrice = originalPriceNum;
+                                } else {
+                                  delete productData.originalPrice;
+                                }
+                              } else {
+                                delete productData.originalPrice;
+                              }
+
+                              // Converter e validar rating
+                              if (editingProduct.rating !== undefined && editingProduct.rating !== null) {
+                                const ratingNum = typeof editingProduct.rating === 'string' ? parseFloat(editingProduct.rating) : Number(editingProduct.rating);
+                                if (!isNaN(ratingNum) && ratingNum >= 0 && ratingNum <= 5) {
+                                  productData.rating = ratingNum;
+                                } else {
+                                  delete productData.rating;
+                                }
+                              } else {
+                                delete productData.rating;
+                              }
+
+                              // Converter e validar stock
+                              if (editingProduct.stock !== undefined && editingProduct.stock !== null) {
+                                const stockNum = typeof editingProduct.stock === 'string' ? parseInt(editingProduct.stock) : Number(editingProduct.stock);
+                                if (!isNaN(stockNum) && stockNum >= 0) {
+                                  productData.stock = stockNum;
+                                } else {
+                                  delete productData.stock;
+                                }
+                              } else {
+                                delete productData.stock;
+                              }
+
+                              // Validar price obrigatório ao criar produto
+                              if (!editingProduct?.id && (!productData.price || isNaN(Number(productData.price)) || Number(productData.price) < 0)) {
+                                toast.error("O preço é obrigatório e deve ser um número válido maior ou igual a zero.");
+                                return;
+                              }
+
                               if (editingProduct?.id) {
-                                await apiClient.updateProduct(editingProduct.id, editingProduct);
+                                await apiClient.updateProduct(editingProduct.id, productData);
                                 toast.success("Produto atualizado com sucesso");
                               } else {
-                                await apiClient.createProduct(editingProduct);
+                                await apiClient.createProduct(productData);
                                 toast.success("Produto criado com sucesso");
                               }
                               setIsDialogOpen(false);

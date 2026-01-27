@@ -174,11 +174,27 @@ class ApiClient {
     return this.request<{ user: any }>('/auth/me');
   }
 
-  async updateProfile(data: { name?: string; avatar?: string }) {
+  async updateProfile(data: {
+    name?: string;
+    avatar?: string;
+    phone?: string;
+    document?: string;
+    addressStreet?: string;
+    addressNumber?: string;
+    addressComplement?: string;
+    addressNeighborhood?: string;
+    addressCity?: string;
+    addressState?: string;
+    addressZipCode?: string;
+  }) {
     return this.request<{ user: any }>('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  async getProfile() {
+    return this.request<{ user: any }>('/auth/me');
   }
 
   async changePassword(data: { currentPassword: string; newPassword: string }) {
@@ -318,6 +334,15 @@ class ApiClient {
     products?: Array<{ productId: string; quantity: number }>;
     paymentMethod: 'pix' | 'boleto' | 'credit_card';
     couponCode?: string;
+    shippingAddress?: {
+      street: string;
+      number: string;
+      complement?: string;
+      neighborhood: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    };
   }) {
     return this.request<{
       purchaseId: string;

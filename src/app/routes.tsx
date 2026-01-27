@@ -23,6 +23,10 @@ export const router = createBrowserRouter([
     element: <App />,
   },
   {
+    path: "/meu-perfil",
+    element: <App />,
+  },
+  {
     path: "/auth/callback",
     element: <App />,
   },
