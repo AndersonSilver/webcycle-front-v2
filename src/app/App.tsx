@@ -1254,7 +1254,7 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <main style={{ paddingTop: currentView !== "admin" ? '45px' : '0' }}>
+      <main style={{ paddingTop: (currentView !== "admin" && currentView !== "image-landing") ? '45px' : '0' }}>
         {currentView === "home" && (
           <div
             className="relative"
