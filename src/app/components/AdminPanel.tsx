@@ -170,7 +170,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [currentTab, setCurrentTab] = useState<"info" | "content" | "modules">("info");
-  const [mainView, setMainView] = useState<"dashboard" | "courses" | "students" | "revenue" | "coupons" | "reviews" | "podcasts" | "newsletter" | "support" | "home-content" | "theme" | "products" | "sales">("dashboard");
+  const [mainView, setMainView] = useState<"dashboard" | "courses" | "students" | "revenue" | "coupons" | "reviews" | "podcasts" | "newsletter" | "support" | "home-content" | "theme" | "products" | "sales" | "sale-email">("dashboard");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -193,6 +193,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [salesViewMode, setSalesViewMode] = useState<"cards" | "table">("cards");
   const [proofDialogOpen, setProofDialogOpen] = useState(false);
   const [selectedProductPurchase, setSelectedProductPurchase] = useState<any | null>(null);
+  const [selectedPurchaseDetail, setSelectedPurchaseDetail] = useState<any | null>(null);
+  const [purchaseDetailDialogOpen, setPurchaseDetailDialogOpen] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofFiles, setProofFiles] = useState<Record<string, File>>({});
   const [uploadingProof, setUploadingProof] = useState<string | null>(null);
@@ -336,6 +338,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   // Theme Management
   const [themeLoading, setThemeLoading] = useState(false);
   const [themeSaving, setThemeSaving] = useState(false);
+  const [saleEmailLoading, setSaleEmailLoading] = useState(false);
+  const [saleEmailSaving, setSaleEmailSaving] = useState(false);
+  const [saleEmailActive, setSaleEmailActive] = useState(true);
+  const [saleEmailRaw, setSaleEmailRaw] = useState("");
+  const [saleEmailList, setSaleEmailList] = useState<Array<{ email: string; createdAt: string }>>([]);
+  const [saleEmailFilter, setSaleEmailFilter] = useState("");
   const [themeColors, setThemeColors] = useState<{
     primary: string;
     primaryDark: string;
@@ -468,12 +476,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     ? parseFloat(pp.priceAtPurchase.replace(',', '.')) 
                     : (typeof pp.priceAtPurchase === 'number' ? pp.priceAtPurchase : 0);
                   
-                  expandedPurchases.push({
-                    id: p.id,
-                    userId: p.userId,
-                    userName: p.user?.name || "Usuário",
-                    userEmail: p.user?.email || "",
-                    courseId: "",
+                expandedPurchases.push({
+                  id: p.id,
+                  userId: p.userId,
+                  userName: p.user?.name || "Usuário",
+                  userEmail: p.user?.email || "",
+                  courseId: "",
                     courseTitle: pp.product?.title || "Produto não encontrado",
                     price: productPrice * (pp.quantity || 1),
                     date: p.createdAt,
@@ -625,7 +633,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     if (mainView === "home-content") {
       // Apenas carregar conteúdo da home em desenvolvimento
       if (import.meta.env.DEV) {
-        loadHomeContent();
+      loadHomeContent();
       } else {
         // Em produção, redirecionar para dashboard
         setMainView("dashboard");
@@ -1006,10 +1014,95 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const normalizeSaleEmail = (email: string) => email.trim().toLowerCase();
+
+  const formatSaleEmailDate = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const filteredSaleEmails = saleEmailList.filter((item) =>
+    item.email.toLowerCase().includes(saleEmailFilter.trim().toLowerCase())
+  );
+
+  const addSaleEmail = () => {
+    const email = normalizeSaleEmail(saleEmailRaw);
+    if (!email) return;
+    if (!isValidEmail(email)) {
+      toast.error(`Email inválido: ${saleEmailRaw}`);
+      return;
+    }
+    if (saleEmailList.some((item) => item.email === email)) {
+      toast.info("Este email já foi adicionado.");
+      setSaleEmailRaw("");
+      return;
+    }
+    setSaleEmailList([
+      ...saleEmailList,
+      { email, createdAt: new Date().toISOString() },
+    ]);
+    setSaleEmailRaw("");
+  };
+
+  const removeSaleEmail = (email: string) => {
+    setSaleEmailList(saleEmailList.filter((item) => item.email !== email));
+  };
+
+  const loadSaleEmailSettings = async () => {
+    try {
+      setSaleEmailLoading(true);
+      const settings = await apiClient.getSaleEmailSettings();
+      setSaleEmailActive(settings.active);
+      setSaleEmailList(settings.recipients || []);
+      setSaleEmailRaw("");
+    } catch (error: any) {
+      console.error("Erro ao carregar emails de venda:", error);
+      toast.error(error.message || "Erro ao carregar emails de venda");
+    } finally {
+      setSaleEmailLoading(false);
+    }
+  };
+
+  const saveSaleEmailSettings = async () => {
+    try {
+      setSaleEmailSaving(true);
+      await apiClient.updateSaleEmailSettings({
+        active: saleEmailActive,
+        recipientEmails: saleEmailList.map((item) => item.email),
+      });
+      toast.success("Emails de venda atualizados com sucesso!");
+      await loadSaleEmailSettings();
+    } catch (error: any) {
+      console.error("Erro ao salvar emails de venda:", error);
+      toast.error(error.message || "Erro ao salvar emails de venda");
+    } finally {
+      setSaleEmailSaving(false);
+    }
+  };
+
   // Carregar tema quando a view mudar para theme
   useEffect(() => {
     if (mainView === "theme") {
       loadTheme();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainView]);
+
+  useEffect(() => {
+    if (mainView === "sale-email") {
+      loadSaleEmailSettings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainView]);
@@ -2500,25 +2593,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 10);
 
-  const courseColors = ['#3b82f6', '#14b8a6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981'];
+  const courseColors = ['#3b82f6', '#14b8a6', '#2563eb', '#f59e0b', '#ef4444', '#10b981'];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 scroll-smooth">
+    <div className="min-h-screen bg-gray-900 scroll-smooth">
       {/* Mobile Header & Navigation */}
       <div className="lg:hidden">
         <section className="bg-gradient-to-br from-gray-800 to-gray-900 text-white pt-24 pb-6 sticky top-0 z-30">
         <div className="container mx-auto px-4">
           <Button
             variant="ghost"
-              className="text-white hover:bg-white/10 mb-4"
+              className="text-white hover:bg-gray-800/10 mb-4"
             onClick={onBack}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -2534,7 +2627,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </section>
 
         {/* Mobile Navigation */}
-        <div className="bg-white border-b border-gray-200 sticky top-[200px] z-20">
+        <div className="bg-gray-800 border-b border-gray-700 sticky top-[200px] z-20">
           <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-2 px-4 py-3 min-w-max">
               {[
@@ -2558,8 +2651,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     key={item.id}
                     onClick={() => setMainView(item.id as any)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${isActive
-                        ? "bg-gray-800 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                       }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -2574,11 +2667,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       <div className="flex min-h-[calc(100vh-4rem)] lg:mt-16">
         {/* Sidebar Navigation - Desktop */}
-        <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 shadow-sm min-h-[calc(120vh-4rem)] sticky top-16 self-start">
-          <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white">
+        <aside className="hidden lg:flex flex-col w-64 bg-gray-800 border-r border-gray-700 shadow-sm min-h-[calc(120vh-4rem)] sticky top-16 self-start">
+          <div className="p-6 border-b border-gray-700 flex-shrink-0 bg-gray-800">
                   <Button
               variant="ghost"
-              className="text-gray-700 hover:bg-gray-100 -ml-2 w-full justify-start"
+              className="text-gray-300 hover:bg-gray-700 -ml-2 w-full justify-start"
               onClick={onBack}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -2598,6 +2691,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               { id: "reviews", label: "Avaliações", icon: MessageSquare },
               { id: "podcasts", label: "Podcasts", icon: Headphones },
               { id: "newsletter", label: "Newsletter", icon: Mail },
+              { id: "sale-email", label: "Email de Vendas", icon: Mail },
               { id: "support", label: "Suporte", icon: MessageCircle },
               ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
               { id: "theme", label: "Tema", icon: Palette },
@@ -2609,11 +2703,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   key={item.id}
                   onClick={() => setMainView(item.id as any)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive
-                      ? "bg-gray-100 text-gray-900 border-l-4 border-gray-800 font-semibold"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-blue-600 text-white border-l-4 border-blue-400 font-semibold"
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
                     }`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? "text-gray-900" : "text-gray-500"}`} />
+                  <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -2622,7 +2716,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0 w-full lg:w-auto overflow-y-auto">
+        <main className="flex-1 min-w-0 w-full lg:w-auto overflow-y-auto bg-gray-900">
           <div className="container mx-auto px-4 lg:px-8 pt-6 pb-4 sm:pt-8 sm:pb-6 lg:pt-12">
             {/* Stats - Only show on Dashboard and Revenue pages */}
             {(mainView === "dashboard" || mainView === "revenue") && (
@@ -2633,6 +2727,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     variant={selectedPeriod === "7d" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedPeriod("7d")}
+                    className={selectedPeriod === "7d" 
+                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
                   >
                     7 Dias
                   </Button>
@@ -2640,6 +2737,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     variant={selectedPeriod === "30d" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedPeriod("30d")}
+                    className={selectedPeriod === "30d" 
+                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
                   >
                     30 Dias
                   </Button>
@@ -2647,6 +2747,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     variant={selectedPeriod === "90d" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedPeriod("90d")}
+                    className={selectedPeriod === "90d" 
+                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
                   >
                     90 Dias
                   </Button>
@@ -2654,6 +2757,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     variant={selectedPeriod === "month" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedPeriod("month")}
+                    className={selectedPeriod === "month" 
+                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
                   >
                     Mês Atual
                   </Button>
@@ -2661,6 +2767,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     variant={selectedPeriod === "year" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedPeriod("year")}
+                    className={selectedPeriod === "year" 
+                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
                   >
                     Ano Atual
                   </Button>
@@ -2668,35 +2777,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Cards de Métricas */}
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900 break-words">
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white break-words">
                       R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
-                    <div className="text-xs sm:text-sm text-gray-600">Faturamento Total</div>
+                    <div className="text-xs sm:text-sm text-gray-400">Faturamento Total</div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900">{totalSales}</div>
-                    <div className="text-xs sm:text-sm text-gray-600">Total de Vendas</div>
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">{totalSales}</div>
+                    <div className="text-xs sm:text-sm text-gray-400">Total de Vendas</div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900">{totalStudents}</div>
-                    <div className="text-xs sm:text-sm text-gray-600">Alunos Cadastrados</div>
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">{totalStudents}</div>
+                    <div className="text-xs sm:text-sm text-gray-400">Alunos Cadastrados</div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900">{totalCourses}</div>
-                    <div className="text-xs sm:text-sm text-gray-600">Cursos Ativos</div>
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">{totalCourses}</div>
+                    <div className="text-xs sm:text-sm text-gray-400">Cursos Ativos</div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900">
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">
                       R$ {periodAverageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
-                    <div className="text-xs sm:text-sm text-gray-600">Ticket Médio</div>
+                    <div className="text-xs sm:text-sm text-gray-400">Ticket Médio</div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900">
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">
                       {conversionRate.toFixed(1)}%
                     </div>
-                    <div className="text-xs sm:text-sm text-gray-600">Taxa de Conversão</div>
+                    <div className="text-xs sm:text-sm text-gray-400">Taxa de Conversão</div>
                   </div>
                 </div>
               </>
@@ -2705,23 +2814,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             {/* Course Dialog - Outside header section */}
             {mainView === "courses" && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="!max-w-[95vw] !w-[95vw] sm:!max-w-[90vw] md:!max-w-[85vw] lg:!max-w-[75vw] xl:!max-w-[65vw] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
-                  <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
-                    <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
+                <DialogContent className="!max-w-[95vw] !w-[95vw] sm:!max-w-[90vw] md:!max-w-[85vw] lg:!max-w-[75vw] xl:!max-w-[65vw] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8 bg-gray-800 border-gray-700">
+                  <DialogHeader className="pb-4 sm:pb-6 border-b border-gray-700 mb-4 sm:mb-6">
+                    <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
                       {editingCourse ? "Editar Curso" : "Criar Novo Curso"}
                     </DialogTitle>
-                    <DialogDescription className="text-sm sm:text-base lg:text-lg mt-2 sm:mt-3">
+                    <DialogDescription className="text-sm sm:text-base lg:text-lg mt-2 sm:mt-3 text-gray-400">
                       {editingCourse ? "Edite as informações do curso abaixo" : "Preencha os dados para criar um novo curso"}
                     </DialogDescription>
                   </DialogHeader>
 
                   <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-hidden flex flex-col">
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 p-1.5 sm:p-2 bg-gray-100 rounded-lg mb-4 sm:mb-6 lg:mb-8">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 p-1.5 sm:p-2 bg-gray-700 rounded-lg mb-4 sm:mb-6 lg:mb-8">
                       <button
                         type="button"
                         className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "info"
-                          ? "bg-white shadow-sm"
-                          : ""
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-300 hover:bg-gray-600"
                         }`}
                         onClick={() => setCurrentTab("info")}
                       >
@@ -2730,8 +2839,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <button
                         type="button"
                         className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "content"
-                          ? "bg-white shadow-sm"
-                          : ""
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-300 hover:bg-gray-600"
                         }`}
                         onClick={() => setCurrentTab("content")}
                       >
@@ -2740,8 +2849,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <button
                         type="button"
                         className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "modules"
-                          ? "bg-white shadow-sm"
-                          : ""
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-300 hover:bg-gray-600"
                         }`}
                         onClick={() => setCurrentTab("modules")}
                       >
@@ -2754,20 +2863,20 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <>
                           {/* Seção: Informações Principais */}
                           <div className="space-y-4 sm:space-y-6">
-                            <div className="border-b border-gray-200 pb-2 sm:pb-3">
-                              <h3 className="text-base sm:text-lg font-semibold text-gray-800">Informações Principais</h3>
-                              <p className="text-xs sm:text-sm text-gray-500 mt-1">Dados básicos do curso</p>
+                            <div className="border-b border-gray-700 pb-2 sm:pb-3">
+                              <h3 className="text-base sm:text-lg font-semibold text-white">Informações Principais</h3>
+                              <p className="text-xs sm:text-sm text-gray-400 mt-1">Dados básicos do curso</p>
                             </div>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                               <div>
-                                <Label htmlFor="title" className="text-sm sm:text-base font-medium">Título *</Label>
+                                <Label htmlFor="title" className="text-sm sm:text-base font-medium text-gray-300">Título *</Label>
                                 <Input
                                   id="title"
                                   value={title}
                                   onChange={(e) => setTitle(e.target.value)}
                                   placeholder="Nome do curso"
-                                  className="mt-2 h-10 sm:h-11 text-sm sm:text-base"
+                                  className="mt-2 h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.title && (
                                   <p className="text-xs sm:text-sm text-red-500 mt-1">
@@ -2777,13 +2886,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               </div>
 
                               <div>
-                                <Label htmlFor="subtitle" className="text-sm sm:text-base font-medium">Subtítulo *</Label>
+                                <Label htmlFor="subtitle" className="text-sm sm:text-base font-medium text-gray-300">Subtítulo *</Label>
                                 <Input
                                   id="subtitle"
                                   value={subtitle}
                                   onChange={(e) => setSubtitle(e.target.value)}
                                   placeholder="Breve descrição"
-                                  className="mt-2 h-10 sm:h-11 text-sm sm:text-base"
+                                  className="mt-2 h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.subtitle && (
                                   <p className="text-xs sm:text-sm text-red-500 mt-1">
@@ -2794,14 +2903,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             </div>
 
                             <div>
-                              <Label htmlFor="description" className="text-sm sm:text-base font-medium">Descrição *</Label>
+                              <Label htmlFor="description" className="text-sm sm:text-base font-medium text-gray-300">Descrição *</Label>
                               <Textarea
                                 id="description"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Descrição completa do curso"
                                 rows={4}
-                                className="mt-2 resize-none text-sm sm:text-base"
+                                className="mt-2 resize-none text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                               {errors.description && (
                                 <p className="text-xs sm:text-sm text-red-500 mt-1">
@@ -2812,15 +2921,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
 
                           {/* Seção: Preços e Categoria */}
-                          <div className="space-y-6 sm:space-y-8 bg-gray-50 p-6 sm:p-8 lg:p-10 rounded-lg border">
-                            <div className="border-b border-gray-200 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Preços e Categoria</h3>
-                              <p className="text-sm sm:text-base text-gray-500 mt-2">Configure os valores e classificação</p>
+                          <div className="space-y-6 sm:space-y-8 bg-gray-900 p-6 sm:p-8 lg:p-10 rounded-lg border">
+                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Preços e Categoria</h3>
+                              <p className="text-sm sm:text-base text-gray-400 mt-2">Configure os valores e classificação</p>
                             </div>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                               <div className="space-y-2">
-                                <Label htmlFor="price" className="text-base sm:text-lg font-medium">Preço (R$) *</Label>
+                                <Label htmlFor="price" className="text-base sm:text-lg font-medium text-white">Preço (R$) *</Label>
                                 <Input
                                   id="price"
                                   type="number"
@@ -2828,7 +2937,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   value={price}
                                   onChange={(e) => setPrice(e.target.value)}
                                   placeholder="297.00"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.price && (
                                   <p className="text-sm text-red-500 mt-2">
@@ -2838,7 +2947,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               </div>
 
                               <div className="space-y-2">
-                                <Label htmlFor="originalPrice" className="text-base sm:text-lg font-medium">Preço Original (R$)</Label>
+                                <Label htmlFor="originalPrice" className="text-base sm:text-lg font-medium text-white">Preço Original (R$)</Label>
                                 <Input
                                   id="originalPrice"
                                   type="number"
@@ -2846,18 +2955,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   value={originalPrice}
                                   onChange={(e) => setOriginalPrice(e.target.value)}
                                   placeholder="497.00"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                               </div>
 
                               <div className="sm:col-span-2 lg:col-span-1 space-y-2">
-                                <Label htmlFor="category" className="text-base sm:text-lg font-medium">Categoria *</Label>
+                                <Label htmlFor="category" className="text-base sm:text-lg font-medium text-white">Categoria *</Label>
                                 <Input
                                   id="category"
                                   value={category}
                                   onChange={(e) => setCategory(e.target.value)}
                                   placeholder="Relacionamentos, Ansiedade, etc."
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.category && (
                                   <p className="text-sm text-red-500 mt-2">
@@ -2869,15 +2978,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
 
                           {/* Seção: Mídia e Instrutor */}
-                          <div className="space-y-6 sm:space-y-8 bg-gray-50 p-6 sm:p-8 lg:p-10 rounded-lg border">
-                            <div className="border-b border-gray-200 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Mídia e Instrutor</h3>
-                              <p className="text-sm sm:text-base text-gray-500 mt-2">Imagem e informações do instrutor</p>
+                          <div className="space-y-6 sm:space-y-8 bg-gray-900 p-6 sm:p-8 lg:p-10 rounded-lg border">
+                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Mídia e Instrutor</h3>
+                              <p className="text-sm sm:text-base text-gray-400 mt-2">Imagem e informações do instrutor</p>
                             </div>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                               <div className="space-y-2">
-                                <Label htmlFor="image" className="text-base sm:text-lg font-medium">Imagem do Curso *</Label>
+                                <Label htmlFor="image" className="text-base sm:text-lg font-medium text-white">Imagem do Curso *</Label>
                                 <div className="mt-2 space-y-3">
                                   <input
                                     type="file"
@@ -2897,7 +3006,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       variant="outline"
                                       onClick={() => document.getElementById('image')?.click()}
                                       disabled={imageUploading}
-                                    className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                    className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                     >
                                       {imageUploading ? (
                                         <>
@@ -2925,13 +3034,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           console.log('Imagem carregada com sucesso:', image);
                                         }}
                                       />
-                                      <p className="text-sm text-gray-500 mt-2">Imagem atual</p>
+                                      <p className="text-sm text-gray-400 mt-2">Imagem atual</p>
                                       <p className="text-xs mt-1 break-all" style={{ color: 'var(--theme-primary-light)' }}>{image}</p>
                                     </div>
                                   )}
                                   {image && image.trim() && !image.startsWith('http://') && !image.startsWith('https://') && (
-                                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                                      <p className="text-sm text-yellow-700">Aguardando URL da imagem...</p>
+                                    <div className="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
+                                      <p className="text-sm text-yellow-400">Aguardando URL da imagem...</p>
                                     </div>
                                   )}
                                 </div>
@@ -2943,13 +3052,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               </div>
 
                               <div className="space-y-2">
-                                <Label htmlFor="instructor" className="text-base sm:text-lg font-medium">Instrutor *</Label>
+                                <Label htmlFor="instructor" className="text-base sm:text-lg font-medium text-white">Instrutor *</Label>
                                 <Input
                                   id="instructor"
                                   value={instructor}
                                   onChange={(e) => setInstructor(e.target.value)}
                                   placeholder="Nome do instrutor"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.instructor && (
                                   <p className="text-sm text-red-500 mt-2">
@@ -2961,13 +3070,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                               <div className="space-y-2">
-                                <Label htmlFor="duration" className="text-base sm:text-lg font-medium">Duração *</Label>
+                                <Label htmlFor="duration" className="text-base sm:text-lg font-medium text-white">Duração *</Label>
                                 <Input
                                   id="duration"
                                   value={duration}
                                   onChange={(e) => setDuration(e.target.value)}
                                   placeholder="Ex: 20h, 30h"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.duration && (
                                   <p className="text-sm text-red-500 mt-2">
@@ -2977,14 +3086,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               </div>
 
                               <div className="space-y-2">
-                                <Label htmlFor="lessons" className="text-base sm:text-lg font-medium">Número de Aulas *</Label>
+                                <Label htmlFor="lessons" className="text-base sm:text-lg font-medium text-white">Número de Aulas *</Label>
                                 <Input
                                   id="lessons"
                                   type="number"
                                   value={lessons}
                                   onChange={(e) => setLessons(e.target.value)}
                                   placeholder="Ex: 10, 20"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg"
+                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                 {errors.lessons && (
                                   <p className="text-sm text-red-500 mt-2">
@@ -3001,13 +3110,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <>
                           {/* Seção: Conteúdo do Curso */}
                           <div className="space-y-6 sm:space-y-8">
-                            <div className="border-b border-gray-200 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Conteúdo do Curso</h3>
-                              <p className="text-sm sm:text-base text-gray-500 mt-2">Vídeo de apresentação e informações adicionais</p>
+                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Conteúdo do Curso</h3>
+                              <p className="text-sm sm:text-base text-gray-400 mt-2">Vídeo de apresentação e informações adicionais</p>
                             </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor="videoUrl" className="text-base sm:text-lg font-medium">Vídeo de Apresentação do Curso</Label>
+                              <Label htmlFor="videoUrl" className="text-base sm:text-lg font-medium text-white">Vídeo de Apresentação do Curso</Label>
                               <div className="mt-2 space-y-3">
                               <input
                                 type="file"
@@ -3041,7 +3150,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 variant="outline"
                                 onClick={() => document.getElementById('videoUrl')?.click()}
                                 disabled={videoUploading}
-                                  className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                  className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                               >
                                 {videoUploading ? (
                                   <>
@@ -3056,7 +3165,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 )}
                               </Button>
                               {videoFile && !videoUploading && (
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-sm text-gray-400">
                                   Tamanho: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
                                   {videoFile.size > 50 * 1024 * 1024 && (
                                     <span className="text-orange-600 ml-2">
@@ -3077,7 +3186,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               {videoUrl && (
                                   <div className="mt-3">
                                     <video src={videoUrl} controls className="w-full rounded-lg border max-h-64" />
-                                    <p className="text-sm text-gray-500 mt-2">Vídeo atual</p>
+                                    <p className="text-sm text-gray-400 mt-2">Vídeo atual</p>
                                     <p className="text-xs mt-1 break-all" style={{ color: 'var(--theme-primary-light)' }}>{videoUrl}</p>
                                 </div>
                               )}
@@ -3085,30 +3194,30 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor="aboutCourse" className="text-base sm:text-lg font-medium">Sobre o Curso</Label>
+                              <Label htmlFor="aboutCourse" className="text-base sm:text-lg font-medium text-white">Sobre o Curso</Label>
                             <Textarea
                               id="aboutCourse"
                               value={aboutCourse}
                               onChange={(e) => setAboutCourse(e.target.value)}
                               placeholder="Informações detalhadas sobre o curso..."
                                 rows={8}
-                                className="mt-2 resize-none text-base sm:text-lg"
+                                className="mt-2 resize-none text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
 
                             {/* Seção: Materiais de Apoio */}
-                            <div className="space-y-4 sm:space-y-6 border-t border-gray-200 pt-6 sm:pt-8">
-                              <div className="border-b border-gray-200 pb-4 sm:pb-5">
-                                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Materiais de Apoio</h3>
-                                <p className="text-sm sm:text-base text-gray-500 mt-2">Adicione arquivos PDF, DOC, XLS para download pelos alunos</p>
+                            <div className="space-y-4 sm:space-y-6 border-t border-gray-700 pt-6 sm:pt-8">
+                              <div className="border-b border-gray-700 pb-4 sm:pb-5">
+                                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Materiais de Apoio</h3>
+                                <p className="text-sm sm:text-base text-gray-400 mt-2">Adicione arquivos PDF, DOC, XLS para download pelos alunos</p>
                               </div>
 
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center transition-colors"
+                              <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 sm:p-8 text-center transition-colors"
                                 onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--theme-primary-light)'}
                                 onMouseLeave={(e) => e.currentTarget.style.borderColor = '#D1D5DB'}
                               >
                                 <Upload className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
-                                <p className="text-sm sm:text-base text-gray-600 mb-2">
+                                <p className="text-sm sm:text-base text-gray-400 mb-2">
                                   Arraste e solte arquivos aqui ou
                                 </p>
                             <input
@@ -3142,12 +3251,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       type="button"
                                       variant="outline"
                                   onClick={() => document.getElementById('materialUpload')?.click()}
-                                  className="mt-3"
+                                  className="mt-3 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                     >
                                       <FileText className="w-4 h-4 mr-2" />
                                       Selecionar Arquivos
                                     </Button>
-                                <p className="text-xs sm:text-sm text-gray-500 mt-3">
+                                <p className="text-xs sm:text-sm text-gray-400 mt-3">
                                   PDF, DOC, XLS até 10MB
                                 </p>
                             </div>
@@ -3157,11 +3266,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 {supportMaterials.map((material, index) => (
                                     <div
                                       key={index}
-                                      className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200"
+                                      className="flex items-center justify-between p-3 sm:p-4 bg-gray-900 rounded-lg border border-gray-700"
                                     >
                                       <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <FileText className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
-                                        <span className="text-sm sm:text-base text-gray-900 truncate">{material.name}</span>
+                                        <span className="text-sm sm:text-base text-white truncate">{material.name}</span>
                                     </div>
                                     <Button
                                       type="button"
@@ -3181,10 +3290,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
 
                             {/* Seção: O Que Você Vai Aprender (Benefícios) */}
-                            <div className="space-y-4 sm:space-y-6 border-t border-gray-200 pt-6 sm:pt-8">
-                              <div className="border-b border-gray-200 pb-4 sm:pb-5">
-                                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">O Que Você Vai Aprender (Benefícios)</h3>
-                                <p className="text-sm sm:text-base text-gray-500 mt-2">Adicione os principais benefícios e aprendizados do curso</p>
+                            <div className="space-y-4 sm:space-y-6 border-t border-gray-700 pt-6 sm:pt-8">
+                              <div className="border-b border-gray-700 pb-4 sm:pb-5">
+                                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">O Que Você Vai Aprender (Benefícios)</h3>
+                                <p className="text-sm sm:text-base text-gray-400 mt-2">Adicione os principais benefícios e aprendizados do curso</p>
                               </div>
 
                               <div className="space-y-3 sm:space-y-4">
@@ -3194,7 +3303,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   placeholder="Título do benefício"
                                   value={benefitTitle}
                                   onChange={(e) => setBenefitTitle(e.target.value)}
-                                      className="text-sm sm:text-base"
+                                      className="text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                   </div>
                                   <div className="sm:col-span-5">
@@ -3202,21 +3311,22 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   placeholder="Descrição do benefício"
                                   value={benefitDescription}
                                   onChange={(e) => setBenefitDescription(e.target.value)}
-                                      className="text-sm sm:text-base"
+                                      className="text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                                   </div>
                                   <div className="sm:col-span-2">
                                   <select
                                     value={benefitIcon}
                                     onChange={(e) => setBenefitIcon(e.target.value)}
-                                      className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 text-sm sm:text-base"
+                                      className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm sm:text-base"
+                                    style={{ colorScheme: 'dark' }}
                                   >
-                                    <option value="Heart">Coração</option>
-                                    <option value="Brain">Cérebro</option>
-                                      <option value="Award">Troféu</option>
-                                      <option value="Target">Alvo</option>
-                                      <option value="Sparkles">Estrela</option>
-                                      <option value="CheckCircle2">Check</option>
+                                    <option value="Heart" className="bg-gray-700 text-white">Coração</option>
+                                    <option value="Brain" className="bg-gray-700 text-white">Cérebro</option>
+                                      <option value="Award" className="bg-gray-700 text-white">Troféu</option>
+                                      <option value="Target" className="bg-gray-700 text-white">Alvo</option>
+                                      <option value="Sparkles" className="bg-gray-700 text-white">Estrela</option>
+                                      <option value="CheckCircle2" className="bg-gray-700 text-white">Check</option>
                                   </select>
                                   </div>
                                 </div>
@@ -3231,7 +3341,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       setBenefitIcon('Heart');
                                     }
                                   }}
-                                  className="w-full sm:w-auto"
+                                  className="w-full sm:w-auto bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                 >
                                   <Plus className="w-4 h-4 mr-2" />
                                   Adicionar Benefício
@@ -3245,13 +3355,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     return (
                                       <div
                                         key={index}
-                                        className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200"
+                                        className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-900 rounded-lg border border-gray-700"
                                       >
                                         <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
                                         <div className="flex-1 min-w-0">
-                                          <p className="text-sm sm:text-base font-semibold text-gray-900">{benefit.title}</p>
+                                          <p className="text-sm sm:text-base font-semibold text-white">{benefit.title}</p>
                                           {benefit.description && (
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">{benefit.description}</p>
+                                            <p className="text-xs sm:text-sm text-gray-400 mt-1">{benefit.description}</p>
                                           )}
                                         </div>
                                         <Button
@@ -3261,7 +3371,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           onClick={() => {
                                             setBenefits(benefits.filter((_, i) => i !== index));
                                           }}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          className="text-red-400 hover:text-red-500 hover:bg-red-900/20"
                                         >
                                           <X className="w-4 h-4 sm:w-5 sm:h-5" />
                                         </Button>
@@ -3279,16 +3389,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <>
                           {/* Seção: Módulos e Aulas */}
                           <div className="space-y-6 sm:space-y-8">
-                            <div className="border-b border-gray-200 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-800">Módulos e Aulas</h3>
-                              <p className="text-sm sm:text-base text-gray-500 mt-2">Organize o conteúdo em módulos e aulas</p>
+                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Módulos e Aulas</h3>
+                              <p className="text-sm sm:text-base text-gray-400 mt-2">Organize o conteúdo em módulos e aulas</p>
                             </div>
 
                             <div className="space-y-4 sm:space-y-6">
                               {modules.map((module, moduleIndex) => (
-                                <div key={moduleIndex} className="border border-gray-200 rounded-lg p-5 sm:p-6 lg:p-8 bg-gray-50">
+                                <div key={moduleIndex} className="border border-gray-700 rounded-lg p-5 sm:p-6 lg:p-8 bg-gray-900">
                                   <div className="flex items-center justify-between mb-4 sm:mb-5">
-                                    <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-800">Módulo {moduleIndex + 1}</h4>
+                                    <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-white">Módulo {moduleIndex + 1}</h4>
                             <Button
                               type="button"
                                       variant="destructive"
@@ -3312,12 +3422,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                 newModules[moduleIndex].title = e.target.value;
                                                 setModules(newModules);
                                               }}
-                                      className="h-12 sm:h-14 text-base sm:text-lg"
+                                      className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
 
                                     <div className="space-y-4 sm:space-y-5">
                                           {module.lessons.map((lesson, lessonIndex) => (
-                                        <div key={lessonIndex} className="p-4 bg-white rounded-lg border border-gray-200 space-y-3">
+                                        <div key={lessonIndex} className="p-4 bg-gray-800 rounded-lg border border-gray-700 space-y-3">
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <Input
                                               placeholder="Título da aula"
@@ -3327,7 +3437,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                         newModules[moduleIndex].lessons[lessonIndex].title = e.target.value;
                                                         setModules(newModules);
                                                       }}
-                                              className="h-12 sm:h-14 text-base sm:text-lg"
+                                              className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                             />
                                                       <Input
                                               placeholder="Duração (ex: 10min)"
@@ -3337,12 +3447,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                           newModules[moduleIndex].lessons[lessonIndex].duration = e.target.value;
                                                           setModules(newModules);
                                                         }}
-                                              className="h-12 sm:h-14 text-base sm:text-lg"
+                                              className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                                       />
                                                     </div>
 
                                           <div className="space-y-2">
-                                            <Label className="text-sm sm:text-base font-medium">Vídeo da Aula <span className="text-red-500">*</span></Label>
+                                            <Label className="text-sm sm:text-base font-medium text-gray-300">Vídeo da Aula <span className="text-red-500">*</span></Label>
                                                       <div className="space-y-2">
                                                         <input
                                                           type="file"
@@ -3361,7 +3471,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                           variant="outline"
                                                           size="sm"
                                                           onClick={() => document.getElementById(`lesson-video-${moduleIndex}-${lessonIndex}`)?.click()}
-                                                className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                                className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                                           disabled={lesson.videoUrl === 'uploading...'}
                                                         >
                                                           {lesson.videoUrl === 'uploading...' ? (
@@ -3379,7 +3489,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                         {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
                                                           <div className="mt-2">
                                                             <video src={lesson.videoUrl} controls className="w-full rounded-lg border max-h-48" />
-                                                            <p className="text-xs text-gray-500 mt-1">Vídeo atual</p>
+                                                            <p className="text-xs text-gray-400 mt-1">Vídeo atual</p>
                                                           </div>
                                                         )}
                                                         {lesson.videoUrl === 'uploading...' && (
@@ -3398,7 +3508,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                     </div>
                                                   </div>
 
-                                          <div className="flex justify-end pt-2 border-t">
+                                          <div className="flex justify-end pt-2 border-t border-gray-700">
                                                 <Button
                                                   type="button"
                                               variant="destructive"
@@ -3408,7 +3518,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                 newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter((_, i) => i !== lessonIndex);
                                                     setModules(newModules);
                                                   }}
-                                              className="h-10 sm:h-11 text-sm sm:text-base"
+                                              className="h-10 sm:h-11 text-sm sm:text-base bg-red-600 hover:bg-red-700 text-white"
                                                 >
                                               <Trash2 className="w-4 h-4 mr-2" />
                                               Remover Aula
@@ -3425,7 +3535,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           newModules[moduleIndex].lessons.push({ title: "", duration: "", videoUrl: "" });
                                           setModules(newModules);
                                         }}
-                                        className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                        className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                       >
                                         <Plus className="w-5 h-5 mr-2" />
                                         Adicionar Aula
@@ -3441,7 +3551,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 onClick={() => {
                                   setModules([...modules, { title: "", lessons: [{ title: "", duration: "", videoUrl: "" }], duration: "" }]);
                                 }}
-                                className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                                className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                               >
                                 <Plus className="w-5 h-5 mr-2" />
                                 Adicionar Módulo
@@ -3452,7 +3562,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       )}
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-700 mt-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -3461,10 +3571,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setEditingCourse(null);
                           setCurrentTab("info");
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Cancelar
                       </Button>
-                      <Button type="button" onClick={handleSave}>
+                      <Button type="button" onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
                         <Save className="w-4 h-4 mr-2" />
                         Salvar Curso
                       </Button>
@@ -3476,17 +3587,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
             {mainView === "coupons" && (
               <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
-                <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[600px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
-                  <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+                <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[600px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8 bg-gray-800 border-gray-700">
+                  <DialogHeader className="pb-4 sm:pb-6 border-b border-gray-700 mb-4 sm:mb-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))` }}>
                         <Ticket className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
-                        <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
+                        <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
                       {editingCoupon ? "Editar Cupom" : "Criar Novo Cupom"}
                     </DialogTitle>
-                        <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2">
+                        <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2 text-gray-400">
                       {editingCoupon ? "Edite as informações do cupom abaixo" : "Preencha os dados para criar um novo cupom de desconto"}
                     </DialogDescription>
                       </div>
@@ -3496,7 +3607,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-6 sm:space-y-8">
                     {/* Código do Cupom */}
                     <div className="space-y-2">
-                      <Label htmlFor="couponCode" className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                      <Label htmlFor="couponCode" className="text-base sm:text-lg font-semibold flex items-center gap-2 text-white">
                         <Ticket className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--theme-primary)' }} />
                         Código do Cupom <span className="text-red-500">*</span>
                       </Label>
@@ -3505,9 +3616,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                         placeholder="BLACKFRIDAY2024"
-                        className="h-12 sm:h-14 text-base sm:text-lg font-mono"
+                        className="h-12 sm:h-14 text-base sm:text-lg font-mono bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       />
-                      <p className="text-xs sm:text-sm text-gray-500">
+                      <p className="text-xs sm:text-sm text-gray-400">
                         O código será convertido automaticamente para maiúsculas
                       </p>
                     </div>
@@ -3515,7 +3626,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     {/* Desconto e Tipo */}
                     <div className="p-4 sm:p-6 rounded-lg border space-y-4 sm:space-y-6" style={{ background: `linear-gradient(to bottom right, rgba(var(--theme-primary-rgb), 0.1), rgba(var(--theme-secondary-rgb), 0.1))`, borderColor: 'var(--theme-primary-light)' }}>
                       <div className="border-b pb-2 sm:pb-3" style={{ borderColor: 'var(--theme-primary-light)' }}>
-                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--theme-text-primary)' }}>
+                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2 text-white">
                           <Percent className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--theme-primary)' }} />
                           Configuração de Desconto
                         </h3>
@@ -3523,7 +3634,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="couponDiscount" className="text-sm sm:text-base font-medium">
+                          <Label htmlFor="couponDiscount" className="text-sm sm:text-base font-medium text-white">
                             Valor do Desconto <span className="text-red-500">*</span>
                           </Label>
                           <div className="relative">
@@ -3534,53 +3645,52 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           value={couponDiscount}
                           onChange={(e) => setCouponDiscount(e.target.value)}
                           placeholder={couponType === "percentage" ? "20" : "50.00"}
-                              className="h-12 sm:h-14 text-base sm:text-lg pr-12"
+                              className="h-12 sm:h-14 text-base sm:text-lg pr-12 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                         />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 font-semibold">
                               {couponType === "percentage" ? "%" : "R$"}
                             </div>
                           </div>
                       </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="couponType" className="text-sm sm:text-base font-medium">
+                          <Label htmlFor="couponType" className="text-sm sm:text-base font-medium text-white">
                             Tipo de Desconto
                           </Label>
                         <select
                           id="couponType"
                           value={couponType}
                           onChange={(e) => setCouponType(e.target.value as "percentage" | "fixed")}
-                            className="w-full h-12 sm:h-14 px-4 rounded-md border border-gray-300 bg-white text-base sm:text-lg focus:ring-2 transition-all"
-                            style={{ '--tw-ring-color': 'var(--theme-primary)' } as React.CSSProperties}
+                            className="w-full h-12 sm:h-14 px-4 rounded-md border border-gray-600 bg-gray-700 text-white text-base sm:text-lg focus:ring-2 focus:ring-blue-500 transition-all"
                             onFocus={(e) => {
                               e.currentTarget.style.borderColor = 'var(--theme-primary)';
                               e.currentTarget.style.boxShadow = '0 0 0 2px var(--theme-primary-light)';
                             }}
                             onBlur={(e) => {
-                              e.currentTarget.style.borderColor = '#D1D5DB';
+                              e.currentTarget.style.borderColor = '#4B5563';
                               e.currentTarget.style.boxShadow = 'none';
                             }}
                         >
-                          <option value="percentage">Percentual (%)</option>
-                          <option value="fixed">Valor Fixo (R$)</option>
+                          <option value="percentage" className="bg-gray-700">Percentual (%)</option>
+                          <option value="fixed" className="bg-gray-700">Valor Fixo (R$)</option>
                         </select>
                         </div>
                       </div>
                     </div>
 
                     {/* Validade e Usos */}
-                    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border space-y-4 sm:space-y-6">
-                      <div className="border-b border-gray-200 pb-2 sm:pb-3">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                          <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                    <div className="bg-gray-900 p-4 sm:p-6 rounded-lg border border-gray-700 space-y-4 sm:space-y-6">
+                      <div className="border-b border-gray-700 pb-2 sm:pb-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                          <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                           Validade e Limites
                         </h3>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="couponExpires" className="text-sm sm:text-base font-medium flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-500" />
+                          <Label htmlFor="couponExpires" className="text-sm sm:text-base font-medium flex items-center gap-2 text-white">
+                            <Calendar className="w-4 h-4 text-gray-400" />
                             Data de Expiração
                           </Label>
                         <Input
@@ -3588,16 +3698,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           type="date"
                           value={couponExpires}
                           onChange={(e) => setCouponExpires(e.target.value)}
-                            className="h-12 sm:h-14 text-base sm:text-lg"
+                            className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white"
                         />
-                          <p className="text-xs sm:text-sm text-gray-500">
+                          <p className="text-xs sm:text-sm text-gray-400">
                             Deixe em branco para não expirar
                           </p>
                       </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="couponMaxUses" className="text-sm sm:text-base font-medium flex items-center gap-2">
-                            <Users className="w-4 h-4 text-gray-500" />
+                          <Label htmlFor="couponMaxUses" className="text-sm sm:text-base font-medium flex items-center gap-2 text-white">
+                            <Users className="w-4 h-4 text-gray-400" />
                             Usos Máximos
                           </Label>
                         <Input
@@ -3606,9 +3716,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           value={couponMaxUses}
                           onChange={(e) => setCouponMaxUses(e.target.value)}
                           placeholder="Ilimitado"
-                            className="h-12 sm:h-14 text-base sm:text-lg"
+                            className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                         />
-                          <p className="text-xs sm:text-sm text-gray-500">
+                          <p className="text-xs sm:text-sm text-gray-400">
                             Deixe em branco para uso ilimitado
                           </p>
                         </div>
@@ -3616,7 +3726,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     </div>
 
-                  <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t mt-6">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-700 mt-6">
                       <Button
                         type="button"
                         variant="outline"
@@ -3624,13 +3734,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setIsCouponDialogOpen(false);
                           resetCouponForm();
                         }}
-                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg"
+                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Cancelar
                       </Button>
                     <Button
                       onClick={handleSaveCoupon}
-                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all"
+                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
                     >
                       <Save className="w-5 h-5 mr-2" />
                         Salvar Cupom
@@ -3643,17 +3753,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             {/* Delete Coupon Confirmation Dialog */}
             {mainView === "coupons" && (
               <Dialog open={deleteCouponDialogOpen} onOpenChange={setDeleteCouponDialogOpen}>
-                <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[500px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
-                  <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+                <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[500px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8 bg-gray-800 border-gray-700">
+                  <DialogHeader className="pb-4 sm:pb-6 border-b border-gray-700 mb-4 sm:mb-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
                         <AlertCircle className="w-6 h-6 text-white" />
           </div>
                       <div className="flex-1">
-                        <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
+                        <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
                           Confirmar Exclusão
                         </DialogTitle>
-                        <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2">
+                        <DialogDescription className="text-sm sm:text-base lg:text-lg mt-1 sm:mt-2 text-gray-400">
                           Esta ação não pode ser desfeita
                         </DialogDescription>
                       </div>
@@ -3661,20 +3771,20 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </DialogHeader>
 
                   <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-4 sm:space-y-6">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
-                      <p className="text-sm sm:text-base text-gray-700 mb-4">
-                        Tem certeza que deseja excluir o cupom <span className="font-bold text-gray-900">{couponToDelete?.code}</span>?
+                    <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 sm:p-6">
+                      <p className="text-sm sm:text-base text-gray-300 mb-4">
+                        Tem certeza que deseja excluir o cupom <span className="font-bold text-white">{couponToDelete?.code}</span>?
                       </p>
 
                       {couponToDelete && (
-                        <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 space-y-2">
+                        <div className="bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-700 space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs sm:text-sm text-gray-600">Código:</span>
-                            <span className="text-sm sm:text-base font-mono font-bold text-gray-900">{couponToDelete.code}</span>
+                            <span className="text-xs sm:text-sm text-gray-400">Código:</span>
+                            <span className="text-sm sm:text-base font-mono font-bold text-white">{couponToDelete.code}</span>
               </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs sm:text-sm text-gray-600">Desconto:</span>
-                            <span className="text-sm sm:text-base font-bold" style={{ color: 'var(--theme-primary)' }}>
+                            <span className="text-xs sm:text-sm text-gray-400">Desconto:</span>
+                            <span className="text-sm sm:text-base font-bold text-blue-400">
                               {couponToDelete.type === "percentage"
                                 ? `${couponToDelete.discount}%`
                                 : `R$ ${couponToDelete.discount.toFixed(2)}`}
@@ -3682,23 +3792,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </div>
                           {couponToDelete.expiresAt && (
                             <div className="flex items-center justify-between">
-                              <span className="text-xs sm:text-sm text-gray-600">Expira em:</span>
-                              <span className="text-sm sm:text-base text-gray-900">
+                              <span className="text-xs sm:text-sm text-gray-400">Expira em:</span>
+                              <span className="text-sm sm:text-base text-white">
                                 {new Date(couponToDelete.expiresAt).toLocaleDateString('pt-BR')}
                               </span>
             </div>
                           )}
                           <div className="flex items-center justify-between">
-                            <span className="text-xs sm:text-sm text-gray-600">Usos:</span>
-                            <span className="text-sm sm:text-base text-gray-900">
+                            <span className="text-xs sm:text-sm text-gray-400">Usos:</span>
+                            <span className="text-sm sm:text-base text-white">
                               {couponToDelete.currentUses} / {couponToDelete.maxUses === 999999 ? '∞' : couponToDelete.maxUses}
                             </span>
             </div>
             </div>
                       )}
 
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-xs sm:text-sm text-yellow-800 flex items-start gap-2">
+                      <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+                        <p className="text-xs sm:text-sm text-yellow-300 flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                           <span>Esta ação é permanente. Todos os dados relacionados a este cupom serão removidos.</span>
                         </p>
@@ -3706,7 +3816,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t mt-6">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-700 mt-6">
                     <Button
                       type="button"
                       variant="outline"
@@ -3714,7 +3824,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         setDeleteCouponDialogOpen(false);
                         setCouponToDelete(null);
                       }}
-                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg"
+                      className="w-full sm:w-auto h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                     >
                       Cancelar
                     </Button>
@@ -3737,15 +3847,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Dashboard de Vendas</h2>
-              <p className="text-gray-600">Análise visual do desempenho da plataforma</p>
+              <h2 className="text-2xl font-bold mb-2 text-white">Dashboard de Vendas</h2>
+              <p className="text-gray-400">Análise visual do desempenho da plataforma</p>
             </div>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={exportPurchases} className="w-full sm:w-auto">
+                    <Button 
+                      variant="outline" 
+                      onClick={exportPurchases} 
+                      className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Vendas
               </Button>
-                    <Button variant="outline" onClick={exportCourses} className="w-full sm:w-auto">
+                    <Button 
+                      variant="outline" 
+                      onClick={exportCourses} 
+                      className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Cursos
               </Button>
@@ -3755,9 +3873,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           {/* Charts */}
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
             {/* Line Chart - Vendas por Dia */}
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                      <CardTitle>Vendas no Período Selecionado</CardTitle>
+                      <CardTitle className="text-white">Vendas no Período Selecionado</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -3774,9 +3892,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </Card>
 
             {/* Bar Chart - Receita por Dia */}
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                      <CardTitle>Receita no Período Selecionado</CardTitle>
+                      <CardTitle className="text-white">Receita no Período Selecionado</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -3794,9 +3912,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
 
                 {/* Gráfico de Crescimento de Alunos */}
-                <Card className="mb-8">
+                <Card className="mb-8 bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle>Crescimento de Alunos ao Longo do Tempo</CardTitle>
+                    <CardTitle className="text-white">Crescimento de Alunos ao Longo do Tempo</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
@@ -3806,16 +3924,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        <Line type="monotone" dataKey="alunos" stroke="#8b5cf6" strokeWidth={2} name="Total de Alunos" />
+                        <Line type="monotone" dataKey="alunos" stroke="#2563eb" strokeWidth={2} name="Total de Alunos" />
                       </LineChart>
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
 
           {/* Pie Chart - Vendas por Curso */}
-                <Card className="mb-8">
+                <Card className="mb-8 bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle>Distribuição de Vendas por Curso</CardTitle>
+              <CardTitle className="text-white">Distribuição de Vendas por Curso</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -3841,13 +3959,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </Card>
 
                 {/* Lista de Últimas Vendas */}
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle>Últimas Vendas</CardTitle>
+                    <CardTitle className="text-white">Últimas Vendas</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {latestPurchases.length === 0 ? (
-                      <div className="py-12 text-center text-gray-500">
+                      <div className="py-12 text-center text-gray-400">
                         <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                         <p>Nenhuma venda realizada ainda</p>
                       </div>
@@ -3857,17 +3975,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           const purchaseDate = new Date(purchase.date);
                           const displayTitle = purchase.courseTitle || "Item não encontrado";
                           return (
-                            <div key={`${purchase.id}-${idx}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-3">
+                            <div key={`${purchase.id}-${idx}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-3 mb-2">
-                                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.2)' }}>
-                                    <ShoppingCart className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-600/20">
+                                    <ShoppingCart className="w-5 h-5 text-blue-400" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="font-semibold text-gray-900 truncate">
+                                    <h4 className="font-semibold text-white truncate">
                                       {displayTitle}
                                     </h4>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm text-gray-400">
                                       {purchaseDate.toLocaleDateString('pt-BR', { 
                                         day: '2-digit', 
                                         month: '2-digit', 
@@ -3881,15 +3999,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               </div>
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                  <div className="font-bold text-lg text-green-600">
+                                  <div className="font-bold text-lg text-green-400">
                                     R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                   </div>
                                   <div className={`text-xs px-2 py-1 rounded ${
                                     purchase.paymentStatus === 'paid' 
-                                      ? 'bg-green-100 text-green-800' 
+                                      ? 'bg-green-900/50 text-green-400 border border-green-700' 
                                       : purchase.paymentStatus === 'pending'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : 'bg-red-100 text-red-800'
+                                      ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700'
+                                      : 'bg-red-900/50 text-red-400 border border-red-700'
                                   }`}>
                                     {purchase.paymentStatus === 'paid' ? 'Pago' : purchase.paymentStatus === 'pending' ? 'Pendente' : 'Cancelado'}
                                   </div>
@@ -3910,8 +4028,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         <section className="container mx-auto px-4 py-12">
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-            <h2 className="text-2xl font-bold mb-2">Gerenciar Cursos</h2>
-            <p className="text-gray-600">
+            <h2 className="text-2xl font-bold mb-2 text-white">Gerenciar Cursos</h2>
+            <p className="text-gray-400">
               Edite ou exclua os cursos existentes
             </p>
                   </div>
@@ -3919,10 +4037,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <DialogTrigger asChild>
                       <Button
                         size="lg"
-                        className="text-white w-full sm:w-auto"
-                        style={{ backgroundColor: 'var(--theme-primary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
+                        className="text-white w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                         onClick={handleNewCourse}
                       >
                         <Plus className="w-5 h-5 mr-2" />
@@ -3934,7 +4049,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Busca, Filtros e Ordenação */}
                 {courses.length > 0 && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 bg-gray-800 border-gray-700">
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -3945,7 +4060,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             placeholder="Buscar curso por nome..."
                             value={courseSearch}
                             onChange={(e) => setCourseSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11"
+                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
 
@@ -3953,43 +4068,43 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           {/* Filtro por Categoria */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Categoria</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Categoria</Label>
                             <select
                               value={courseCategoryFilter}
                               onChange={(e) => setCourseCategoryFilter(e.target.value)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todas as categorias</option>
+                              <option value="all" className="bg-gray-700">Todas as categorias</option>
                               {courseCategories.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
+                                <option key={cat} value={cat} className="bg-gray-700">{cat}</option>
                               ))}
                             </select>
                           </div>
 
                           {/* Ordenar por */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                             <select
                               value={courseSortBy}
                               onChange={(e) => setCourseSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="name">Nome</option>
-                              <option value="price">Preço</option>
-                              <option value="students">Alunos</option>
-                              <option value="rating">Avaliação</option>
-                              <option value="sales">Vendas</option>
-                              <option value="revenue">Receita</option>
+                              <option value="name" className="bg-gray-700">Nome</option>
+                              <option value="price" className="bg-gray-700">Preço</option>
+                              <option value="students" className="bg-gray-700">Alunos</option>
+                              <option value="rating" className="bg-gray-700">Avaliação</option>
+                              <option value="sales" className="bg-gray-700">Vendas</option>
+                              <option value="revenue" className="bg-gray-700">Receita</option>
                             </select>
                           </div>
 
                           {/* Ordem */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                             <Button
                               variant="outline"
                               onClick={() => setCourseSortOrder(courseSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11"
+                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                             >
                               <ArrowUpDown className="w-4 h-4 mr-2" />
                               {courseSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -3998,19 +4113,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                           {/* Visualização */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                             <div className="flex gap-2">
                               <Button
                                 variant={courseViewMode === "cards" ? "default" : "outline"}
                                 onClick={() => setCourseViewMode("cards")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  courseViewMode === "cards" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <Grid3x3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant={courseViewMode === "table" ? "default" : "outline"}
                                 onClick={() => setCourseViewMode("table")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  courseViewMode === "table" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <List className="w-4 h-4" />
                               </Button>
@@ -4019,7 +4142,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Contador de resultados */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-400">
                           Mostrando {filteredAndSortedCourses.length} de {courses.length} cursos
                         </div>
                       </div>
@@ -4028,11 +4151,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
 
           {courses.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="py-20 text-center">
                 <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2">Nenhum curso cadastrado</h3>
-                <p className="text-gray-600 mb-6">
+                <h3 className="text-xl font-bold mb-2 text-white">Nenhum curso cadastrado</h3>
+                <p className="text-gray-400 mb-6">
                   Crie seu primeiro curso para começar
                 </p>
                       <Button onClick={handleNewCourse} style={{ backgroundColor: 'var(--theme-primary)' }}
@@ -4045,11 +4168,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </CardContent>
             </Card>
                 ) : filteredAndSortedCourses.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-20 text-center">
                       <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum curso encontrado</h3>
-                      <p className="text-gray-600 mb-6">
+                      <h3 className="text-xl font-bold mb-2 text-white">Nenhum curso encontrado</h3>
+                      <p className="text-gray-400 mb-6">
                         Tente ajustar os filtros de busca
                       </p>
                       <Button
@@ -4058,6 +4181,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setCourseSearch("");
                           setCourseCategoryFilter("all");
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Limpar Filtros
                       </Button>
@@ -4068,7 +4192,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     {filteredAndSortedCourses.map((course) => {
                       const stats = getCourseStats(course.id);
                       return (
-                        <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                        <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-gray-800 border-gray-700">
                         <div className="w-full h-48 overflow-hidden">
                         <img
                           src={course.image}
@@ -4079,56 +4203,56 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                           <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="flex-1 min-w-0">
-                              <span className="text-xs font-semibold px-2 py-1 rounded inline-block mb-2" style={{ color: 'var(--theme-primary)', backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)' }}>
+                              <span className="text-xs font-semibold px-2 py-1 rounded inline-block mb-2 bg-blue-600/20 text-blue-300 border border-blue-500/30">
                               {course.category}
                             </span>
-                              <h3 className="text-lg font-bold mt-2 break-words">{course.title}</h3>
-                              <p className="text-sm text-gray-600 mt-1 break-words line-clamp-2">{course.subtitle}</p>
+                              <h3 className="text-lg font-bold mt-2 break-words text-white">{course.title}</h3>
+                              <p className="text-sm text-gray-400 mt-1 break-words line-clamp-2">{course.subtitle}</p>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 mt-auto">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-300 mt-auto">
                             <div className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span className="font-bold text-green-600">R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}</span>
+                              <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                              <span className="font-bold text-green-400">R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span>{course.duration}</span>
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                              <span className="text-gray-300">{course.duration}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span>{course.lessons} aulas</span>
+                              <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                              <span className="text-gray-300">{course.lessons} aulas</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span>{course.students}</span>
+                              <Users className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                              <span className="text-gray-300">{course.students}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-yellow-500">★</span>
-                              <span>{course.rating}</span>
+                              <span className="text-yellow-400">★</span>
+                              <span className="text-gray-300">{course.rating}</span>
                             </div>
                           </div>
 
                           {/* Estatísticas do Curso */}
                           {(stats.sales > 0 || stats.revenue > 0) && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="mt-3 pt-3 border-t border-gray-700">
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                  <span className="text-gray-500">Vendas:</span>
-                                  <span className="font-semibold text-gray-900 ml-1">{stats.sales}</span>
+                                  <span className="text-gray-400">Vendas:</span>
+                                  <span className="font-semibold text-white ml-1">{stats.sales}</span>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">Receita:</span>
-                                  <span className="font-semibold text-green-600 ml-1">R$ {stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                  <span className="text-gray-400">Receita:</span>
+                                  <span className="font-semibold text-green-400 ml-1">R$ {stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                               </div>
                             </div>
                           )}
 
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-xs text-gray-600 mb-3">
-                              <span className="font-semibold">Instrutor:</span>{" "}
+                          <div className="mt-4 pt-4 border-t border-gray-700">
+                            <p className="text-xs text-gray-300 mb-3">
+                              <span className="font-semibold text-white">Instrutor:</span>{" "}
                               {course.instructor}
                             </p>
                           <div className="flex gap-2">
@@ -4136,7 +4260,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(course)}
-                                className="flex-1"
+                              className="flex-1 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                             >
                               <Edit className="w-4 h-4 mr-2" />
                               Editar
@@ -4161,23 +4285,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50 border-b border-gray-200">
+                          <thead className="bg-gray-900 border-b border-gray-700">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Curso</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alunos</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliação</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendas</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receita</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Curso</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Categoria</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Preço</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Alunos</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Avaliação</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Vendas</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Receita</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredAndSortedCourses.map((course) => {
                               const stats = getCourseStats(course.id);
                               return (
-                                <tr key={course.id} className="hover:bg-gray-50 transition-colors">
+                                <tr key={course.id} className="hover:bg-gray-900 transition-colors">
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
                                       <img
@@ -4186,8 +4310,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                                       />
                                       <div className="min-w-0">
-                                        <div className="font-semibold text-gray-900 break-words">{course.title}</div>
-                                        <div className="text-sm text-gray-500 truncate">{course.subtitle}</div>
+                                        <div className="font-semibold text-white break-words">{course.title}</div>
+                                        <div className="text-sm text-gray-400 truncate">{course.subtitle}</div>
                           </div>
                           </div>
                                   </td>
@@ -4214,7 +4338,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                                   </td>
                                   <td className="px-4 py-4">
-                                    <span className="font-semibold text-gray-900">{stats.sales}</span>
+                                    <span className="font-semibold text-white">{stats.sales}</span>
                                   </td>
                                   <td className="px-4 py-4">
                                     <span className="font-semibold text-green-600">
@@ -4256,12 +4380,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Alunos</h2>
-                    <p className="text-sm sm:text-base text-gray-600">
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Alunos</h2>
+                    <p className="text-sm sm:text-base text-gray-400">
                 Visualize todos os alunos e seu progresso nos cursos
               </p>
             </div>
-                  <Button variant="outline" onClick={exportStudents} className="w-full sm:w-auto">
+                  <Button variant="outline" onClick={exportStudents} className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white">
               <Download className="w-4 h-4 mr-2" />
               Exportar Alunos
             </Button>
@@ -4269,7 +4393,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Busca, Filtros e Ordenação */}
                 {users.length > 0 && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 bg-gray-800 border-gray-700">
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -4280,7 +4404,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             placeholder="Buscar aluno por nome ou email..."
                             value={studentSearch}
                             onChange={(e) => setStudentSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11"
+                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
 
@@ -4288,59 +4412,59 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                           {/* Filtro por Status */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Status</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Status</Label>
                             <select
                               value={studentStatusFilter}
                               onChange={(e) => setStudentStatusFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todos</option>
-                              <option value="with-courses">Com Cursos</option>
-                              <option value="without-courses">Sem Cursos</option>
+                              <option value="all" className="bg-gray-700">Todos</option>
+                              <option value="with-courses" className="bg-gray-700">Com Cursos</option>
+                              <option value="without-courses" className="bg-gray-700">Sem Cursos</option>
                             </select>
                           </div>
 
                           {/* Filtro por Data */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Período</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Período</Label>
                             <select
                               value={studentDateFilter}
                               onChange={(e) => setStudentDateFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todos</option>
-                              <option value="7d">Últimos 7 dias</option>
-                              <option value="30d">Últimos 30 dias</option>
-                              <option value="90d">Últimos 90 dias</option>
-                              <option value="month">Este mês</option>
-                              <option value="year">Este ano</option>
+                              <option value="all" className="bg-gray-700">Todos</option>
+                              <option value="7d" className="bg-gray-700">Últimos 7 dias</option>
+                              <option value="30d" className="bg-gray-700">Últimos 30 dias</option>
+                              <option value="90d" className="bg-gray-700">Últimos 90 dias</option>
+                              <option value="month" className="bg-gray-700">Este mês</option>
+                              <option value="year" className="bg-gray-700">Este ano</option>
                             </select>
                           </div>
 
                           {/* Ordenar por */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                             <select
                               value={studentSortBy}
                               onChange={(e) => setStudentSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="name">Nome</option>
-                              <option value="email">Email</option>
-                              <option value="date">Data de Cadastro</option>
-                              <option value="courses">Nº de Cursos</option>
-                              <option value="progress">Progresso</option>
-                              <option value="spent">Total Gasto</option>
+                              <option value="name" className="bg-gray-700">Nome</option>
+                              <option value="email" className="bg-gray-700">Email</option>
+                              <option value="date" className="bg-gray-700">Data de Cadastro</option>
+                              <option value="courses" className="bg-gray-700">Nº de Cursos</option>
+                              <option value="progress" className="bg-gray-700">Progresso</option>
+                              <option value="spent" className="bg-gray-700">Total Gasto</option>
                             </select>
                           </div>
 
                           {/* Ordem */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                             <Button
                               variant="outline"
                               onClick={() => setStudentSortOrder(studentSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11"
+                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                             >
                               <ArrowUpDown className="w-4 h-4 mr-2" />
                               {studentSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -4349,19 +4473,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                           {/* Visualização */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                             <div className="flex gap-2">
                               <Button
                                 variant={studentViewMode === "cards" ? "default" : "outline"}
                                 onClick={() => setStudentViewMode("cards")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  studentViewMode === "cards" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <Grid3x3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant={studentViewMode === "table" ? "default" : "outline"}
                                 onClick={() => setStudentViewMode("table")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  studentViewMode === "table" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <List className="w-4 h-4" />
                               </Button>
@@ -4370,7 +4502,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Contador de resultados */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-400">
                           Mostrando {filteredAndSortedStudents.length} de {users.length} alunos
                         </div>
                       </div>
@@ -4379,21 +4511,21 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
 
           {users.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-12 sm:py-20 text-center px-4">
                       <Users className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg sm:text-xl font-bold mb-2">Nenhum aluno cadastrado</h3>
-                      <p className="text-sm sm:text-base text-gray-600">
+                      <h3 className="text-lg sm:text-xl font-bold mb-2 text-white">Nenhum aluno cadastrado</h3>
+                      <p className="text-sm sm:text-base text-gray-400">
                   Os alunos aparecerão aqui quando se cadastrarem na plataforma
                 </p>
               </CardContent>
             </Card>
                 ) : filteredAndSortedStudents.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-20 text-center">
                       <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum aluno encontrado</h3>
-                      <p className="text-gray-600 mb-6">
+                      <h3 className="text-xl font-bold mb-2 text-white">Nenhum aluno encontrado</h3>
+                      <p className="text-gray-400 mb-6">
                         Tente ajustar os filtros de busca
                       </p>
                       <Button
@@ -4403,6 +4535,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setStudentStatusFilter("all");
                           setStudentDateFilter("all");
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Limpar Filtros
                       </Button>
@@ -4415,7 +4548,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       const isActive = stats.lastAccess && (Date.now() - stats.lastAccess.getTime()) < 30 * 24 * 60 * 60 * 1000; // 30 dias
 
                 return (
-                  <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow bg-gray-800 border-gray-700">
                           <CardContent className="p-4 sm:p-6">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                               <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
@@ -4427,41 +4560,41 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-base sm:text-lg font-bold break-words">{student.name}</h3>
+                                    <h3 className="text-base sm:text-lg font-bold break-words text-white">{student.name}</h3>
                                     {isActive ? (
-                                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">Ativo</span>
+                                      <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full font-medium">Ativo</span>
                                     ) : (
-                                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Inativo</span>
+                                      <span className="text-xs bg-gray-600 text-gray-300 px-2 py-0.5 rounded-full font-medium">Inativo</span>
                                     )}
                             </div>
-                                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
-                                    <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300 mt-1">
+                                    <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-gray-400" />
                                     <span className="break-all">{student.email}</span>
                             </div>
-                                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
-                                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300 mt-1">
+                                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-gray-400" />
                                     <span>Cadastrado em: {new Date(student.registeredAt).toLocaleDateString('pt-BR')}</span>
-                                    <span className="text-gray-400">•</span>
+                                    <span className="text-gray-500">•</span>
                                     <span>{stats.daysSinceRegistration} dias</span>
                           </div>
                                   {stats.lastAccess && (
-                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
-                                      <Activity className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300 mt-1">
+                                      <Activity className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-gray-400" />
                                       <span>Último acesso: {stats.lastAccess.toLocaleDateString('pt-BR')}</span>
                         </div>
                                   )}
                                 </div>
                               </div>
                               <div className="text-left sm:text-right flex-shrink-0">
-                                <div className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--theme-primary)' }}>{stats.coursesCount}</div>
-                                <div className="text-xs sm:text-sm text-gray-600">Cursos</div>
+                                <div className="text-xl sm:text-2xl font-bold text-blue-400">{stats.coursesCount}</div>
+                                <div className="text-xs sm:text-sm text-gray-400">Cursos</div>
                                 {stats.avgProgress > 0 && (
-                                  <div className="text-xs sm:text-sm text-teal-600 font-semibold mt-1">
+                                  <div className="text-xs sm:text-sm text-teal-400 font-semibold mt-1">
                                     {stats.avgProgress.toFixed(0)}% concluído
                             </div>
                           )}
                                 {stats.totalSpent > 0 && (
-                                  <div className="text-xs sm:text-sm text-green-600 font-semibold mt-1">
+                                  <div className="text-xs sm:text-sm text-green-400 font-semibold mt-1">
                                     R$ {stats.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                   </div>
                                 )}
@@ -4469,7 +4602,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
 
                             {/* Ações Rápidas */}
-                            <div className="flex flex-wrap gap-2 mb-4 pt-4 border-t">
+                            <div className="flex flex-wrap gap-2 mb-4 pt-4 border-t border-gray-700">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -4477,7 +4610,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   setSelectedStudent(student);
                                   setShowStudentDetails(true);
                                 }}
-                                className="text-xs sm:text-sm"
+                                className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                               >
                                 <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                                 Ver Detalhes
@@ -4486,7 +4619,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => window.open(`mailto:${student.email}`, '_blank')}
-                                className="text-xs sm:text-sm"
+                                className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                               >
                                 <MailIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                                 Enviar Email
@@ -4494,28 +4627,28 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             </div>
 
                             {stats.purchases.length > 0 && (
-                        <div className="mt-4 pt-4 border-t">
-                                <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Cursos e Progresso:</p>
+                        <div className="mt-4 pt-4 border-t border-gray-700">
+                                <p className="text-xs sm:text-sm font-semibold text-white mb-3">Cursos e Progresso:</p>
                                 <div className="space-y-2 sm:space-y-3">
                                   {stats.purchases.map((purchase, idx) => {
                                     const progress = stats.progressData.find(p => p.courseId === purchase.courseId);
                               return (
-                                <div key={idx} className="bg-gray-50 p-3 rounded-lg">
+                                <div key={idx} className="bg-gray-700 p-3 rounded-lg border border-gray-600">
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                                          <span className="text-xs sm:text-sm font-medium text-gray-900 break-words">{purchase.courseTitle}</span>
-                                          <span className="text-xs text-gray-500 flex-shrink-0">R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price).toFixed(2)}</span>
+                                          <span className="text-xs sm:text-sm font-medium text-white break-words">{purchase.courseTitle}</span>
+                                          <span className="text-xs text-green-400 flex-shrink-0 font-semibold">R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price).toFixed(2)}</span>
                                   </div>
                                   {progress && (
                                     <>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div className="w-full bg-gray-600 rounded-full h-2">
                                         <div
-                                          className="bg-teal-500 h-2 rounded-full transition-all"
+                                          className="bg-teal-400 h-2 rounded-full transition-all"
                                           style={{ width: `${progress.progress}%` }}
                                         ></div>
                                       </div>
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-1 text-xs text-gray-600">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-1 text-xs text-gray-300">
                                         <span>{progress.completedLessons.length} aulas concluídas</span>
-                                        <span>{progress.progress.toFixed(0)}%</span>
+                                        <span className="text-teal-400 font-semibold">{progress.progress.toFixed(0)}%</span>
                                       </div>
                                     </>
                                   )}
@@ -4532,28 +4665,28 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </div>
                 ) : (
                   /* Visualização em Tabela */
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50 border-b border-gray-200">
+                          <thead className="bg-gray-900 border-b border-gray-700">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aluno</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cadastro</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cursos</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progresso</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Gasto</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Aluno</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Cadastro</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Cursos</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Progresso</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Total Gasto</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredAndSortedStudents.map((student) => {
                               const stats = getStudentStats(student);
                               const isActive = stats.lastAccess && (Date.now() - stats.lastAccess.getTime()) < 30 * 24 * 60 * 60 * 1000;
                               return (
-                                <tr key={student.email} className="hover:bg-gray-50 transition-colors">
+                                <tr key={student.email} className="hover:bg-gray-900 transition-colors">
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm relative" style={{ background: `linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))` }}>
@@ -4563,35 +4696,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         )}
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="font-semibold text-gray-900 break-words">{student.name}</div>
+                                        <div className="font-semibold text-white break-words">{student.name}</div>
                                       </div>
                                     </div>
                                   </td>
                                   <td className="px-4 py-4">
-                                    <div className="text-sm text-gray-900 break-all">{student.email}</div>
+                                    <div className="text-sm text-white break-all">{student.email}</div>
                                   </td>
                                   <td className="px-4 py-4">
-                                    <div className="text-sm text-gray-900">
+                                    <div className="text-sm text-white">
                                       {new Date(student.registeredAt).toLocaleDateString('pt-BR')}
                                     </div>
-                                    <div className="text-xs text-gray-500">{stats.daysSinceRegistration} dias</div>
+                                    <div className="text-xs text-gray-400">{stats.daysSinceRegistration} dias</div>
                                   </td>
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-1">
                                       <BookOpen className="w-4 h-4 text-gray-400" />
-                                      <span className="font-semibold text-gray-900">{stats.coursesCount}</span>
+                                      <span className="font-semibold text-white">{stats.coursesCount}</span>
                                     </div>
                                   </td>
                                   <td className="px-4 py-4">
                                     {stats.avgProgress > 0 ? (
                                       <div className="flex items-center gap-2">
-                                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                                        <div className="w-16 bg-gray-600 rounded-full h-2">
                                           <div
-                                            className="bg-teal-500 h-2 rounded-full"
+                                            className="bg-teal-400 h-2 rounded-full"
                                             style={{ width: `${stats.avgProgress}%` }}
                                           ></div>
                                         </div>
-                                        <span className="text-sm font-semibold text-gray-900">{stats.avgProgress.toFixed(0)}%</span>
+                                        <span className="text-sm font-semibold text-teal-400">{stats.avgProgress.toFixed(0)}%</span>
                                       </div>
                                     ) : (
                                       <span className="text-sm text-gray-400">-</span>
@@ -4599,7 +4732,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   </td>
                                   <td className="px-4 py-4">
                                     {stats.totalSpent > 0 ? (
-                                      <span className="font-semibold text-green-600">
+                                      <span className="font-semibold text-green-400">
                                         R$ {stats.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                       </span>
                                     ) : (
@@ -4608,9 +4741,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   </td>
                                   <td className="px-4 py-4">
                                     {isActive ? (
-                                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Ativo</span>
+                                      <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full font-medium">Ativo</span>
                                     ) : (
-                                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium">Inativo</span>
+                                      <span className="text-xs bg-gray-600 text-gray-300 px-2 py-1 rounded-full font-medium">Inativo</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-4 text-right">
@@ -4622,15 +4755,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           setSelectedStudent(student);
                                           setShowStudentDetails(true);
                                         }}
+                                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                       >
                                         <Eye className="w-4 h-4" />
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => window.open(`mailto:${student.email}`, '_blank')}
-                                      >
-                                        <MailIcon className="w-4 h-4" />
                                       </Button>
                                     </div>
                                   </td>
@@ -4646,7 +4773,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Modal de Detalhes do Aluno */}
                 <Dialog open={showStudentDetails} onOpenChange={setShowStudentDetails}>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-800 border-gray-700">
                     {selectedStudent && (
                       <>
                         <DialogHeader>
@@ -4655,45 +4782,45 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               {selectedStudent.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <div>{selectedStudent.name}</div>
-                              <div className="text-sm font-normal text-gray-500">{selectedStudent.email}</div>
+                              <div className="text-white">{selectedStudent.name}</div>
+                              <div className="text-sm font-normal text-gray-400 break-all">{selectedStudent.email}</div>
                             </div>
                           </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-6 mt-4">
                           {/* Informações Gerais */}
                           <div>
-                            <h3 className="font-semibold text-lg mb-3">Informações Gerais</h3>
+                            <h3 className="font-semibold text-lg mb-3 text-white">Informações Gerais</h3>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label className="text-sm text-gray-500">Data de Cadastro</Label>
-                                <p className="font-medium">{new Date(selectedStudent.registeredAt).toLocaleDateString('pt-BR')}</p>
+                                <Label className="text-sm text-gray-400">Data de Cadastro</Label>
+                                <p className="font-medium text-white">{new Date(selectedStudent.registeredAt).toLocaleDateString('pt-BR')}</p>
                               </div>
                               <div>
-                                <Label className="text-sm text-gray-500">Tempo desde Cadastro</Label>
-                                <p className="font-medium">{getStudentStats(selectedStudent).daysSinceRegistration} dias</p>
+                                <Label className="text-sm text-gray-400">Tempo desde Cadastro</Label>
+                                <p className="font-medium text-white">{getStudentStats(selectedStudent).daysSinceRegistration} dias</p>
                               </div>
                               <div>
-                                <Label className="text-sm text-gray-500">Total de Cursos</Label>
-                                <p className="font-medium">{getStudentStats(selectedStudent).coursesCount}</p>
+                                <Label className="text-sm text-gray-400">Total de Cursos</Label>
+                                <p className="font-medium text-blue-400">{getStudentStats(selectedStudent).coursesCount}</p>
                               </div>
                               <div>
-                                <Label className="text-sm text-gray-500">Total Gasto</Label>
-                                <p className="font-medium text-green-600">
+                                <Label className="text-sm text-gray-400">Total Gasto</Label>
+                                <p className="font-medium text-green-400">
                                   R$ {getStudentStats(selectedStudent).totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                               </div>
                               {getStudentStats(selectedStudent).lastAccess && (
                                 <div>
-                                  <Label className="text-sm text-gray-500">Último Acesso</Label>
-                                  <p className="font-medium">
+                                  <Label className="text-sm text-gray-400">Último Acesso</Label>
+                                  <p className="font-medium text-white">
                                     {getStudentStats(selectedStudent).lastAccess?.toLocaleDateString('pt-BR')}
                                   </p>
                                 </div>
                               )}
                               <div>
-                                <Label className="text-sm text-gray-500">Progresso Médio</Label>
-                                <p className="font-medium">
+                                <Label className="text-sm text-gray-400">Progresso Médio</Label>
+                                <p className="font-medium text-teal-400">
                                   {getStudentStats(selectedStudent).avgProgress.toFixed(1)}%
                                 </p>
                               </div>
@@ -4703,25 +4830,29 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           {/* Histórico de Compras */}
                           {getStudentStats(selectedStudent).purchases.length > 0 && (
                             <div>
-                              <h3 className="font-semibold text-lg mb-3">Histórico de Compras</h3>
+                              <h3 className="font-semibold text-lg mb-3 text-white">Histórico de Compras</h3>
                               <div className="space-y-3">
                                 {getStudentStats(selectedStudent).purchases.map((purchase, idx) => {
                                   const progress = getStudentStats(selectedStudent).progressData.find(p => p.courseId === purchase.courseId);
                                   return (
-                                    <Card key={idx}>
+                                    <Card key={idx} className="bg-gray-700 border-gray-600">
                                       <CardContent className="p-4">
                                         <div className="flex items-start justify-between mb-3">
                                           <div className="flex-1">
-                                            <h4 className="font-semibold text-gray-900">{purchase.courseTitle}</h4>
-                                            <p className="text-sm text-gray-500 mt-1">
+                                            <h4 className="font-semibold text-white">{purchase.courseTitle}</h4>
+                                            <p className="text-sm text-gray-300 mt-1">
                                               Comprado em: {new Date(purchase.date).toLocaleDateString('pt-BR')}
                                             </p>
                                           </div>
                                           <div className="text-right">
-                                            <p className="font-semibold text-green-600">
+                                            <p className="font-semibold text-green-400">
                                               R$ {(typeof purchase.price === 'string' ? parseFloat(purchase.price) : purchase.price).toFixed(2)}
                                             </p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className={`text-xs px-2 py-0.5 rounded-full inline-block mt-1 ${
+                                              purchase.paymentStatus === 'paid' 
+                                                ? 'bg-green-600 text-white' 
+                                                : 'bg-yellow-600 text-white'
+                                            }`}>
                                               {purchase.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}
                                             </p>
                                           </div>
@@ -4729,16 +4860,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         {progress && (
                                           <div>
                                             <div className="flex items-center justify-between mb-2">
-                                              <span className="text-sm text-gray-600">Progresso</span>
-                                              <span className="text-sm font-semibold">{progress.progress.toFixed(0)}%</span>
+                                              <span className="text-sm text-gray-300">Progresso</span>
+                                              <span className="text-sm font-semibold text-teal-400">{progress.progress.toFixed(0)}%</span>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div className="w-full bg-gray-600 rounded-full h-2">
                                               <div
-                                                className="bg-teal-500 h-2 rounded-full"
+                                                className="bg-teal-400 h-2 rounded-full"
                                                 style={{ width: `${progress.progress}%` }}
                                               ></div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-2">
+                                            <p className="text-xs text-gray-300 mt-2">
                                               {progress.completedLessons.length} aulas concluídas
                                             </p>
                                           </div>
@@ -4762,87 +4893,87 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       {mainView === "revenue" && (
         <section className="container mx-auto px-4 py-12">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2">Análise de Faturamento</h2>
-            <p className="text-gray-600">
+            <h2 className="text-2xl font-bold mb-2 text-white">Análise de Faturamento</h2>
+            <p className="text-gray-400">
               Acompanhe as vendas e o desempenho financeiro da plataforma
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Faturamento Total</p>
-                    <p className="text-3xl font-bold text-green-600">
+                    <p className="text-sm text-gray-400 mb-1">Faturamento Total</p>
+                    <p className="text-3xl font-bold text-green-400">
                       R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 bg-green-600/20 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-green-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Total de Vendas</p>
-                    <p className="text-3xl font-bold text-blue-600">{totalSales}</p>
+                    <p className="text-sm text-gray-400 mb-1">Total de Vendas</p>
+                    <p className="text-3xl font-bold text-blue-400">{totalSales}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <ShoppingCart className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center">
+                    <ShoppingCart className="w-6 h-6 text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Ticket Médio</p>
-                    <p className="text-3xl font-bold text-teal-600">
+                    <p className="text-sm text-gray-400 mb-1">Ticket Médio</p>
+                    <p className="text-3xl font-bold text-teal-400">
                       R$ {averageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-teal-600" />
+                  <div className="w-12 h-12 bg-teal-600/20 rounded-full flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-teal-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle>Faturamento por Curso</CardTitle>
+              <CardTitle className="text-white">Faturamento por Curso</CardTitle>
             </CardHeader>
             <CardContent>
               {revenuePerCourse.length === 0 || totalSales === 0 ? (
-                <div className="py-12 text-center text-gray-500">
+                <div className="py-12 text-center text-gray-400">
                   <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p>Nenhuma venda realizada ainda</p>
+                  <p className="text-gray-300">Nenhuma venda realizada ainda</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {revenuePerCourse.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors border border-gray-600">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{item.courseTitle}</h4>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h4 className="font-semibold text-white">{item.courseTitle}</h4>
+                        <p className="text-sm text-gray-300 mt-1">
                           {item.sales} {item.sales === 1 ? 'venda' : 'vendas'}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-2xl font-bold text-green-400">
                           R$ {item.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
                           <div
-                            className="bg-green-500 h-2 rounded-full transition-all"
+                            className="bg-green-400 h-2 rounded-full transition-all"
                             style={{ width: `${(item.revenue / totalRevenue) * 100}%` }}
                           ></div>
                         </div>
@@ -4855,9 +4986,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </Card>
 
           {purchases.length > 0 && (
-            <Card className="mt-8">
+            <Card className="mt-8 bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle>Últimas Transações</CardTitle>
+                <CardTitle className="text-white">Últimas Transações</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -4867,19 +4998,19 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     const displayAmount = Math.max(0, finalAmount || 0);
                     
                     return (
-                      <div key={purchase.id} className="flex items-center justify-between p-3 border-b last:border-b-0">
+                      <div key={purchase.id} className="flex items-center justify-between p-3 border-b border-gray-700 last:border-b-0">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Users className="w-5 h-5 text-blue-600" />
+                          <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center">
+                            <Users className="w-5 h-5 text-blue-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{purchase.userName}</p>
-                            <p className="text-sm text-gray-600">{purchase.courseTitle}</p>
+                            <p className="font-medium text-white">{purchase.userName}</p>
+                            <p className="text-sm text-gray-300">{purchase.courseTitle}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-green-600">R$ {displayAmount.toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="font-bold text-green-400">R$ {displayAmount.toFixed(2)}</p>
+                          <p className="text-xs text-gray-400">
                             {new Date(purchase.date).toLocaleDateString('pt-BR')}
                           </p>
                         </div>
@@ -4899,8 +5030,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2">Cupons de Desconto</h2>
-                    <p className="text-sm sm:text-base text-gray-600">
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Cupons de Desconto</h2>
+                    <p className="text-sm sm:text-base text-gray-400">
               Crie e gerencie cupons promocionais
             </p>
                   </div>
@@ -4908,10 +5039,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <DialogTrigger asChild>
                       <Button
                         size="lg"
-                        className="text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
-                        style={{ backgroundColor: 'var(--theme-primary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
+                        className="text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                         onClick={() => {
                           resetCouponForm();
                           setIsCouponDialogOpen(true);
@@ -4926,7 +5054,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Busca, Filtros e Ordenação */}
                 {coupons.length > 0 && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 bg-gray-800 border-gray-700">
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -4937,7 +5065,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             placeholder="Buscar cupom por código..."
                             value={couponSearch}
                             onChange={(e) => setCouponSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11"
+                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
 
@@ -4945,56 +5073,56 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                           {/* Filtro por Status */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Status</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Status</Label>
                             <select
                               value={couponStatusFilter}
                               onChange={(e) => setCouponStatusFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todos</option>
-                              <option value="active">Ativos</option>
-                              <option value="inactive">Inativos</option>
-                              <option value="expired">Expirados</option>
+                              <option value="all" className="bg-gray-700">Todos</option>
+                              <option value="active" className="bg-gray-700">Ativos</option>
+                              <option value="inactive" className="bg-gray-700">Inativos</option>
+                              <option value="expired" className="bg-gray-700">Expirados</option>
                             </select>
                           </div>
 
                           {/* Filtro por Tipo */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Tipo</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Tipo</Label>
                             <select
                               value={couponTypeFilter}
                               onChange={(e) => setCouponTypeFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todos</option>
-                              <option value="percentage">Percentual</option>
-                              <option value="fixed">Valor Fixo</option>
+                              <option value="all" className="bg-gray-700">Todos</option>
+                              <option value="percentage" className="bg-gray-700">Percentual</option>
+                              <option value="fixed" className="bg-gray-700">Valor Fixo</option>
                             </select>
                           </div>
 
                           {/* Ordenar por */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                             <select
                               value={couponSortBy}
                               onChange={(e) => setCouponSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="code">Código</option>
-                              <option value="discount">Desconto</option>
-                              <option value="uses">Uso</option>
-                              <option value="expires">Expiração</option>
-                              <option value="created">Data de Criação</option>
+                              <option value="code" className="bg-gray-700">Código</option>
+                              <option value="discount" className="bg-gray-700">Desconto</option>
+                              <option value="uses" className="bg-gray-700">Uso</option>
+                              <option value="expires" className="bg-gray-700">Expiração</option>
+                              <option value="created" className="bg-gray-700">Data de Criação</option>
                             </select>
                           </div>
 
                           {/* Ordem */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                             <Button
                               variant="outline"
                               onClick={() => setCouponSortOrder(couponSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11"
+                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                             >
                               <ArrowUpDown className="w-4 h-4 mr-2" />
                               {couponSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -5003,19 +5131,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                           {/* Visualização */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                             <div className="flex gap-2">
                               <Button
                                 variant={couponViewMode === "cards" ? "default" : "outline"}
                                 onClick={() => setCouponViewMode("cards")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  couponViewMode === "cards" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <Grid3x3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant={couponViewMode === "table" ? "default" : "outline"}
                                 onClick={() => setCouponViewMode("table")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  couponViewMode === "table" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <List className="w-4 h-4" />
                               </Button>
@@ -5024,7 +5160,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Contador de resultados */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-400">
                           Mostrando {filteredAndSortedCoupons.length} de {coupons.length} cupons
                         </div>
                       </div>
@@ -5033,16 +5169,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
 
           {coupons.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="py-20 text-center">
                 <Ticket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2">Nenhum cupom criado</h3>
-                <p className="text-gray-600 mb-6">
+                <h3 className="text-xl font-bold mb-2 text-white">Nenhum cupom criado</h3>
+                <p className="text-gray-400 mb-6">
                   Crie cupons de desconto para atrair mais alunos
                 </p>
                       <Button onClick={() => setIsCouponDialogOpen(true)} style={{ backgroundColor: 'var(--theme-primary)' }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
+                        className="text-white"
                       >
                   <Plus className="w-4 h-4 mr-2" />
                   Criar Primeiro Cupom
@@ -5050,11 +5187,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </CardContent>
             </Card>
                 ) : filteredAndSortedCoupons.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-20 text-center">
                       <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum cupom encontrado</h3>
-                      <p className="text-gray-600 mb-6">
+                      <h3 className="text-xl font-bold mb-2 text-white">Nenhum cupom encontrado</h3>
+                      <p className="text-gray-400 mb-6">
                         Tente ajustar os filtros de busca
                       </p>
                       <Button
@@ -5064,6 +5201,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setCouponStatusFilter("all");
                           setCouponTypeFilter("all");
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Limpar Filtros
                       </Button>
@@ -5075,29 +5213,29 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       const stats = getCouponStats(coupon);
 
                 return (
-                        <Card key={coupon.id} className={`overflow-hidden ${!coupon.active || stats.isExpired ? 'opacity-60' : ''}`}>
+                        <Card key={coupon.id} className={`overflow-hidden bg-gray-800 border-gray-700 ${!coupon.active || stats.isExpired ? 'opacity-60' : ''}`}>
                           <CardContent className="p-4 sm:p-6">
                             <div className="flex items-start justify-between mb-4 gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                  <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                                  <h3 className="text-lg sm:text-xl font-bold font-mono break-all">{coupon.code}</h3>
+                                  <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 flex-shrink-0" />
+                                  <h3 className="text-lg sm:text-xl font-bold font-mono break-all text-white">{coupon.code}</h3>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => copyCouponCode(coupon.code)}
-                                    className="h-8 w-8 p-0 flex-shrink-0"
+                                    className="h-8 w-8 p-0 flex-shrink-0 hover:bg-gray-700"
                             >
                               {copiedCoupon === coupon.code ? (
-                                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
                               ) : (
-                                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                                      <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-gray-300" />
                               )}
                             </Button>
                           </div>
                           <div className="flex items-center gap-2">
-                                  <Percent className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
-                                  <span className="text-xl sm:text-2xl font-bold text-blue-600">
+                                  <Percent className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                                  <span className="text-xl sm:text-2xl font-bold text-blue-400">
                               {coupon.type === "percentage" ? `${coupon.discount}%` : `R$ ${coupon.discount.toFixed(2)}`}
                             </span>
                           </div>
@@ -5125,17 +5263,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               setCouponMaxUses(coupon.maxUses.toString());
                               setIsCouponDialogOpen(true);
                             }}
-                                  className="h-8 w-8 p-0"
+                                  className="h-8 w-8 p-0 hover:bg-gray-700"
                           >
-                                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  <Edit className="w-3 h-3 sm:w-4 sm:h-4 text-gray-300" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                                   onClick={() => openDeleteCouponDialog(coupon)}
-                                  className="h-8 w-8 p-0"
+                                  className="h-8 w-8 p-0 hover:bg-gray-700"
                           >
-                                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+                                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-400" />
                           </Button>
                         </div>
                       </div>
@@ -5143,11 +5281,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                         {coupon.expiresAt && (
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-600">Expira em:</span>
-                                  <span className={`font-medium ${stats.isExpired ? 'text-red-600' : 'text-gray-900'}`}>
+                            <span className="text-gray-400">Expira em:</span>
+                                  <span className={`font-medium ${stats.isExpired ? 'text-red-400' : 'text-white'}`}>
                               {new Date(coupon.expiresAt).toLocaleDateString('pt-BR')}
                                     {stats.daysUntilExpiry !== null && stats.daysUntilExpiry > 0 && (
-                                      <span className="text-gray-500 ml-1">({stats.daysUntilExpiry} dias)</span>
+                                      <span className="text-gray-400 ml-1">({stats.daysUntilExpiry} dias)</span>
                                     )}
                             </span>
                           </div>
@@ -5155,28 +5293,28 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-gray-600">Uso:</span>
-                            <span className="font-medium text-gray-900">
+                            <span className="text-gray-400">Uso:</span>
+                            <span className="font-medium text-white">
                               {coupon.currentUses} / {coupon.maxUses === 999999 ? '∞' : coupon.maxUses}
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-600 rounded-full h-2">
                             <div
-                              className="bg-blue-500 h-2 rounded-full transition-all"
+                              className="bg-blue-400 h-2 rounded-full transition-all"
                                     style={{ width: `${Math.min(stats.usagePercent, 100)}%` }}
                             ></div>
                           </div>
-                                <div className="text-xs text-gray-500 mt-1">
+                                <div className="text-xs text-gray-300 mt-1">
                                   Taxa de uso: {stats.usageRate.toFixed(1)}%
                                 </div>
                         </div>
 
-                        <div className="pt-3 border-t">
+                        <div className="pt-3 border-t border-gray-700">
                           <button
                             onClick={() => toggleCouponStatus(coupon.id)}
                                   className={`w-full py-2 px-4 rounded-lg font-medium transition-all ${coupon.active && !stats.isExpired
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                           >
                                   {coupon.active && !stats.isExpired ? '✓ Ativo' : '✕ Inativo'}
@@ -5190,63 +5328,63 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </div>
                 ) : (
                   /* Visualização em Tabela */
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50 border-b border-gray-200">
+                          <thead className="bg-gray-900 border-b border-gray-700">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Desconto</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uso</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiração</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Código</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Desconto</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Uso</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Expiração</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredAndSortedCoupons.map((coupon) => {
                               const stats = getCouponStats(coupon);
                               return (
-                                <tr key={coupon.id} className="hover:bg-gray-50 transition-colors">
+                                <tr key={coupon.id} className="hover:bg-gray-900 transition-colors">
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-2">
-                                      <Ticket className="w-4 h-4 text-blue-600" />
-                                      <span className="font-mono font-semibold text-gray-900">{coupon.code}</span>
+                                      <Ticket className="w-4 h-4 text-blue-400" />
+                                      <span className="font-mono font-semibold text-white">{coupon.code}</span>
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => copyCouponCode(coupon.code)}
-                                        className="h-6 w-6 p-0"
+                                        className="h-6 w-6 p-0 hover:bg-gray-700"
                                       >
                                         {copiedCoupon === coupon.code ? (
-                                          <Check className="w-3 h-3 text-green-600" />
+                                          <Check className="w-3 h-3 text-green-400" />
                                         ) : (
-                                          <Copy className="w-3 h-3" />
+                                          <Copy className="w-3 h-3 text-gray-300" />
                                         )}
                                       </Button>
                                     </div>
                                   </td>
                                   <td className="px-4 py-4">
-                                    <span className="font-bold text-blue-600">
+                                    <span className="font-bold text-blue-400">
                                       {coupon.type === "percentage" ? `${coupon.discount}%` : `R$ ${coupon.discount.toFixed(2)}`}
                                     </span>
                                   </td>
                                   <td className="px-4 py-4">
-                                    <span className="text-sm text-gray-600">
+                                    <span className="text-sm text-gray-300">
                                       {coupon.type === "percentage" ? "Percentual" : "Valor Fixo"}
                                     </span>
                                   </td>
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                                      <div className="w-16 bg-gray-600 rounded-full h-2">
                                         <div
-                                          className="bg-blue-500 h-2 rounded-full"
+                                          className="bg-blue-400 h-2 rounded-full"
                                           style={{ width: `${Math.min(stats.usagePercent, 100)}%` }}
                                         ></div>
                                       </div>
-                                      <span className="text-sm font-semibold text-gray-900">
+                                      <span className="text-sm font-semibold text-white">
                                         {coupon.currentUses}/{coupon.maxUses === 999999 ? '∞' : coupon.maxUses}
                                       </span>
                                     </div>
@@ -5254,11 +5392,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   <td className="px-4 py-4">
                                     {coupon.expiresAt ? (
                                       <div>
-                                        <div className={`text-sm font-medium ${stats.isExpired ? 'text-red-600' : 'text-gray-900'}`}>
+                                        <div className={`text-sm font-medium ${stats.isExpired ? 'text-red-400' : 'text-white'}`}>
                                           {new Date(coupon.expiresAt).toLocaleDateString('pt-BR')}
                                         </div>
                                         {stats.daysUntilExpiry !== null && stats.daysUntilExpiry > 0 && (
-                                          <div className="text-xs text-gray-500">{stats.daysUntilExpiry} dias</div>
+                                          <div className="text-xs text-gray-400">{stats.daysUntilExpiry} dias</div>
                                         )}
                                       </div>
                                     ) : (
@@ -5267,11 +5405,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   </td>
                                   <td className="px-4 py-4">
                                     {coupon.active && !stats.isExpired ? (
-                                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Ativo</span>
+                                      <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full font-medium">Ativo</span>
                                     ) : stats.isExpired ? (
-                                      <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">Expirado</span>
+                                      <span className="text-xs bg-red-600 text-white px-2 py-1 rounded-full font-medium">Expirado</span>
                                     ) : (
-                                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium">Inativo</span>
+                                      <span className="text-xs bg-gray-600 text-gray-300 px-2 py-1 rounded-full font-medium">Inativo</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-4 text-right">
@@ -5296,6 +5434,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           setCouponMaxUses(coupon.maxUses.toString());
                                           setIsCouponDialogOpen(true);
                                         }}
+                                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                       >
                                         <Edit className="w-4 h-4" />
                                       </Button>
@@ -5303,6 +5442,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         variant="destructive"
                                         size="sm"
                                         onClick={() => openDeleteCouponDialog(coupon)}
+                                        className="bg-red-600 hover:bg-red-700 text-white"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
@@ -5325,8 +5465,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2">Avaliações dos Cursos</h2>
-                    <p className="text-sm sm:text-base text-gray-600">
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Avaliações dos Cursos</h2>
+                    <p className="text-sm sm:text-base text-gray-400">
                 Gerencie as avaliações e comentários dos alunos
               </p>
             </div>
@@ -5354,7 +5494,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     console.error("Erro ao carregar avaliações pendentes:", error);
                   }
                 }}
-                      className="w-full sm:w-auto"
+                      className={`w-full sm:w-auto ${
+                        reviews.filter(r => !r.approved).length > 0 
+                          ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                          : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                      }`}
               >
                 Ver Pendentes ({reviews.filter(r => !r.approved).length})
               </Button>
@@ -5381,7 +5525,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     console.error("Erro ao carregar todas as avaliações:", error);
                   }
                 }}
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
               >
                 Ver Todas
               </Button>
@@ -5390,7 +5534,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Busca, Filtros e Ordenação */}
                 {reviews.length > 0 && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 bg-gray-800 border-gray-700">
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -5401,7 +5545,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             placeholder="Buscar por usuário, curso ou comentário..."
                             value={reviewSearch}
                             onChange={(e) => setReviewSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11"
+                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
 
@@ -5409,57 +5553,57 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                           {/* Filtro por Status */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Status</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Status</Label>
                             <select
                               value={reviewStatusFilter}
                               onChange={(e) => setReviewStatusFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todos</option>
-                              <option value="approved">Aprovados</option>
-                              <option value="pending">Pendentes</option>
+                              <option value="all" className="bg-gray-700">Todos</option>
+                              <option value="approved" className="bg-gray-700">Aprovados</option>
+                              <option value="pending" className="bg-gray-700">Pendentes</option>
                             </select>
                           </div>
 
                           {/* Filtro por Avaliação */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Avaliação</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Avaliação</Label>
                             <select
                               value={reviewRatingFilter}
                               onChange={(e) => setReviewRatingFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todas</option>
-                              <option value="5">5 estrelas</option>
-                              <option value="4">4 estrelas</option>
-                              <option value="3">3 estrelas</option>
-                              <option value="2">2 estrelas</option>
-                              <option value="1">1 estrela</option>
+                              <option value="all" className="bg-gray-700">Todas</option>
+                              <option value="5" className="bg-gray-700">5 estrelas</option>
+                              <option value="4" className="bg-gray-700">4 estrelas</option>
+                              <option value="3" className="bg-gray-700">3 estrelas</option>
+                              <option value="2" className="bg-gray-700">2 estrelas</option>
+                              <option value="1" className="bg-gray-700">1 estrela</option>
                             </select>
                           </div>
 
                           {/* Ordenar por */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                             <select
                               value={reviewSortBy}
                               onChange={(e) => setReviewSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="date">Data</option>
-                              <option value="rating">Avaliação</option>
-                              <option value="course">Curso</option>
-                              <option value="user">Usuário</option>
+                              <option value="date" className="bg-gray-700">Data</option>
+                              <option value="rating" className="bg-gray-700">Avaliação</option>
+                              <option value="course" className="bg-gray-700">Curso</option>
+                              <option value="user" className="bg-gray-700">Usuário</option>
                             </select>
                           </div>
 
                           {/* Ordem */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                             <Button
                               variant="outline"
                               onClick={() => setReviewSortOrder(reviewSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11"
+                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                             >
                               <ArrowUpDown className="w-4 h-4 mr-2" />
                               {reviewSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -5468,19 +5612,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                           {/* Visualização */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                             <div className="flex gap-2">
                               <Button
                                 variant={reviewViewMode === "cards" ? "default" : "outline"}
                                 onClick={() => setReviewViewMode("cards")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  reviewViewMode === "cards" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <Grid3x3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant={reviewViewMode === "table" ? "default" : "outline"}
                                 onClick={() => setReviewViewMode("table")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  reviewViewMode === "table" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <List className="w-4 h-4" />
                               </Button>
@@ -5489,7 +5641,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Contador de resultados */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-400">
                           Mostrando {filteredAndSortedReviews.length} de {reviews.length} avaliações
                         </div>
                       </div>
@@ -5498,21 +5650,21 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
 
           {reviews.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-12 sm:py-20 text-center px-4">
                       <MessageSquare className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg sm:text-xl font-bold mb-2">Nenhuma avaliação ainda</h3>
-                      <p className="text-sm sm:text-base text-gray-600">
+                      <h3 className="text-lg sm:text-xl font-bold mb-2 text-white">Nenhuma avaliação ainda</h3>
+                      <p className="text-sm sm:text-base text-gray-400">
                   As avaliações dos alunos aparecerão aqui
                 </p>
               </CardContent>
             </Card>
                 ) : filteredAndSortedReviews.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-20 text-center">
                       <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhuma avaliação encontrada</h3>
-                      <p className="text-gray-600 mb-6">
+                      <h3 className="text-xl font-bold mb-2 text-white">Nenhuma avaliação encontrada</h3>
+                      <p className="text-gray-400 mb-6">
                         Tente ajustar os filtros de busca
                       </p>
                       <Button
@@ -5522,6 +5674,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setReviewStatusFilter("all");
                           setReviewRatingFilter("all");
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Limpar Filtros
                       </Button>
@@ -5530,7 +5683,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 ) : reviewViewMode === "cards" ? (
                   <div className="space-y-3 sm:space-y-4">
                     {filteredAndSortedReviews.map((review) => (
-                <Card key={review.id} className={`overflow-hidden ${!review.approved ? 'border-l-4 border-l-yellow-500' : ''}`}>
+                <Card key={review.id} className={`overflow-hidden bg-gray-800 border-gray-700 ${!review.approved ? 'border-l-4 border-l-yellow-500' : ''}`}>
                         <CardContent className="p-4 sm:p-6">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                             <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
@@ -5538,9 +5691,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           {review.userName.charAt(0).toUpperCase()}
                         </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="text-base sm:text-lg font-bold break-words">{review.userName}</h3>
-                                <p className="text-xs sm:text-sm text-gray-600 break-all">{review.userEmail}</p>
-                                <p className="text-xs sm:text-sm text-blue-600 font-medium mt-1 break-words">{review.courseTitle}</p>
+                                <h3 className="text-base sm:text-lg font-bold break-words text-white">{review.userName}</h3>
+                                <p className="text-xs sm:text-sm text-gray-300 break-all">{review.userEmail}</p>
+                                <p className="text-xs sm:text-sm text-blue-400 font-medium mt-1 break-words">{review.courseTitle}</p>
                         </div>
                       </div>
 
@@ -5549,7 +5702,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
                               key={i}
-                                    className={`w-4 h-4 sm:w-5 sm:h-5 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                    className={`w-4 h-4 sm:w-5 sm:h-5 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'
                               }`}
                             />
                           ))}
@@ -5559,7 +5712,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <Button
                               size="sm"
                               onClick={() => handleApproveReview(review.id)}
-                                  className="bg-green-600 hover:bg-green-700 h-9 sm:h-10 text-xs sm:text-sm"
+                                  className="bg-green-600 hover:bg-green-700 h-9 sm:h-10 text-xs sm:text-sm text-white"
                             >
                                   <Check className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                               Aprovar
@@ -5568,20 +5721,20 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     </div>
 
-                          <p className="text-sm sm:text-base text-gray-700 mb-3 break-words">{review.comment}</p>
+                          <p className="text-sm sm:text-base text-gray-300 mb-3 break-words">{review.comment}</p>
 
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 border-t">
-                            <span className="text-xs sm:text-sm text-gray-500 break-words">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 border-t border-gray-700">
+                            <span className="text-xs sm:text-sm text-gray-400 break-words">
                               {new Date(review.date).toLocaleDateString('pt-BR')} às {new Date(review.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                       {!review.approved && (
-                                <span className="bg-yellow-100 text-yellow-800 px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
+                                <span className="bg-yellow-600 text-white px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
                           Aguardando aprovação
                         </span>
                       )}
                       {review.approved && (
-                                <span className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
+                                <span className="bg-green-600 text-white px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm whitespace-nowrap">
                           Aprovado
                         </span>
                       )}
@@ -5589,7 +5742,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => handleDeleteReview(review.id)}
-                                className="h-8 sm:h-9 w-8 sm:w-9 p-0"
+                                className="h-8 sm:h-9 w-8 sm:w-9 p-0 bg-red-600 hover:bg-red-700 text-white"
                               >
                                 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                               </Button>
@@ -5601,65 +5754,65 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </div>
                 ) : (
                   /* Visualização em Tabela */
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50 border-b border-gray-200">
+                          <thead className="bg-gray-900 border-b border-gray-700">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Curso</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliação</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comentário</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Usuário</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Curso</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Avaliação</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Comentário</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredAndSortedReviews.map((review) => (
-                              <tr key={review.id} className="hover:bg-gray-50 transition-colors">
+                              <tr key={review.id} className="hover:bg-gray-900 transition-colors">
                                 <td className="px-4 py-4">
                                   <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                       {review.userName.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                      <div className="font-semibold text-gray-900 break-words">{review.userName}</div>
-                                      <div className="text-xs text-gray-500 break-all">{review.userEmail}</div>
+                                      <div className="font-semibold text-white break-words">{review.userName}</div>
+                                      <div className="text-xs text-gray-400 break-all">{review.userEmail}</div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
-                                  <div className="text-sm text-gray-900 break-words">{review.courseTitle}</div>
+                                  <div className="text-sm text-white break-words">{review.courseTitle}</div>
                                 </td>
                                 <td className="px-4 py-4">
                                   <div className="flex items-center gap-1">
                                     {Array.from({ length: 5 }).map((_, i) => (
                                       <Star
                                         key={i}
-                                        className={`w-4 h-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                        className={`w-4 h-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`}
                                       />
                                     ))}
-                                    <span className="ml-1 text-sm font-semibold text-gray-900">{review.rating}</span>
+                                    <span className="ml-1 text-sm font-semibold text-white">{review.rating}</span>
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
-                                  <div className="text-sm text-gray-700 break-words max-w-xs">{review.comment}</div>
+                                  <div className="text-sm text-gray-300 break-words max-w-xs">{review.comment}</div>
                                 </td>
                                 <td className="px-4 py-4">
-                                  <div className="text-sm text-gray-900">
+                                  <div className="text-sm text-white">
                                     {new Date(review.date).toLocaleDateString('pt-BR')}
                                   </div>
-                                  <div className="text-xs text-gray-500">
+                                  <div className="text-xs text-gray-400">
                                     {new Date(review.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
                                   {review.approved ? (
-                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Aprovado</span>
+                                    <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full font-medium">Aprovado</span>
                                   ) : (
-                                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">Pendente</span>
+                                    <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded-full font-medium">Pendente</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-4 text-right">
@@ -5669,6 +5822,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => handleApproveReview(review.id)}
+                                        className="bg-green-600 hover:bg-green-700 text-white border-green-600"
                                       >
                                         <Check className="w-4 h-4" />
                                       </Button>
@@ -5677,6 +5831,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       variant="destructive"
                                       size="sm"
                                       onClick={() => handleDeleteReview(review.id)}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
@@ -5699,8 +5854,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Gerenciar Podcasts</h2>
-              <p className="text-gray-600">Cadastre e gerencie podcasts gratuitos</p>
+              <h2 className="text-2xl font-bold mb-2 text-white">Gerenciar Podcasts</h2>
+              <p className="text-gray-400">Cadastre e gerencie podcasts gratuitos</p>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -5716,39 +5871,41 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   setPodcastImageFile(null);
                   setPodcastImageUploading(false);
                         }}
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                       >
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Podcast
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-800 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle>{editingCourse ? "Editar Podcast" : "Novo Podcast"}</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-white">{editingCourse ? "Editar Podcast" : "Novo Podcast"}</DialogTitle>
+                  <DialogDescription className="text-gray-400">
                     {editingCourse ? "Atualize as informações do podcast" : "Preencha os dados para criar um novo podcast"}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="podcast-title">Título *</Label>
+                    <Label htmlFor="podcast-title" className="text-white">Título *</Label>
                     <Input
                       id="podcast-title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="Ex: Entendendo a Ansiedade"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     />
-                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+                    {errors.title && <p className="text-red-400 text-sm mt-1">{errors.title}</p>}
                   </div>
 
                   <div>
-                    <Label htmlFor="podcast-description">Descrição</Label>
+                    <Label htmlFor="podcast-description" className="text-white">Descrição</Label>
                     <Textarea
                       id="podcast-description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Descrição do podcast..."
                       rows={4}
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     />
                   </div>
 
@@ -5756,7 +5913,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <Label htmlFor="podcast-image">Imagem do Podcast</Label>
                     <div className="space-y-2">
                       {image && (
-                        <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-700">
                           <img
                             src={image}
                             alt="Preview"
@@ -5781,16 +5938,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           htmlFor="podcast-image-upload"
                           className="flex-1 cursor-pointer"
                         >
-                          <div className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+                          <div className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-600 rounded-lg hover:border-blue-500 hover:bg-blue-900/20 transition-colors bg-gray-700">
                             {podcastImageUploading ? (
                               <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span className="text-sm text-gray-600">Enviando...</span>
+                                <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+                                <span className="text-sm text-gray-300">Enviando...</span>
                               </>
                             ) : (
                               <>
-                                <Upload className="w-4 h-4" />
-                                <span className="text-sm text-gray-600">
+                                <Upload className="w-4 h-4 text-gray-300" />
+                                <span className="text-sm text-gray-300">
                                   {image ? "Trocar Imagem" : "Fazer Upload da Imagem"}
                                 </span>
                               </>
@@ -5823,35 +5980,37 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         />
                       </div>
                       {podcastImageUploading && (
-                        <div className="flex items-center gap-2 text-sm text-yellow-700">
+                        <div className="flex items-center gap-2 text-sm text-yellow-400">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           <p>Aguardando upload da imagem...</p>
                         </div>
                       )}
                       {image && !podcastImageUploading && (
-                        <p className="text-xs text-gray-500">Imagem carregada com sucesso</p>
+                        <p className="text-xs text-gray-400">Imagem carregada com sucesso</p>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="podcast-video">URL do Vídeo *</Label>
+                    <Label htmlFor="podcast-video" className="text-white">URL do Vídeo *</Label>
                     <Input
                       id="podcast-video"
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
                       placeholder="https://..."
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     />
-                    {errors.videoUrl && <p className="text-red-500 text-sm mt-1">{errors.videoUrl}</p>}
+                    {errors.videoUrl && <p className="text-red-400 text-sm mt-1">{errors.videoUrl}</p>}
                   </div>
 
                   <div>
-                    <Label htmlFor="podcast-duration">Duração</Label>
+                    <Label htmlFor="podcast-duration" className="text-white">Duração</Label>
                     <Input
                       id="podcast-duration"
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
                       placeholder="Ex: 45min"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     />
                   </div>
 
@@ -5865,15 +6024,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setEditingCourse({ ...editingCourse, active: e.target.checked } as any);
                         }
                       }}
-                      className="w-4 h-4"
+                      className="w-4 h-4 accent-blue-600"
                     />
-                    <Label htmlFor="podcast-active" className="cursor-pointer">
+                    <Label htmlFor="podcast-active" className="cursor-pointer text-white">
                       Podcast ativo
                     </Label>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <div className="flex justify-end gap-2 pt-4 border-t border-gray-700">
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white">
                       Cancelar
                     </Button>
                     <Button onClick={async () => {
@@ -5915,7 +6074,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           toast.error(handleApiError(error));
                         }
                       }
-                    }}>
+                    }} className="bg-blue-600 hover:bg-blue-700 text-white">
                       <Save className="w-4 h-4 mr-2" />
                       {editingCourse ? "Atualizar" : "Criar"}
                     </Button>
@@ -5927,7 +6086,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Busca, Filtros e Ordenação */}
                 {podcasts.length > 0 && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 bg-gray-800 border-gray-700">
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -5938,7 +6097,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             placeholder="Buscar podcast por título ou descrição..."
                             value={podcastSearch}
                             onChange={(e) => setPodcastSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11"
+                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
 
@@ -5946,25 +6105,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           {/* Ordenar por */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                             <select
                               value={podcastSortBy}
                               onChange={(e) => setPodcastSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="title">Título</option>
-                              <option value="date">Data</option>
-                              <option value="duration">Duração</option>
+                              <option value="title" className="bg-gray-700">Título</option>
+                              <option value="date" className="bg-gray-700">Data</option>
+                              <option value="duration" className="bg-gray-700">Duração</option>
                             </select>
                           </div>
 
                           {/* Ordem */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                             <Button
                               variant="outline"
                               onClick={() => setPodcastSortOrder(podcastSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11"
+                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                             >
                               <ArrowUpDown className="w-4 h-4 mr-2" />
                               {podcastSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -5973,19 +6132,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                           {/* Visualização */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                             <div className="flex gap-2">
                               <Button
                                 variant={podcastViewMode === "cards" ? "default" : "outline"}
                                 onClick={() => setPodcastViewMode("cards")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  podcastViewMode === "cards" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <Grid3x3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant={podcastViewMode === "table" ? "default" : "outline"}
                                 onClick={() => setPodcastViewMode("table")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  podcastViewMode === "table" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <List className="w-4 h-4" />
                               </Button>
@@ -5994,7 +6161,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Contador de resultados */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-400">
                           Mostrando {filteredAndSortedPodcasts.length} de {podcasts.length} podcasts
                         </div>
                       </div>
@@ -6003,11 +6170,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
 
           {podcasts.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-12 text-center">
                 <Headphones className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-xl font-bold mb-2">Nenhum podcast cadastrado</h3>
-                <p className="text-gray-600 mb-4">Comece criando seu primeiro podcast gratuito</p>
+                <h3 className="text-xl font-bold mb-2 text-white">Nenhum podcast cadastrado</h3>
+                <p className="text-gray-400 mb-4">Comece criando seu primeiro podcast gratuito</p>
                 <Button onClick={() => {
                   setEditingCourse(null);
                   setTitle("");
@@ -6016,18 +6183,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   setVideoUrl("");
                   setDuration("");
                   setIsDialogOpen(true);
-                }}>
+                }} className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Criar Primeiro Podcast
                 </Button>
               </CardContent>
             </Card>
                 ) : filteredAndSortedPodcasts.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="py-20 text-center">
                       <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Nenhum podcast encontrado</h3>
-                      <p className="text-gray-600 mb-6">
+                      <h3 className="text-xl font-bold mb-2 text-white">Nenhum podcast encontrado</h3>
+                      <p className="text-gray-400 mb-6">
                         Tente ajustar os filtros de busca
                       </p>
                       <Button
@@ -6035,6 +6202,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         onClick={() => {
                           setPodcastSearch("");
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         Limpar Filtros
                       </Button>
@@ -6043,7 +6211,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 ) : podcastViewMode === "cards" ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredAndSortedPodcasts.map((podcast) => (
-                <Card key={podcast.id}>
+                <Card key={podcast.id} className="bg-gray-800 border-gray-700">
                   <CardContent className="p-6">
                     {podcast.image && (
                       <img
@@ -6052,11 +6220,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         className="w-full h-48 object-cover rounded-lg mb-4"
                       />
                     )}
-                    <h3 className="font-bold text-lg mb-2">{podcast.title}</h3>
+                    <h3 className="font-bold text-lg mb-2 text-white">{podcast.title}</h3>
                     {podcast.description && (
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{podcast.description}</p>
+                      <p className="text-gray-300 text-sm mb-4 line-clamp-2">{podcast.description}</p>
                     )}
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                    <div className="flex items-center justify-between text-sm text-gray-300 mb-4">
                       {podcast.duration && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
@@ -6081,6 +6249,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           setDuration(podcast.duration || "");
                           setIsDialogOpen(true);
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                       >
                         <Edit className="w-4 h-4 mr-2" />
                         Editar
@@ -6100,6 +6269,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             }
                           }
                         }}
+                        className="bg-red-600 hover:bg-red-700 text-white border-red-600"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Excluir
@@ -6111,23 +6281,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </div>
                 ) : (
                   /* Visualização em Tabela */
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50 border-b border-gray-200">
+                          <thead className="bg-gray-900 border-b border-gray-700">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Podcast</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duração</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reproduções</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Podcast</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Descrição</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Duração</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Reproduções</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredAndSortedPodcasts.map((podcast) => (
-                              <tr key={podcast.id} className="hover:bg-gray-50 transition-colors">
+                              <tr key={podcast.id} className="hover:bg-gray-900 transition-colors">
                                 <td className="px-4 py-4">
                                   <div className="flex items-center gap-3">
                                     {podcast.image && (
@@ -6138,18 +6308,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       />
                                     )}
                                     <div className="min-w-0">
-                                      <div className="font-semibold text-gray-900 break-words">{podcast.title}</div>
+                                      <div className="font-semibold text-white break-words">{podcast.title}</div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
-                                  <div className="text-sm text-gray-700 break-words max-w-xs line-clamp-2">
+                                  <div className="text-sm text-gray-300 break-words max-w-xs line-clamp-2">
                                     {podcast.description || "-"}
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
                                   {podcast.duration ? (
-                                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                                    <div className="flex items-center gap-1 text-sm text-gray-300">
                                       <Clock className="w-4 h-4" />
                                       <span>{podcast.duration}</span>
                                     </div>
@@ -6158,14 +6328,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   )}
                                 </td>
                                 <td className="px-4 py-4">
-                                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <div className="flex items-center gap-1 text-sm text-gray-300">
                                     <Headphones className="w-4 h-4" />
                                     <span>{podcast.listens || 0}</span>
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
                                   {podcast.createdAt ? (
-                                    <div className="text-sm text-gray-900">
+                                    <div className="text-sm text-white">
                                       {new Date(podcast.createdAt).toLocaleDateString('pt-BR')}
                                     </div>
                                   ) : (
@@ -6186,6 +6356,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         setDuration(podcast.duration || "");
                                         setIsDialogOpen(true);
                                       }}
+                                      className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                     >
                                       <Edit className="w-4 h-4" />
                                     </Button>
@@ -6204,6 +6375,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           }
                                         }
                                       }}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
@@ -6225,114 +6397,117 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         <section className="container mx-auto px-4 py-12">
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2">Gerenciar Newsletter</h2>
-            <p className="text-gray-600">Envie atualizações para todos os inscritos na newsletter</p>
+            <h2 className="text-2xl font-bold mb-2 text-white">Gerenciar Newsletter</h2>
+            <p className="text-gray-400">Envie atualizações para todos os inscritos na newsletter</p>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Total de Inscritos</p>
-                    <p className="text-3xl font-bold text-blue-600">{newsletterTotal}</p>
+                    <p className="text-sm text-gray-400 mb-1">Total de Inscritos</p>
+                    <p className="text-3xl font-bold text-blue-400">{newsletterTotal}</p>
                   </div>
-                  <Mail className="w-12 h-12 text-blue-200" />
+                  <Mail className="w-12 h-12 text-blue-400" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Inscritos Ativos</p>
-                    <p className="text-3xl font-bold text-green-600">{newsletterSubscribers.length}</p>
+                    <p className="text-sm text-gray-400 mb-1">Inscritos Ativos</p>
+                    <p className="text-3xl font-bold text-green-400">{newsletterSubscribers.length}</p>
                   </div>
-                  <CheckCircle2 className="w-12 h-12 text-green-200" />
+                  <CheckCircle2 className="w-12 h-12 text-green-400" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Última Atualização</p>
+                    <p className="text-sm text-gray-400 mb-1">Última Atualização</p>
                           {lastCampaign ? (
                             <div>
-                              <p className="text-sm font-semibold text-gray-800">
+                              <p className="text-sm font-semibold text-white">
                                 {new Date(lastCampaign.sentAt).toLocaleDateString('pt-BR')}
                               </p>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-gray-300 mt-1">
                                 {lastCampaign.sentCount} enviados
                               </p>
                             </div>
                           ) : (
-                    <p className="text-sm font-semibold text-gray-800">-</p>
+                    <p className="text-sm font-semibold text-white">-</p>
                           )}
                   </div>
-                  <Calendar className="w-12 h-12 text-gray-200" />
+                  <Calendar className="w-12 h-12 text-gray-400" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Formulário para Enviar Atualização */}
-          <Card className="mb-8">
+          <Card className="mb-8 bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle>Enviar Atualização da Newsletter</CardTitle>
+              <CardTitle className="text-white">Enviar Atualização da Newsletter</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="newsletter-subject">Assunto do Email *</Label>
+                  <Label htmlFor="newsletter-subject" className="text-white mb-2 block">Assunto do Email *</Label>
                   <Input
                     id="newsletter-subject"
                     value={newsletterSubject}
                     onChange={(e) => setNewsletterSubject(e.target.value)}
                     placeholder="Ex: Novidades e Dicas de Psicologia"
+                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="newsletter-content">Conteúdo *</Label>
+                  <Label htmlFor="newsletter-content" className="text-white mb-2 block">Conteúdo *</Label>
                   <Textarea
                     id="newsletter-content"
                     value={newsletterContent}
                     onChange={(e) => setNewsletterContent(e.target.value)}
                     placeholder="Escreva o conteúdo da newsletter aqui..."
                     rows={10}
-                    className="font-sans"
+                    className="font-sans bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     Você pode usar HTML básico para formatação (negrito, itálico, links, etc.)
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="newsletter-cta-text">Texto do Botão (opcional)</Label>
+                    <Label htmlFor="newsletter-cta-text" className="text-white mb-2 block">Texto do Botão (opcional)</Label>
                     <Input
                       id="newsletter-cta-text"
                       value={newsletterCtaText}
                       onChange={(e) => setNewsletterCtaText(e.target.value)}
                       placeholder="Ex: Ver Mais"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="newsletter-cta-link">Link do Botão (opcional)</Label>
+                    <Label htmlFor="newsletter-cta-link" className="text-white mb-2 block">Link do Botão (opcional)</Label>
                     <Input
                       id="newsletter-cta-link"
                       value={newsletterCtaLink}
                       onChange={(e) => setNewsletterCtaLink(e.target.value)}
                       placeholder="Ex: https://seusite.com/artigo"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     />
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 font-semibold mb-2">📧 Esta atualização será enviada para:</p>
-                  <p className="text-lg font-bold text-blue-900">{newsletterTotal} inscrito(s) ativo(s)</p>
+                <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4">
+                  <p className="text-sm text-blue-300 font-semibold mb-2">📧 Esta atualização será enviada para:</p>
+                  <p className="text-lg font-bold text-blue-400">{newsletterTotal} inscrito(s) ativo(s)</p>
                 </div>
 
                 <Button
@@ -6350,7 +6525,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     setShowNewsletterConfirmDialog(true);
                   }}
                   disabled={newsletterSending || !newsletterSubject || !newsletterContent || newsletterTotal === 0}
-                  className="w-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-700 disabled:text-gray-400"
                   size="lg"
                 >
                   {newsletterSending ? (
@@ -6371,31 +6546,31 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Histórico de Campanhas */}
                 {newsletterCampaigns.length > 0 && (
-                  <Card className="mb-8">
+                  <Card className="mb-8 bg-gray-800 border-gray-700">
                     <CardHeader>
-                      <CardTitle>Histórico de Campanhas Enviadas</CardTitle>
+                      <CardTitle className="text-white">Histórico de Campanhas Enviadas</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         {newsletterCampaigns.slice(0, 5).map((campaign) => (
                           <div
                             key={campaign.id}
-                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors bg-gray-800"
                             onClick={() => {
                               setSelectedCampaign(campaign);
                               setShowCampaignDetails(true);
                             }}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 break-words">{campaign.subject}</p>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                              <p className="font-semibold text-white break-words">{campaign.subject}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm text-gray-300">
                                 <span>{new Date(campaign.sentAt).toLocaleDateString('pt-BR')}</span>
                                 <span>•</span>
                                 <span>{campaign.sentCount} enviados</span>
                                 {campaign.failedCount > 0 && (
                                   <>
                                     <span>•</span>
-                                    <span className="text-red-600">{campaign.failedCount} falharam</span>
+                                    <span className="text-red-400">{campaign.failedCount} falharam</span>
                                   </>
                                 )}
                               </div>
@@ -6405,7 +6580,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         ))}
                       </div>
                       {newsletterCampaigns.length > 5 && (
-                        <p className="text-sm text-gray-500 mt-4 text-center">
+                        <p className="text-sm text-gray-400 mt-4 text-center">
                           Mostrando 5 de {newsletterCampaigns.length} campanhas
                         </p>
                       )}
@@ -6414,9 +6589,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
 
           {/* Lista de Inscritos */}
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle>Inscritos na Newsletter</CardTitle>
+              <CardTitle className="text-white">Inscritos na Newsletter</CardTitle>
             </CardHeader>
             <CardContent>
                     {newsletterSubscribers.length > 0 && (
@@ -6429,7 +6604,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             placeholder="Buscar por nome ou email..."
                             value={subscriberSearch}
                             onChange={(e) => setSubscriberSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11"
+                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
 
@@ -6437,39 +6612,39 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           {/* Filtro por Status */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Status</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Status</Label>
                             <select
                               value={subscriberStatusFilter}
                               onChange={(e) => setSubscriberStatusFilter(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="all">Todos</option>
-                              <option value="active">Ativos</option>
-                              <option value="inactive">Inativos</option>
+                              <option value="all" className="bg-gray-700">Todos</option>
+                              <option value="active" className="bg-gray-700">Ativos</option>
+                              <option value="inactive" className="bg-gray-700">Inativos</option>
                             </select>
                           </div>
 
                           {/* Ordenar por */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                             <select
                               value={subscriberSortBy}
                               onChange={(e) => setSubscriberSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="date">Data</option>
-                              <option value="name">Nome</option>
-                              <option value="email">Email</option>
+                              <option value="date" className="bg-gray-700">Data</option>
+                              <option value="name" className="bg-gray-700">Nome</option>
+                              <option value="email" className="bg-gray-700">Email</option>
                             </select>
                           </div>
 
                           {/* Ordem */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                             <Button
                               variant="outline"
                               onClick={() => setSubscriberSortOrder(subscriberSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11"
+                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                             >
                               <ArrowUpDown className="w-4 h-4 mr-2" />
                               {subscriberSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -6478,19 +6653,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                           {/* Visualização */}
                           <div>
-                            <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                             <div className="flex gap-2">
                               <Button
                                 variant={subscriberViewMode === "cards" ? "default" : "outline"}
                                 onClick={() => setSubscriberViewMode("cards")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  subscriberViewMode === "cards" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <Grid3x3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant={subscriberViewMode === "table" ? "default" : "outline"}
                                 onClick={() => setSubscriberViewMode("table")}
-                                className="flex-1 h-10 sm:h-11"
+                                className={`flex-1 h-10 sm:h-11 ${
+                                  subscriberViewMode === "table" 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                }`}
                               >
                                 <List className="w-4 h-4" />
                               </Button>
@@ -6499,7 +6682,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Contador de resultados */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-400">
                           Mostrando {filteredAndSortedSubscribers.length} de {newsletterSubscribers.length} inscritos
                         </div>
                       </div>
@@ -6508,16 +6691,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               {newsletterSubscribers.length === 0 ? (
                 <div className="text-center py-12">
                   <Mail className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Nenhum inscrito encontrado</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-xl font-bold mb-2 text-white">Nenhum inscrito encontrado</h3>
+                  <p className="text-gray-400">
                     Os inscritos aparecerão aqui quando se cadastrarem na newsletter
                   </p>
                 </div>
                     ) : filteredAndSortedSubscribers.length === 0 ? (
                       <div className="text-center py-12">
                         <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold mb-2">Nenhum inscrito encontrado</h3>
-                        <p className="text-gray-600 mb-6">
+                        <h3 className="text-xl font-bold mb-2 text-white">Nenhum inscrito encontrado</h3>
+                        <p className="text-gray-400 mb-6">
                           Tente ajustar os filtros de busca
                         </p>
                         <Button
@@ -6526,6 +6709,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             setSubscriberSearch("");
                             setSubscriberStatusFilter("all");
                           }}
+                          className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                         >
                           Limpar Filtros
                         </Button>
@@ -6535,27 +6719,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         {filteredAndSortedSubscribers.map((subscriber) => (
                     <div
                       key={subscriber.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                      className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-700 bg-gray-800 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Mail className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center">
+                          <Mail className="w-5 h-5 text-blue-400" />
                         </div>
                         <div>
-                          <p className="font-medium">{subscriber.name || "Sem nome"}</p>
-                                <p className="text-sm text-gray-600 break-all">{subscriber.email}</p>
+                          <p className="font-medium text-white">{subscriber.name || "Sem nome"}</p>
+                                <p className="text-sm text-gray-300 break-all">{subscriber.email}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           {new Date(subscriber.subscribedAt).toLocaleDateString("pt-BR")}
                         </p>
                               {subscriber.active ? (
-                          <span className="inline-block mt-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          <span className="inline-block mt-1 bg-green-600 text-white text-xs px-2 py-1 rounded-full">
                             Ativo
                           </span>
                               ) : (
-                                <span className="inline-block mt-1 bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
+                                <span className="inline-block mt-1 bg-gray-600 text-gray-300 text-xs px-2 py-1 rounded-full">
                                   Inativo
                                 </span>
                         )}
@@ -6567,34 +6751,34 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       /* Visualização em Tabela */
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50 border-b border-gray-200">
+                          <thead className="bg-gray-900 border-b border-gray-700">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inscrito</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Inscrição</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Inscrito</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data de Inscrição</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredAndSortedSubscribers.map((subscriber) => (
-                              <tr key={subscriber.id} className="hover:bg-gray-50 transition-colors">
+                              <tr key={subscriber.id} className="hover:bg-gray-900 transition-colors">
                                 <td className="px-4 py-4">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                      <Mail className="w-5 h-5 text-blue-600" />
+                                    <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center">
+                                      <Mail className="w-5 h-5 text-blue-400" />
                                     </div>
-                                    <div className="font-semibold text-gray-900">{subscriber.name || "Sem nome"}</div>
+                                    <div className="font-semibold text-white">{subscriber.name || "Sem nome"}</div>
                                   </div>
                                 </td>
-                                <td className="px-4 py-4 text-sm text-gray-600 break-all">{subscriber.email}</td>
-                                <td className="px-4 py-4 text-sm text-gray-600">
+                                <td className="px-4 py-4 text-sm text-gray-300 break-all">{subscriber.email}</td>
+                                <td className="px-4 py-4 text-sm text-gray-300">
                                   {new Date(subscriber.subscribedAt).toLocaleDateString("pt-BR")}
                                 </td>
                                 <td className="px-4 py-4">
                                   {subscriber.active ? (
-                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Ativo</span>
+                                    <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full font-medium">Ativo</span>
                                   ) : (
-                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium">Inativo</span>
+                                    <span className="text-xs bg-gray-600 text-gray-300 px-2 py-1 rounded-full font-medium">Inativo</span>
                                   )}
                                 </td>
                               </tr>
@@ -6609,7 +6793,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 {/* Modal de Detalhes da Campanha */}
                 <Dialog open={showCampaignDetails} onOpenChange={setShowCampaignDetails}>
                   <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[700px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
-                    <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
+                    <DialogHeader className="pb-4 sm:pb-6 border-b border-gray-700 mb-4 sm:mb-6">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Mail className="w-6 h-6 text-white" />
@@ -6628,40 +6812,40 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     {selectedCampaign && (
                       <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-6 sm:space-y-8">
                         {/* Informações Gerais */}
-                        <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border space-y-4">
-                          <div className="border-b border-gray-200 pb-2 sm:pb-3">
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                        <div className="bg-gray-900 p-4 sm:p-6 rounded-lg border space-y-4">
+                          <div className="border-b border-gray-700 pb-2 sm:pb-3">
+                            <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                               Informações da Campanha
                             </h3>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs text-gray-500">Assunto</p>
-                              <p className="font-medium text-gray-900 break-words">{selectedCampaign.subject}</p>
+                              <p className="text-xs text-gray-400">Assunto</p>
+                              <p className="font-medium text-white break-words">{selectedCampaign.subject}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500">Data de Envio</p>
-                              <p className="font-medium text-gray-900">{new Date(selectedCampaign.sentAt).toLocaleDateString('pt-BR')} às {new Date(selectedCampaign.sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-xs text-gray-400">Data de Envio</p>
+                              <p className="font-medium text-white">{new Date(selectedCampaign.sentAt).toLocaleDateString('pt-BR')} às {new Date(selectedCampaign.sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500">Total de Destinatários</p>
-                              <p className="font-medium text-gray-900">{selectedCampaign.totalRecipients}</p>
+                              <p className="text-xs text-gray-400">Total de Destinatários</p>
+                              <p className="font-medium text-white">{selectedCampaign.totalRecipients}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500">Enviados com Sucesso</p>
+                              <p className="text-xs text-gray-400">Enviados com Sucesso</p>
                               <p className="font-medium text-green-600">{selectedCampaign.sentCount}</p>
                             </div>
                             {selectedCampaign.failedCount > 0 && (
                               <div>
-                                <p className="text-xs text-gray-500">Falharam</p>
+                                <p className="text-xs text-gray-400">Falharam</p>
                                 <p className="font-medium text-red-600">{selectedCampaign.failedCount}</p>
                               </div>
                             )}
                             {selectedCampaign.sentByUser && (
                               <div>
-                                <p className="text-xs text-gray-500">Enviado por</p>
-                                <p className="font-medium text-gray-900">{selectedCampaign.sentByUser.name}</p>
+                                <p className="text-xs text-gray-400">Enviado por</p>
+                                <p className="font-medium text-white">{selectedCampaign.sentByUser.name}</p>
                               </div>
                             )}
                           </div>
@@ -6670,7 +6854,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         {/* Conteúdo */}
                         <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border border-blue-200 space-y-4">
                           <div className="border-b border-blue-200 pb-2 sm:pb-3">
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
                               <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                               Conteúdo do Email
                             </h3>
@@ -6680,7 +6864,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                           {selectedCampaign.ctaText && selectedCampaign.ctaLink && (
                             <div className="mt-4 pt-4 border-t border-blue-200">
-                              <p className="text-xs text-gray-500 mb-1">Botão CTA</p>
+                              <p className="text-xs text-gray-400 mb-1">Botão CTA</p>
                               <a
                                 href={selectedCampaign.ctaLink}
                                 target="_blank"
@@ -6697,14 +6881,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         {selectedCampaign.recipientEmails && selectedCampaign.recipientEmails.length > 0 && (
                           <div className="bg-green-50 p-4 sm:p-6 rounded-lg border border-green-200 space-y-4">
                             <div className="border-b border-green-200 pb-2 sm:pb-3">
-                              <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                              <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
                                 <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                                 Emails Enviados ({selectedCampaign.recipientEmails.length})
                               </h3>
                             </div>
                             <div className="max-h-60 overflow-y-auto space-y-2">
                               {selectedCampaign.recipientEmails.map((email: string, idx: number) => (
-                                <div key={idx} className="text-sm text-gray-700 break-all bg-white p-2 rounded border">
+                                <div key={idx} className="text-sm text-gray-300 break-all bg-gray-800 p-2 rounded border">
                                   {email}
                                 </div>
                               ))}
@@ -6716,14 +6900,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         {selectedCampaign.failedEmails && selectedCampaign.failedEmails.length > 0 && (
                           <div className="bg-red-50 p-4 sm:p-6 rounded-lg border border-red-200 space-y-4">
                             <div className="border-b border-red-200 pb-2 sm:pb-3">
-                              <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                              <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                                 Emails que Falharam ({selectedCampaign.failedEmails.length})
                               </h3>
                             </div>
                             <div className="max-h-60 overflow-y-auto space-y-2">
                               {selectedCampaign.failedEmails.map((email: string, idx: number) => (
-                                <div key={idx} className="text-sm text-red-700 break-all bg-white p-2 rounded border border-red-200">
+                                <div key={idx} className="text-sm text-red-700 break-all bg-gray-800 p-2 rounded border border-red-200">
                                   {email}
                                 </div>
                               ))}
@@ -6744,8 +6928,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <Mail className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <DialogTitle className="text-2xl font-bold text-gray-900">Confirmar Envio</DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-1">
+                    <DialogTitle className="text-2xl font-bold text-white">Confirmar Envio</DialogTitle>
+                    <DialogDescription className="text-gray-400 mt-1">
                       Newsletter será enviada para todos os inscritos
                     </DialogDescription>
                   </div>
@@ -6762,7 +6946,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <div className="flex-1 space-y-3">
                       <div>
                         <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Assunto do Email</p>
-                        <p className="text-base font-semibold text-gray-900">{newsletterSubject}</p>
+                        <p className="text-base font-semibold text-white">{newsletterSubject}</p>
                       </div>
                       <div className="pt-3 border-t border-blue-200">
                         <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Destinatários</p>
@@ -6770,7 +6954,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                             <Users className="w-4 h-4 text-white" />
                           </div>
-                          <p className="text-lg font-bold text-gray-900">{newsletterTotal} inscrito(s) ativo(s)</p>
+                          <p className="text-lg font-bold text-white">{newsletterTotal} inscrito(s) ativo(s)</p>
                         </div>
                       </div>
                     </div>
@@ -6788,7 +6972,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
                 <Button
                   variant="outline"
                   onClick={() => setShowNewsletterConfirmDialog(false)}
@@ -6870,61 +7054,61 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       <Headphones className="w-3 h-3 sm:w-4 sm:h-4 lg:w-8 lg:h-8 text-white" />
               </div>
                     <div className="min-w-0 flex-1">
-                      <h2 className="text-sm sm:text-lg lg:text-3xl font-bold text-gray-900 leading-tight">Central de Atendimento</h2>
-                      <p className="text-gray-600 text-[10px] sm:text-xs lg:text-base hidden sm:block">Gerencie e responda aos tickets de suporte</p>
+                      <h2 className="text-sm sm:text-lg lg:text-3xl font-bold text-white leading-tight">Central de Atendimento</h2>
+                      <p className="text-gray-400 text-[10px] sm:text-xs lg:text-base hidden sm:block">Gerencie e responda aos tickets de suporte</p>
               </div>
             </div>
 
                   {/* Estatísticas rápidas - Ultra compactas no mobile */}
                   <div className="grid grid-cols-4 gap-1 sm:gap-1.5 lg:gap-4 mb-1 lg:mb-2">
-                    <Card className="border-l-2 border-l-green-500">
+                    <Card className="border-l-2 border-l-green-500 bg-gray-800 border-gray-700">
                       <CardContent className="p-1 sm:p-1.5 lg:p-3">
                         <div className="flex flex-col items-center text-center">
-                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-600 mb-0.5">Abertos</p>
-                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-green-600 leading-none">
+                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-400 mb-0.5">Abertos</p>
+                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-green-400 leading-none">
                             {supportTickets.filter((t: any) => t.status === 'open').length}
                           </p>
-                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-green-100 rounded flex items-center justify-center mt-0.5 mx-auto">
-                            <AlertCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-green-600" />
+                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-green-600/20 rounded flex items-center justify-center mt-0.5 mx-auto">
+                            <AlertCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-green-400" />
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="border-l-2 border-l-blue-500">
+                    <Card className="border-l-2 border-l-blue-500 bg-gray-800 border-gray-700">
                       <CardContent className="p-1 sm:p-1.5 lg:p-3">
                         <div className="flex flex-col items-center text-center">
-                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-600 mb-0.5">Atendimento</p>
-                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-blue-600 leading-none">
+                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-400 mb-0.5">Atendimento</p>
+                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-blue-400 leading-none">
                             {supportTickets.filter((t: any) => t.status === 'in_progress').length}
                           </p>
-                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-blue-100 rounded flex items-center justify-center mt-0.5 mx-auto">
-                            <Headphones className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-blue-600" />
+                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-blue-600/20 rounded flex items-center justify-center mt-0.5 mx-auto">
+                            <Headphones className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-blue-400" />
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="border-l-2 border-l-gray-500">
+                    <Card className="border-l-2 border-l-gray-500 bg-gray-800 border-gray-700">
                       <CardContent className="p-1 sm:p-1.5 lg:p-3">
                         <div className="flex flex-col items-center text-center">
-                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-600 mb-0.5">Fechados</p>
-                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-600 leading-none">
+                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-400 mb-0.5">Fechados</p>
+                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-300 leading-none">
                             {supportTickets.filter((t: any) => t.status === 'closed').length}
                           </p>
-                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-gray-100 rounded flex items-center justify-center mt-0.5 mx-auto">
-                            <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-gray-600" />
+                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-gray-700 rounded flex items-center justify-center mt-0.5 mx-auto">
+                            <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-gray-400" />
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="border-l-2 border-l-purple-500">
+                    <Card className="border-l-2 border-l-blue-500 bg-gray-800 border-gray-700">
                       <CardContent className="p-1 sm:p-1.5 lg:p-3">
                         <div className="flex flex-col items-center text-center">
-                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-600 mb-0.5">Total</p>
-                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-purple-600 leading-none">
+                          <p className="text-[8px] sm:text-[9px] lg:text-xs text-gray-400 mb-0.5">Total</p>
+                          <p className="text-sm sm:text-lg lg:text-2xl font-bold text-blue-400 leading-none">
                             {supportTickets.length}
                           </p>
-                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-purple-100 rounded flex items-center justify-center mt-0.5 mx-auto">
-                            <MessageSquare className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-purple-600" />
+                          <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-8 lg:h-8 bg-blue-600/20 rounded flex items-center justify-center mt-0.5 mx-auto">
+                            <MessageSquare className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-4 lg:h-4 text-blue-400" />
                           </div>
                         </div>
                       </CardContent>
@@ -6935,11 +7119,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-6 flex-1 min-h-0 lg:h-auto" style={{ height: 'calc(100vh - 120px)', minHeight: '600px' }}>
             {/* Lista de Tickets */}
                   <div className="lg:col-span-1 flex flex-col h-full min-h-0">
-                    <Card className="shadow-md border-0 flex flex-col h-full">
-                      <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b flex-shrink-0 p-2 sm:p-3 lg:p-6">
+                    <Card className="shadow-md border-0 flex flex-col h-full bg-gray-800 border-gray-700">
+                      <CardHeader className="bg-gray-800 border-b border-gray-700 flex-shrink-0 p-2 sm:p-3 lg:p-6">
                         <div className="flex items-center justify-between mb-2 lg:mb-4">
-                          <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 lg:gap-2">
-                            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                          <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-white flex items-center gap-1.5 lg:gap-2">
+                            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 flex-shrink-0 text-blue-400" />
                     <span>Tickets</span>
                           </CardTitle>
                     <Button
@@ -6947,9 +7131,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       size="sm"
                       onClick={() => loadSupportTickets()}
                       disabled={supportLoading}
-                            className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 p-0 hover:bg-white flex-shrink-0"
+                            className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 p-0 hover:bg-gray-700 flex-shrink-0"
                     >
-                            <Loader2 className={`w-4 h-4 sm:w-4 sm:h-4 lg:w-4 lg:h-4 ${supportLoading ? 'animate-spin' : ''} text-gray-600`} />
+                            <Loader2 className={`w-4 h-4 sm:w-4 sm:h-4 lg:w-4 lg:h-4 ${supportLoading ? 'animate-spin' : ''} text-gray-300`} />
                     </Button>
                         </div>
                         {/* Filtros melhorados */}
@@ -6959,8 +7143,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       size="sm"
                       onClick={() => setSupportTicketFilter('all')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'all'
-                              ? 'text-white shadow-md'
-                              : 'bg-white border-gray-200'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                              : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                       }`}
                     >
                       Todos
@@ -6971,7 +7155,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       onClick={() => setSupportTicketFilter('open')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'open'
                               ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
-                              : 'bg-white hover:bg-green-50 border-gray-200 text-gray-700'
+                              : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                       }`}
                     >
                       Aberto
@@ -6981,8 +7165,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       size="sm"
                       onClick={() => setSupportTicketFilter('in_progress')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'in_progress'
-                              ? 'text-white shadow-md'
-                              : 'bg-white border-gray-200'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                              : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                               }`}
                           >
                             <span className="hidden sm:inline">Em Atendimento</span>
@@ -6994,7 +7178,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       onClick={() => setSupportTicketFilter('closed')}
                             className={`text-[10px] sm:text-xs font-medium transition-all px-1.5 sm:px-3 py-1 sm:py-1.5 sm:py-2 h-auto ${supportTicketFilter === 'closed'
                               ? 'bg-gray-600 hover:bg-gray-700 text-white shadow-md'
-                              : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-700'
+                              : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                       }`}
                     >
                       Fechado
@@ -7003,17 +7187,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 </CardHeader>
                       <CardContent className="p-0 flex-1 flex flex-col min-h-0 overflow-hidden">
                         {/* Busca de tickets */}
-                        <div className="p-2 sm:p-3 border-b bg-white flex-shrink-0">
+                        <div className="p-2 sm:p-3 border-b border-gray-700 bg-gray-800 flex-shrink-0">
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <Input
                               type="text"
                               placeholder="Buscar tickets..."
-                              className="pl-10 h-9 sm:h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                              className="pl-10 h-9 sm:h-10 text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             />
                           </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-3 space-y-2 lg:space-y-2 min-h-0 lg:h-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
+                        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-3 space-y-2 lg:space-y-2 min-h-0 lg:h-auto" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
                     {(() => {
                       const filteredTickets = supportTicketFilter === 'all' 
                         ? supportTickets 
@@ -7023,16 +7207,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         return (
                           <div className="text-center py-12 text-gray-400">
                             <div className="relative inline-block mb-4">
-                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-lg">
+                              <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center shadow-lg">
                                 <MessageCircle className="w-8 h-8 text-gray-400" />
                               </div>
                               <div className="absolute -top-1 -right-1">
-                                <Sparkles className="w-5 h-5 text-gray-300 animate-pulse" />
+                                <Sparkles className="w-5 h-5 text-gray-500 animate-pulse" />
                               </div>
                             </div>
-                            <p className="text-base font-semibold text-gray-600 mb-1">Nenhum ticket encontrado</p>
+                            <p className="text-base font-semibold text-gray-300 mb-1">Nenhum ticket encontrado</p>
                             {supportTicketFilter !== 'all' && (
-                              <p className="text-sm text-gray-500">para o filtro selecionado</p>
+                              <p className="text-sm text-gray-400">para o filtro selecionado</p>
                             )}
                           </div>
                         );
@@ -7049,15 +7233,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             key={ticket.id}
                                   className={`cursor-pointer transition-all rounded-md sm:rounded-lg lg:rounded-xl p-1.5 sm:p-2 lg:p-4 border-2 relative group ${
                               selectedTicket?.id === ticket.id 
-                                      ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100/50 shadow-sm sm:shadow-md ring-1 sm:ring-2 ring-blue-200'
-                                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 hover:shadow-sm'
+                                      ? 'border-blue-500 bg-blue-900/20 shadow-sm sm:shadow-md ring-1 sm:ring-2 ring-blue-500/50'
+                                      : 'border-gray-700 hover:border-blue-500/50 hover:bg-gray-700 hover:shadow-sm bg-gray-800'
                             }`}
                             onClick={() => openSupportTicket(ticket.id)}
                           >
                             {/* Indicador de mensagens não lidas */}
                             {unreadCount > 0 && selectedTicket?.id !== ticket.id && (
                                     <div className="absolute top-1 right-1 sm:top-2 sm:right-2 lg:top-3 lg:right-3 flex items-center gap-0.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-[9px] sm:text-[10px] lg:text-xs font-bold px-1 sm:px-1.5 lg:px-2.5 py-0.5 rounded-full shadow-md animate-pulse border border-white z-10">
-                                      <div className="w-1 h-1 bg-white rounded-full animate-ping"></div>
+                                      <div className="w-1 h-1 bg-gray-800 rounded-full animate-ping"></div>
                                 <span>{unreadCount}</span>
                               </div>
                             )}
@@ -7069,35 +7253,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     </div>
                                     <div className="flex-1 min-w-0 pr-5 sm:pr-6 lg:pr-0">
                                       <div className="flex items-start justify-between gap-1 mb-0.5">
-                                        <h3 className="font-bold text-gray-900 text-[10px] sm:text-[11px] lg:text-sm group-hover:text-blue-700 transition-colors line-clamp-1">
+                                        <h3 className="font-bold text-white text-[10px] sm:text-[11px] lg:text-sm group-hover:text-blue-400 transition-colors line-clamp-1">
                                           {ticket.subject}
                                         </h3>
                                 {/* Ícone de status */}
                                         <div className={`w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-6 lg:h-6 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0 ${ticket.status === 'open'
-                                          ? 'bg-green-100'
+                                          ? 'bg-green-600/20'
                                     : ticket.status === 'in_progress'
-                                            ? 'bg-blue-100'
-                                            : 'bg-gray-100'
+                                            ? 'bg-blue-600/20'
+                                            : 'bg-gray-700'
                                           }`}>
-                                          {ticket.status === 'open' && <AlertCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-green-600" />}
-                                          {ticket.status === 'in_progress' && <Headphones className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-blue-600" />}
-                                          {ticket.status === 'closed' && <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-gray-600" />}
+                                          {ticket.status === 'open' && <AlertCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-green-400" />}
+                                          {ticket.status === 'in_progress' && <Headphones className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-blue-400" />}
+                                          {ticket.status === 'closed' && <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3.5 lg:h-3.5 text-gray-400" />}
                                 </div>
                                   </div>
-                                      <p className="text-[9px] sm:text-[10px] lg:text-xs text-gray-600 mb-0.5 sm:mb-1 line-clamp-1">
+                                      <p className="text-[9px] sm:text-[10px] lg:text-xs text-gray-300 mb-0.5 sm:mb-1 line-clamp-1">
                                         {ticket.user?.name || ticket.user?.email || 'Usuário'}
                                       </p>
                                   </div>
                                 </div>
                                   
-                                  <div className="flex items-center justify-between pt-1 sm:pt-1.5 lg:pt-2 border-t border-gray-100">
+                                  <div className="flex items-center justify-between pt-1 sm:pt-1.5 lg:pt-2 border-t border-gray-700">
                                 <span
                                       className={`px-1 sm:px-1.5 lg:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] lg:text-xs font-semibold flex items-center gap-0.5 ${
                                     ticket.status === 'open'
-                                          ? 'bg-green-100 text-green-700'
+                                          ? 'bg-green-600 text-white'
                                       : ticket.status === 'in_progress'
-                                            ? 'bg-blue-100 text-blue-700'
-                                            : 'bg-gray-100 text-gray-700'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-600 text-gray-300'
                                   }`}
                                 >
                                   {ticket.status === 'open' && (
@@ -7120,7 +7304,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     </>
                                   )}
                                 </span>
-                                    <span className="text-[9px] sm:text-[10px] lg:text-xs text-gray-500 flex items-center gap-0.5">
+                                    <span className="text-[9px] sm:text-[10px] lg:text-xs text-gray-400 flex items-center gap-0.5">
                                       <Clock className="w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3 lg:h-3" />
                                   {(() => {
                                     const dateStr = String(ticket.createdAt);
@@ -7143,15 +7327,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             {/* Área de Mensagens */}
                   <div className="lg:col-span-2 flex flex-col h-full min-h-0">
               {selectedTicket ? (
-                      <Card className="h-full flex flex-col shadow-xl border-0 overflow-hidden lg:h-auto" style={{ height: 'calc(100vh - 120px)', minHeight: '600px' }}>
+                      <Card className="h-full flex flex-col shadow-xl border-0 overflow-hidden lg:h-auto bg-gray-800 border-gray-700" style={{ height: 'calc(100vh - 120px)', minHeight: '600px' }}>
                         {/* Header melhorado com gradiente - Compacto no mobile */}
                         <CardHeader className="border-b bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white p-1.5 sm:p-3 lg:p-4 shadow-lg sm:shadow-xl relative overflow-hidden flex-shrink-0">
                           {/* Efeito de brilho animado */}
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50 animate-shimmer"></div>
                           <div className="flex flex-col gap-2 sm:gap-3 lg:gap-4 relative z-10">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start gap-2 mb-1.5 sm:mb-2 lg:mb-3">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-md sm:rounded-lg lg:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 sm:border-2 shadow-md sm:shadow-lg flex-shrink-0">
+                            <div className="flex items-start justify-between gap-2 mb-1.5 sm:mb-2 lg:mb-3">
+                              {/* Título à esquerda */}
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-md sm:rounded-lg lg:rounded-xl bg-gray-800/20 backdrop-blur-sm flex items-center justify-center border border-white/30 sm:border-2 shadow-md sm:shadow-lg flex-shrink-0">
                                   <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -7171,11 +7356,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              {/* Cliente à direita */}
+                              <div className="flex items-center gap-2 flex-shrink-0">
                                 <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center text-[10px] sm:text-xs lg:text-base font-bold border border-white/40 sm:border-2 shadow-md sm:shadow-lg ring-1 sm:ring-2 ring-white/20 flex-shrink-0">
                             {(selectedTicket.user?.name || selectedTicket.user?.email || 'U').charAt(0).toUpperCase()}
                           </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex flex-col items-end min-w-0">
                                   <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5">
                                     <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 text-blue-200 flex-shrink-0" />
                                     <p className="text-[10px] sm:text-xs lg:text-sm text-blue-100 font-semibold truncate">
@@ -7209,7 +7395,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 toast.error(error.message || 'Erro ao atribuir ticket');
                               }
                             }}
-                                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
+                                    className="bg-gray-800/10 hover:bg-gray-800/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
                           >
                                     <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
                             <span>Atribuir</span>
@@ -7228,7 +7414,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 toast.error(error.message || 'Erro ao fechar ticket');
                               }
                             }}
-                                  className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
+                                  className="bg-gray-800/10 hover:bg-gray-800/20 text-white border-white/30 backdrop-blur-sm transition-all hover:scale-105 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs lg:text-sm flex-1 sm:flex-none px-2 sm:px-3 py-1 sm:py-1.5 h-auto"
                           >
                                   <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
                             <span>Fechar</span>
@@ -7237,7 +7423,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         )}
                     </div>
                   </CardHeader>
-                        <CardContent className="flex-1 flex flex-col overflow-hidden p-0 bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-0">
+                        <CardContent className="flex-1 flex flex-col overflow-hidden p-0 bg-gray-800 min-h-0">
                     {/* Mensagens com design melhorado */}
                           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6 space-y-4 sm:space-5 lg:space-y-5 min-h-0 lg:h-auto" style={{ height: 'calc(100vh - 380px)', minHeight: '450px' }}>
                       {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
@@ -7249,28 +7435,28 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               }`}
                             >
                               {msg.senderType !== 'admin' && (
-                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
+                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-gray-700">
                                   {(msg.sender?.name || msg.sender?.email || 'U').charAt(0).toUpperCase()}
                                 </div>
                               )}
                               <div
                                       className={`max-w-[80%] sm:max-w-[85%] lg:max-w-[75%] rounded-xl sm:rounded-2xl px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 shadow-lg transition-all hover:shadow-xl ${msg.senderType === 'admin'
                                     ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-md'
-                                    : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md shadow-md'
+                                    : 'bg-gray-700 text-white border border-gray-600 rounded-bl-md shadow-md'
                                 }`}
                               >
-                                      <div className={`text-xs font-bold mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100' : 'text-gray-600'
+                                      <div className={`text-xs font-bold mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100' : 'text-gray-300'
                                 }`}>
                                         {msg.senderType === 'admin' && (
                                           <div className="w-1.5 h-1.5 bg-blue-200 rounded-full"></div>
                                         )}
                                         <span className="truncate">{msg.sender?.name || msg.sender?.email}</span>
                                 </div>
-                                      <div className={`text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words ${msg.senderType === 'admin' ? 'text-white' : 'text-gray-800'
+                                      <div className={`text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words ${msg.senderType === 'admin' ? 'text-white' : 'text-white'
                                 }`}>
                                   {msg.content}
                                 </div>
-                                      <div className={`text-xs mt-2 sm:mt-2.5 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100 opacity-80' : 'text-gray-500'
+                                      <div className={`text-xs mt-2 sm:mt-2.5 flex items-center gap-1.5 sm:gap-2 ${msg.senderType === 'admin' ? 'text-blue-100 opacity-80' : 'text-gray-400'
                                 }`}>
                                         <Clock className="w-3 h-3 flex-shrink-0" />
                                   {(() => {
@@ -7286,7 +7472,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 </div>
                               </div>
                               {msg.senderType === 'admin' && (
-                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
+                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-gray-700">
                                   {(msg.sender?.name || msg.sender?.email || 'A').charAt(0).toUpperCase()}
                                 </div>
                               )}
@@ -7297,22 +7483,22 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
                           <div className="relative mb-6">
-                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-xl">
-                              <MessageSquare className="w-10 h-10 text-blue-500" />
+                            <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center shadow-xl">
+                              <MessageSquare className="w-10 h-10 text-gray-400" />
                             </div>
                             <div className="absolute -top-1 -right-1">
-                              <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
+                              <Sparkles className="w-6 h-6 text-gray-500 animate-pulse" />
                             </div>
                           </div>
-                          <p className="text-lg font-bold text-gray-700 mb-2">Nenhuma mensagem ainda</p>
-                          <p className="text-sm text-gray-500 text-center">Inicie a conversa enviando uma mensagem abaixo</p>
+                          <p className="text-lg font-bold text-gray-300 mb-2">Nenhuma mensagem ainda</p>
+                          <p className="text-sm text-gray-400 text-center">Inicie a conversa enviando uma mensagem abaixo</p>
                         </div>
                       )}
                     </div>
 
                     {/* Input melhorado */}
                     {selectedTicket.status !== 'closed' && (
-                            <div className="p-1.5 sm:p-3 lg:p-4 bg-white border-t border-gray-200 sm:border-t-2 shadow-lg sm:shadow-2xl flex-shrink-0">
+                            <div className="p-1.5 sm:p-3 lg:p-4 bg-gray-800 border-t border-gray-700 sm:border-t-2 shadow-lg sm:shadow-2xl flex-shrink-0">
                               <div className="flex gap-1.5 sm:gap-2 lg:gap-3 items-end">
                           <div className="flex-1 relative">
                                   <Textarea
@@ -7327,7 +7513,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               placeholder="Digite sua resposta..."
                               disabled={supportLoading}
                                     rows={1}
-                                    className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-3 rounded-md sm:rounded-lg lg:rounded-xl border border-gray-200 sm:border-2 focus:border-blue-500 focus:ring-1 sm:focus:ring-2 focus:ring-blue-200 transition-all text-xs sm:text-sm lg:text-base resize-none min-h-[38px] sm:min-h-[42px] lg:min-h-[48px] max-h-32"
+                                    className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-3 rounded-md sm:rounded-lg lg:rounded-xl border border-gray-600 sm:border-2 focus:border-blue-500 focus:ring-1 sm:focus:ring-2 focus:ring-blue-500 transition-all text-xs sm:text-sm lg:text-base resize-none min-h-[38px] sm:min-h-[42px] lg:min-h-[48px] max-h-32 bg-gray-700 text-white placeholder-gray-400"
                             />
                           </div>
                           <Button
@@ -7342,15 +7528,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             )}
                           </Button>
                         </div>
-                              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 ml-0.5 hidden sm:block">
+                              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 ml-0.5 hidden sm:block">
                                 Pressione Enter para enviar • Shift+Enter para nova linha
                               </p>
                       </div>
                     )}
 
                     {selectedTicket.status === 'closed' && (
-                      <div className="p-5 bg-gradient-to-r from-gray-100 to-gray-50 border-t border-gray-200 text-center">
-                        <div className="inline-flex items-center gap-3 text-gray-600 bg-white px-6 py-3 rounded-full shadow-md border border-gray-200">
+                      <div className="p-5 bg-gray-800 border-t border-gray-700 text-center">
+                        <div className="inline-flex items-center gap-3 text-gray-300 bg-gray-700 px-6 py-3 rounded-full shadow-md border border-gray-600">
                           <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>
                           <span className="text-sm font-semibold">Esta conversa foi fechada</span>
                         </div>
@@ -7359,29 +7545,29 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </CardContent>
                 </Card>
               ) : (
-                      <Card className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50 shadow-xl border-0">
+                      <Card className="h-full flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 shadow-xl border-0 border-gray-700">
                         <div className="text-center px-4 sm:px-6 max-w-md">
                           <div className="relative inline-block mb-4 sm:mb-6">
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-2xl ring-2 sm:ring-4 ring-blue-50 animate-pulse">
-                              <MessageCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-blue-500" />
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full bg-gray-700 flex items-center justify-center shadow-2xl ring-2 sm:ring-4 ring-gray-600 animate-pulse">
+                              <MessageCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-gray-400" />
                     </div>
                             <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2">
                               <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-400 animate-pulse" />
                             </div>
                             <div className="absolute -bottom-1 -left-1">
-                              <div className="w-4 h-4 sm:w-6 sm:h-6 bg-blue-200 rounded-full animate-ping opacity-75"></div>
+                              <div className="w-4 h-4 sm:w-6 sm:h-6 bg-blue-600/50 rounded-full animate-ping opacity-75"></div>
                             </div>
                           </div>
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-2">Selecione um ticket</h3>
-                          <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-3 sm:mb-4 px-2">Escolha uma conversa na lista ao lado para começar o atendimento</p>
+                          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2">Selecione um ticket</h3>
+                          <p className="text-xs sm:text-sm lg:text-base text-gray-400 mb-3 sm:mb-4 px-2">Escolha uma conversa na lista ao lado para começar o atendimento</p>
                           <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-4 sm:mt-6">
-                            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 rounded-lg text-xs text-blue-700 font-medium border border-blue-100">
+                            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600/20 rounded-lg text-xs text-blue-300 font-medium border border-blue-700">
                               💬 Chat em tempo real
                             </div>
-                            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-50 rounded-lg text-xs text-green-700 font-medium border border-green-100">
+                            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600/20 rounded-lg text-xs text-green-300 font-medium border border-green-700">
                               ⚡ Resposta rápida
                             </div>
-                            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-50 rounded-lg text-xs text-purple-700 font-medium border border-purple-100">
+                            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600/20 rounded-lg text-xs text-blue-300 font-medium border border-blue-700">
                               📊 Histórico completo
                             </div>
                           </div>
@@ -7397,8 +7583,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             {mainView === "home-content" && import.meta.env.DEV && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8">
-                  <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Conteúdo da Home</h2>
-                  <p className="text-sm sm:text-base text-gray-600">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Conteúdo da Home</h2>
+                  <p className="text-sm sm:text-base text-gray-400">
                     Edite o conteúdo da página inicial da plataforma
                   </p>
     </div>
@@ -7408,10 +7594,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
                   </div>
                 ) : (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-4 sm:p-6">
                       {/* Tabs */}
-                      <div className="flex flex-wrap gap-2 mb-6 border-b pb-4">
+                      <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
                         {[
                           { id: "hero", label: "Hero", icon: Sparkles },
                           { id: "carousel", label: "Carrossel", icon: Upload },
@@ -7425,15 +7611,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <button
                               key={tab.id}
                               onClick={() => setHomeContentTab(tab.id as any)}
-                              // Aqui os botoes tem que ser com aquele roxo linear igual o do hero section
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base text-white`}
-                              style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))';
-                              }}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
+                                homeContentTab === tab.id
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                  : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                              }`}
                             >
                               <IconComponent className="w-4 h-4" />
                               {tab.label}
@@ -7446,75 +7628,75 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       {homeContentTab === "hero" && (
                         <div className="space-y-6">
                           <div>
-                            <Label htmlFor="heroBadge" className="text-sm sm:text-base font-medium">Badge</Label>
+                            <Label htmlFor="heroBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
                             <Input
                               id="heroBadge"
                               value={heroBadge}
                               onChange={(e) => setHeroBadge(e.target.value)}
                               placeholder="🧠 Plataforma de Cursos de Psicologia"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="heroTitle" className="text-sm sm:text-base font-medium">Título</Label>
+                            <Label htmlFor="heroTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
                             <Input
                               id="heroTitle"
                               value={heroTitle}
                               onChange={(e) => setHeroTitle(e.target.value)}
                               placeholder="Transforme Sua Vida com Psicologia Aplicada"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="heroSubtitle" className="text-sm sm:text-base font-medium">Subtítulo</Label>
+                            <Label htmlFor="heroSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
                             <Textarea
                               id="heroSubtitle"
                               value={heroSubtitle}
                               onChange={(e) => setHeroSubtitle(e.target.value)}
                               placeholder="Descubra cursos criados por especialistas..."
                               rows={3}
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="heroPrimaryText" className="text-sm sm:text-base font-medium">Botão Primário - Texto</Label>
+                              <Label htmlFor="heroPrimaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Texto</Label>
                               <Input
                                 id="heroPrimaryText"
                                 value={heroPrimaryButtonText}
                                 onChange={(e) => setHeroPrimaryButtonText(e.target.value)}
                                 placeholder="Explorar Cursos"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="heroPrimaryAction" className="text-sm sm:text-base font-medium">Botão Primário - Ação</Label>
+                              <Label htmlFor="heroPrimaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Ação</Label>
                               <Input
                                 id="heroPrimaryAction"
                                 value={heroPrimaryButtonAction}
                                 onChange={(e) => setHeroPrimaryButtonAction(e.target.value)}
                                 placeholder="explore"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="heroSecondaryText" className="text-sm sm:text-base font-medium">Botão Secundário - Texto</Label>
+                              <Label htmlFor="heroSecondaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Texto</Label>
                               <Input
                                 id="heroSecondaryText"
                                 value={heroSecondaryButtonText}
                                 onChange={(e) => setHeroSecondaryButtonText(e.target.value)}
                                 placeholder="Podcasts"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="heroSecondaryAction" className="text-sm sm:text-base font-medium">Botão Secundário - Ação</Label>
+                              <Label htmlFor="heroSecondaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Ação</Label>
                               <Input
                                 id="heroSecondaryAction"
                                 value={heroSecondaryButtonAction}
                                 onChange={(e) => setHeroSecondaryButtonAction(e.target.value)}
                                 placeholder="podcasts"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                           </div>
@@ -7525,12 +7707,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       {homeContentTab === "carousel" && (
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold">Imagens do Carrossel</h3>
+                            <h3 className="text-lg font-semibold text-white">Imagens do Carrossel</h3>
                             <Button
                               onClick={() => {
                                 setCarouselImages([...carouselImages, { url: "", alt: "", order: carouselImages.length }]);
                               }}
                               size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Adicionar Imagem
@@ -7538,16 +7721,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
                           <div className="space-y-4">
                             {carouselImages.map((img, index) => (
-                              <Card key={index} className="p-4">
+                              <Card key={index} className="p-4 bg-gray-700 border-gray-600">
                                 <div className="space-y-4">
                                   {/* Upload de Imagem */}
                                   <div>
-                                    <Label className="text-sm font-medium mb-2 block">Imagem do Carrossel</Label>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                                    <Label className="text-sm font-medium mb-2 block text-white">Imagem do Carrossel</Label>
+                                    <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors bg-gray-800">
                                       {carouselImageUploading[index] ? (
                                         <div className="flex flex-col items-center justify-center">
-                                          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
-                                          <p className="text-sm text-gray-600">Enviando imagem...</p>
+                                          <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-2" />
+                                          <p className="text-sm text-gray-300">Enviando imagem...</p>
                                         </div>
                                       ) : img.url ? (
                                         <div className="space-y-3">
@@ -7584,7 +7767,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                               };
                                               input.click();
                                             }}
-                                            className="w-full sm:w-auto"
+                                            className="w-full sm:w-auto bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                           >
                                             <Upload className="w-4 h-4 mr-2" />
                                             Trocar Imagem
@@ -7593,7 +7776,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       ) : (
                                         <div className="space-y-3">
                                           <Upload className="w-12 h-12 mx-auto text-gray-400" />
-                                          <p className="text-sm text-gray-600 mb-2">
+                                          <p className="text-sm text-gray-300 mb-2">
                                             Clique no botão abaixo para fazer upload da imagem
                                           </p>
                                           <input
@@ -7630,12 +7813,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             onClick={() => {
                                               document.getElementById(`carousel-image-${index}`)?.click();
                                             }}
-                                            className="w-full sm:w-auto"
+                                            className="w-full sm:w-auto bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                           >
                                             <Upload className="w-4 h-4 mr-2" />
                                             Selecionar Imagem
                                           </Button>
-                                          <p className="text-xs text-gray-500 mt-2">
+                                          <p className="text-xs text-gray-400 mt-2">
                                             PNG, JPG, WEBP até 5MB
                                           </p>
                                         </div>
@@ -7646,7 +7829,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   {/* Campos de Texto Alternativo e Ordem */}
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                      <Label className="text-sm font-medium">Texto Alternativo</Label>
+                                      <Label className="text-sm font-medium text-white mb-2 block">Texto Alternativo</Label>
                                       <Input
                                         value={img.alt}
                                         onChange={(e) => {
@@ -7655,12 +7838,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           setCarouselImages(newImages);
                                         }}
                                         placeholder="Descrição da imagem"
-                                        className="mt-2"
+                                        className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                       />
                                     </div>
                                     <div className="flex items-end gap-2">
                                       <div className="flex-1">
-                                        <Label className="text-sm font-medium">Ordem</Label>
+                                        <Label className="text-sm font-medium text-white mb-2 block">Ordem</Label>
                                         <Input
                                           type="number"
                                           value={img.order}
@@ -7669,7 +7852,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             newImages[index].order = parseInt(e.target.value) || 0;
                                             setCarouselImages(newImages);
                                           }}
-                                          className="mt-2"
+                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                         />
                                       </div>
                                       <Button
@@ -7681,6 +7864,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                           delete newUploading[index];
                                           setCarouselImageUploading(newUploading);
                                         }}
+                                        className="bg-red-600 hover:bg-red-700 text-white"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
@@ -7697,44 +7881,45 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       {homeContentTab === "whyChooseUs" && (
                         <div className="space-y-6">
                           <div>
-                            <Label htmlFor="whyBadge" className="text-sm sm:text-base font-medium">Badge</Label>
+                            <Label htmlFor="whyBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
                             <Input
                               id="whyBadge"
                               value={whyChooseUsBadge}
                               onChange={(e) => setWhyChooseUsBadge(e.target.value)}
                               placeholder="Por Que Escolher Nós?"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="whyTitle" className="text-sm sm:text-base font-medium">Título</Label>
+                            <Label htmlFor="whyTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
                             <Input
                               id="whyTitle"
                               value={whyChooseUsTitle}
                               onChange={(e) => setWhyChooseUsTitle(e.target.value)}
                               placeholder="Transforme Sua Vida com Conhecimento"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="whySubtitle" className="text-sm sm:text-base font-medium">Subtítulo</Label>
+                            <Label htmlFor="whySubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
                             <Textarea
                               id="whySubtitle"
                               value={whyChooseUsSubtitle}
                               onChange={(e) => setWhyChooseUsSubtitle(e.target.value)}
                               placeholder="Somos uma plataforma dedicada..."
                               rows={3}
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold">Cards</h3>
+                              <h3 className="text-lg font-semibold text-white">Cards</h3>
                               <Button
                                 onClick={() => {
                                   setWhyChooseUsCards([...whyChooseUsCards, { icon: "Brain", title: "", description: "", gradientColors: { from: "blue-500", to: "blue-600" } }]);
                                 }}
                                 size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Adicionar Card
@@ -7742,11 +7927,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             </div>
                             <div className="space-y-4">
                               {whyChooseUsCards.map((card, index) => (
-                                <Card key={index} className="p-4">
+                                <Card key={index} className="p-4 bg-gray-700 border-gray-600">
                                   <div className="space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                       <div>
-                                        <Label className="text-sm font-medium">Ícone (nome do ícone do lucide-react)</Label>
+                                        <Label className="text-sm font-medium text-white mb-2 block">Ícone (nome do ícone do lucide-react)</Label>
                                         <Input
                                           value={card.icon}
                                           onChange={(e) => {
@@ -7755,11 +7940,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="Brain, Award, TrendingUp"
-                                          className="mt-2"
+                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-sm font-medium">Título</Label>
+                                        <Label className="text-sm font-medium text-white mb-2 block">Título</Label>
                                         <Input
                                           value={card.title}
                                           onChange={(e) => {
@@ -7768,12 +7953,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="Baseado em Ciência"
-                                          className="mt-2"
+                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                         />
                                       </div>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">Descrição</Label>
+                                      <Label className="text-sm font-medium text-white mb-2 block">Descrição</Label>
                                       <Textarea
                                         value={card.description}
                                         onChange={(e) => {
@@ -7783,12 +7968,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         }}
                                         placeholder="Todo conteúdo é validado..."
                                         rows={2}
-                                        className="mt-2"
+                                        className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                       />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                       <div>
-                                        <Label className="text-sm font-medium">Cor Gradiente (de)</Label>
+                                        <Label className="text-sm font-medium text-white mb-2 block">Cor Gradiente (de)</Label>
                                         <Input
                                           value={card.gradientColors.from}
                                           onChange={(e) => {
@@ -7797,11 +7982,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="blue-500"
-                                          className="mt-2"
+                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-sm font-medium">Cor Gradiente (para)</Label>
+                                        <Label className="text-sm font-medium text-white mb-2 block">Cor Gradiente (para)</Label>
                                         <Input
                                           value={card.gradientColors.to}
                                           onChange={(e) => {
@@ -7810,7 +7995,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="blue-600"
-                                          className="mt-2"
+                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                                         />
                                       </div>
                                     </div>
@@ -7820,6 +8005,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       onClick={() => {
                                         setWhyChooseUsCards(whyChooseUsCards.filter((_, i) => i !== index));
                                       }}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
                                       Remover Card
@@ -7836,34 +8022,34 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       {homeContentTab === "testimonials" && (
                         <div className="space-y-6">
                           <div>
-                            <Label htmlFor="testimonialsBadge" className="text-sm sm:text-base font-medium">Badge</Label>
+                            <Label htmlFor="testimonialsBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
                             <Input
                               id="testimonialsBadge"
                               value={testimonialsBadge}
                               onChange={(e) => setTestimonialsBadge(e.target.value)}
                               placeholder="Depoimentos"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="testimonialsTitle" className="text-sm sm:text-base font-medium">Título</Label>
+                            <Label htmlFor="testimonialsTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
                             <Input
                               id="testimonialsTitle"
                               value={testimonialsTitle}
                               onChange={(e) => setTestimonialsTitle(e.target.value)}
                               placeholder="O Que Nossos Alunos Dizem"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="testimonialsSubtitle" className="text-sm sm:text-base font-medium">Subtítulo</Label>
+                            <Label htmlFor="testimonialsSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
                             <Textarea
                               id="testimonialsSubtitle"
                               value={testimonialsSubtitle}
                               onChange={(e) => setTestimonialsSubtitle(e.target.value)}
                               placeholder="Histórias reais de transformação..."
                               rows={3}
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                         </div>
@@ -7873,34 +8059,35 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       {homeContentTab === "newsletter" && (
                         <div className="space-y-6">
                           <div>
-                            <Label htmlFor="newsletterTitle" className="text-sm sm:text-base font-medium">Título</Label>
+                            <Label htmlFor="newsletterTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
                             <Input
                               id="newsletterTitle"
                               value={newsletterTitle}
                               onChange={(e) => setNewsletterTitle(e.target.value)}
                               placeholder="Receba Conteúdos Exclusivos"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="newsletterSubtitle" className="text-sm sm:text-base font-medium">Subtítulo</Label>
+                            <Label htmlFor="newsletterSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
                             <Textarea
                               id="newsletterSubtitle"
                               value={newsletterSubtitle}
                               onChange={(e) => setNewsletterSubtitle(e.target.value)}
                               placeholder="Cadastre-se e receba dicas..."
                               rows={3}
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold">Features</h3>
+                              <h3 className="text-lg font-semibold text-white">Features</h3>
                               <Button
                                 onClick={() => {
                                   setNewsletterFeatures([...newsletterFeatures, { text: "" }]);
                                 }}
                                 size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Adicionar Feature
@@ -7917,7 +8104,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       setNewsletterFeatures(newFeatures);
                                     }}
                                     placeholder="Sem spam"
-                                    className="flex-1"
+                                    className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   />
                                   <Button
                                     variant="destructive"
@@ -7925,6 +8112,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     onClick={() => {
                                       setNewsletterFeatures(newsletterFeatures.filter((_, i) => i !== index));
                                     }}
+                                    className="bg-red-600 hover:bg-red-700 text-white"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
@@ -7937,88 +8125,90 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {/* CTA Section */}
                       {homeContentTab === "cta" && (
+                        
                         <div className="space-y-6">
                           <div>
-                            <Label htmlFor="ctaBadge" className="text-sm sm:text-base font-medium">Badge</Label>
+                            <Label htmlFor="ctaBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
                             <Input
                               id="ctaBadge"
                               value={ctaBadge}
                               onChange={(e) => setCtaBadge(e.target.value)}
                               placeholder="🚀 Comece Agora"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="ctaTitle" className="text-sm sm:text-base font-medium">Título</Label>
+                            <Label htmlFor="ctaTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
                             <Input
                               id="ctaTitle"
                               value={ctaTitle}
                               onChange={(e) => setCtaTitle(e.target.value)}
                               placeholder="Pronto Para Transformar Sua Vida?"
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="ctaSubtitle" className="text-sm sm:text-base font-medium">Subtítulo</Label>
+                            <Label htmlFor="ctaSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
                             <Textarea
                               id="ctaSubtitle"
                               value={ctaSubtitle}
                               onChange={(e) => setCtaSubtitle(e.target.value)}
                               placeholder="Escolha o curso ideal..."
                               rows={3}
-                              className="mt-2"
+                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="ctaPrimaryText" className="text-sm sm:text-base font-medium">Botão Primário - Texto</Label>
+                              <Label htmlFor="ctaPrimaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Texto</Label>
                               <Input
                                 id="ctaPrimaryText"
                                 value={ctaPrimaryButtonText}
                                 onChange={(e) => setCtaPrimaryButtonText(e.target.value)}
                                 placeholder="Explorar Todos os Cursos"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="ctaPrimaryAction" className="text-sm sm:text-base font-medium">Botão Primário - Ação</Label>
+                              <Label htmlFor="ctaPrimaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Ação</Label>
                               <Input
                                 id="ctaPrimaryAction"
                                 value={ctaPrimaryButtonAction}
                                 onChange={(e) => setCtaPrimaryButtonAction(e.target.value)}
                                 placeholder="explore"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="ctaSecondaryText" className="text-sm sm:text-base font-medium">Botão Secundário - Texto</Label>
+                              <Label htmlFor="ctaSecondaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Texto</Label>
                               <Input
                                 id="ctaSecondaryText"
                                 value={ctaSecondaryButtonText}
                                 onChange={(e) => setCtaSecondaryButtonText(e.target.value)}
                                 placeholder="Ver Aula Grátis"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="ctaSecondaryAction" className="text-sm sm:text-base font-medium">Botão Secundário - Ação</Label>
+                              <Label htmlFor="ctaSecondaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Ação</Label>
                               <Input
                                 id="ctaSecondaryAction"
                                 value={ctaSecondaryButtonAction}
                                 onChange={(e) => setCtaSecondaryButtonAction(e.target.value)}
                                 placeholder="free-class"
-                                className="mt-2"
+                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
                             </div>
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold">Cards de Benefícios</h3>
+                              <h3 className="text-lg font-semibold text-white">Cards de Benefícios</h3>
                               <Button
                                 onClick={() => {
                                   setCtaBenefitCards([...ctaBenefitCards, { icon: "Heart", title: "", subtitle: "", iconColor: "red-400" }]);
                                 }}
                                 size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Adicionar Card
@@ -8036,7 +8226,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     'green-400': '#4ade80',
                                     'blue-400': '#60a5fa',
                                     'yellow-400': '#facc15',
-                                    'purple-400': '#a78bfa',
                                     'pink-400': '#f472b6',
                                     'indigo-400': '#818cf8',
                                     'teal-400': '#2dd4bf',
@@ -8059,7 +8248,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     '#4ade80': 'green-400',
                                     '#60a5fa': 'blue-400',
                                     '#facc15': 'yellow-400',
-                                    '#a78bfa': 'purple-400',
+                                    '#a78bfa': 'blue-400',
                                     '#f472b6': 'pink-400',
                                     '#818cf8': 'indigo-400',
                                     '#2dd4bf': 'teal-400',
@@ -8081,7 +8270,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     { name: 'green-400', r: 74, g: 222, b: 128 },
                                     { name: 'blue-400', r: 96, g: 165, b: 250 },
                                     { name: 'yellow-400', r: 250, g: 204, b: 21 },
-                                    { name: 'purple-400', r: 167, g: 139, b: 250 },
+                                    { name: 'blue-400', r: 167, g: 139, b: 250 },
                                     { name: 'pink-400', r: 244, g: 114, b: 182 },
                                     { name: 'indigo-400', r: 129, g: 140, b: 248 },
                                     { name: 'teal-400', r: 45, g: 212, b: 191 },
@@ -8110,7 +8299,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   'green': '#dcfce7',
                                   'blue': '#dbeafe',
                                   'yellow': '#fef9c3',
-                                  'purple': '#f3e8ff',
                                   'pink': '#fce7f3',
                                   'indigo': '#e0e7ff',
                                   'teal': '#ccfbf1',
@@ -8118,10 +8306,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 const lightColor = lightColorMap[baseColor] || '#fee2e2';
                                 
                                 return (
-                                  <Card key={index} className="overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all shadow-lg hover:shadow-xl">
-                                    <div className="bg-gradient-to-br from-gray-50 to-white p-6">
+                                  <Card key={index} className="overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-all shadow-lg hover:shadow-xl bg-gray-800">
+                                    <div className="bg-gray-800 p-6">
                                       {/* Preview do Card */}
-                                      <div className="mb-6 p-6 bg-white rounded-xl border-2 border-dashed border-gray-200 shadow-inner">
+                                      <div className="mb-6 p-6 bg-gray-900 rounded-xl border-2 border-dashed border-gray-700 shadow-inner">
                                         <div className="flex items-center gap-4">
                                           <div 
                                             className="w-16 h-16 rounded-xl flex items-center justify-center shadow-md border-2"
@@ -8133,10 +8321,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             <IconComponent className="w-8 h-8" style={{ color: iconColor }} />
                                           </div>
                                           <div className="flex-1">
-                                            <h4 className="text-lg font-bold text-gray-900 mb-1">
+                                            <h4 className="text-lg font-bold text-white mb-1">
                                               {card.title || "Título do Card"}
                                             </h4>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-400">
                                               {card.subtitle || "Subtítulo do card"}
                                             </p>
                                           </div>
@@ -8146,19 +8334,19 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       {/* Campos de Edição */}
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                             Ícone
                                           </Label>
                                           <Select
-                                            value={card.icon}
+                                        value={card.icon}
                                             onValueChange={(value) => {
-                                              const newCards = [...ctaBenefitCards];
+                                          const newCards = [...ctaBenefitCards];
                                               newCards[index].icon = value;
-                                              setCtaBenefitCards(newCards);
-                                            }}
+                                          setCtaBenefitCards(newCards);
+                                        }}
                                           >
-                                            <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                                            <SelectTrigger className="border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white">
                                               <div className="flex items-center gap-2">
                                                 {card.icon && (() => {
                                                   const PreviewIcon = (LucideIcons as any)[card.icon] || LucideIcons.Heart;
@@ -8167,94 +8355,94 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                 <SelectValue placeholder="Selecione um ícone">
                                                   {card.icon || "Selecione um ícone"}
                                                 </SelectValue>
-                                              </div>
+                                    </div>
                                             </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="Heart">
+                                            <SelectContent className="bg-gray-800 border-gray-700">
+                                              <SelectItem value="Heart" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Heart className="w-4 h-4" />
                                                   <span>Heart (Coração)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Shield">
+                                              <SelectItem value="Shield" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Shield className="w-4 h-4" />
                                                   <span>Shield (Escudo)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Award">
+                                              <SelectItem value="Award" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Award className="w-4 h-4" />
                                                   <span>Award (Troféu)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Star">
+                                              <SelectItem value="Star" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Star className="w-4 h-4" />
                                                   <span>Star (Estrela)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="CheckCircle">
+                                              <SelectItem value="CheckCircle" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.CheckCircle className="w-4 h-4" />
                                                   <span>CheckCircle (Check)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Zap">
+                                              <SelectItem value="Zap" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Zap className="w-4 h-4" />
                                                   <span>Zap (Raio)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Lock">
+                                              <SelectItem value="Lock" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Lock className="w-4 h-4" />
                                                   <span>Lock (Cadeado)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Clock">
+                                              <SelectItem value="Clock" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Clock className="w-4 h-4" />
                                                   <span>Clock (Relógio)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Users">
+                                              <SelectItem value="Users" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Users className="w-4 h-4" />
                                                   <span>Users (Usuários)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Brain">
+                                              <SelectItem value="Brain" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Brain className="w-4 h-4" />
                                                   <span>Brain (Cérebro)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Target">
+                                              <SelectItem value="Target" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Target className="w-4 h-4" />
                                                   <span>Target (Alvo)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Rocket">
+                                              <SelectItem value="Rocket" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Rocket className="w-4 h-4" />
                                                   <span>Rocket (Foguete)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Sparkles">
+                                              <SelectItem value="Sparkles" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Sparkles className="w-4 h-4" />
                                                   <span>Sparkles (Brilho)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="Gift">
+                                              <SelectItem value="Gift" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.Gift className="w-4 h-4" />
                                                   <span>Gift (Presente)</span>
                                                 </div>
                                               </SelectItem>
-                                              <SelectItem value="TrendingUp">
+                                              <SelectItem value="TrendingUp" className="text-white hover:bg-gray-700">
                                                 <div className="flex items-center gap-2">
                                                   <LucideIcons.TrendingUp className="w-4 h-4" />
                                                   <span>TrendingUp (Crescimento)</span>
@@ -8262,11 +8450,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                               </SelectItem>
                                             </SelectContent>
                                           </Select>
-                                          <p className="text-xs text-gray-500">Escolha um ícone da lista</p>
+                                          <p className="text-xs text-gray-400">Escolha um ícone da lista</p>
                                         </div>
                                         <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                             Cor do Ícone
                                           </Label>
                                           <div className="flex gap-2">
@@ -8281,72 +8469,72 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                 newCards[index].iconColor = tailwindColor;
                                                 setCtaBenefitCards([...newCards]); // Criar novo array para forçar re-render
                                               }}
-                                              className="h-10 w-20 cursor-pointer border-gray-300 rounded-md"
+                                              className="h-10 w-20 cursor-pointer border-gray-600 rounded-md"
                                               title="Escolha uma cor"
                                             />
-                                            <Input
-                                              value={card.iconColor}
-                                              onChange={(e) => {
-                                                const newCards = [...ctaBenefitCards];
-                                                newCards[index].iconColor = e.target.value;
+                                      <Input
+                                        value={card.iconColor}
+                                        onChange={(e) => {
+                                          const newCards = [...ctaBenefitCards];
+                                          newCards[index].iconColor = e.target.value;
                                                 setCtaBenefitCards([...newCards]); // Criar novo array para forçar re-render
-                                              }}
-                                              placeholder="red-400"
-                                              className="flex-1 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                                            />
-                                          </div>
-                                          <p className="text-xs text-gray-500">Use o seletor de cor ou digite uma cor Tailwind</p>
+                                        }}
+                                        placeholder="red-400"
+                                              className="flex-1 border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"
+                                      />
+                                    </div>
+                                          <p className="text-xs text-gray-400">Use o seletor de cor ou digite uma cor Tailwind</p>
                                         </div>
                                         <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                             Título
                                           </Label>
-                                          <Input
-                                            value={card.title}
-                                            onChange={(e) => {
-                                              const newCards = [...ctaBenefitCards];
-                                              newCards[index].title = e.target.value;
-                                              setCtaBenefitCards(newCards);
-                                            }}
-                                            placeholder="Acesso Imediato"
-                                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                                          />
-                                        </div>
+                                      <Input
+                                        value={card.title}
+                                        onChange={(e) => {
+                                          const newCards = [...ctaBenefitCards];
+                                          newCards[index].title = e.target.value;
+                                          setCtaBenefitCards(newCards);
+                                        }}
+                                        placeholder="Acesso Imediato"
+                                            className="border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"
+                                      />
+                                    </div>
                                         <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                             Subtítulo
                                           </Label>
-                                          <Input
-                                            value={card.subtitle}
-                                            onChange={(e) => {
-                                              const newCards = [...ctaBenefitCards];
-                                              newCards[index].subtitle = e.target.value;
-                                              setCtaBenefitCards(newCards);
-                                            }}
+                                      <Input
+                                        value={card.subtitle}
+                                        onChange={(e) => {
+                                          const newCards = [...ctaBenefitCards];
+                                          newCards[index].subtitle = e.target.value;
+                                          setCtaBenefitCards(newCards);
+                                        }}
                                             placeholder="Comece agora mesmo"
-                                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                                          />
-                                        </div>
-                                      </div>
+                                            className="border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"
+                                      />
+                                    </div>
+                                  </div>
 
                                       {/* Botão Remover */}
-                                      <div className="mt-6 pt-4 border-t border-gray-200">
-                                        <Button
-                                          variant="destructive"
-                                          size="sm"
-                                          onClick={() => {
-                                            setCtaBenefitCards(ctaBenefitCards.filter((_, i) => i !== index));
-                                          }}
-                                          className="w-full sm:w-auto hover:scale-105 transition-transform shadow-md"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Remover Card
-                                        </Button>
+                                      <div className="mt-6 pt-4 border-t border-gray-700">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      setCtaBenefitCards(ctaBenefitCards.filter((_, i) => i !== index));
+                                    }}
+                                          className="w-full sm:w-auto hover:scale-105 transition-transform shadow-md bg-red-600 hover:bg-red-700 text-white"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Remover Card
+                                  </Button>
                                       </div>
                                     </div>
-                                  </Card>
+                                </Card>
                                 );
                               })}
                             </div>
@@ -8355,11 +8543,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       )}
 
                       {/* Save Button */}
-                      <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
+                      <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-700">
                         <Button
                           onClick={saveHomeContent}
                           disabled={homeContentSaving}
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           {homeContentSaving ? (
                             <>
@@ -8386,8 +8574,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8 flex justify-between items-center">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Produtos</h2>
-                    <p className="text-sm sm:text-base text-gray-600">
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Produtos</h2>
+                    <p className="text-sm sm:text-base text-gray-400">
                       Adicione, edite e remova produtos físicos e digitais
                     </p>
                   </div>
@@ -8396,7 +8584,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       setEditingProduct(null);
                       setIsDialogOpen(true);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Produto
@@ -8411,27 +8599,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         placeholder="Buscar produtos..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full"
+                        className="w-full bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       />
                     </div>
                     <select
                       value={productTypeFilter}
                       onChange={(e) => setProductTypeFilter(e.target.value as any)}
-                      className="px-4 py-2 border rounded-lg"
+                      className="px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="all">Todos os Tipos</option>
-                      <option value="physical">Físicos</option>
-                      <option value="digital">Digitais</option>
+                      <option value="all" className="bg-gray-700">Todos os Tipos</option>
+                      <option value="physical" className="bg-gray-700">Físicos</option>
+                      <option value="digital" className="bg-gray-700">Digitais</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Products List */}
                 {products.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-12 text-center">
                       <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <p className="text-gray-600">Nenhum produto cadastrado ainda.</p>
+                      <p className="text-gray-400">Nenhum produto cadastrado ainda.</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -8447,7 +8635,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         return true;
                       })
                       .map((product) => (
-                        <Card key={product.id}>
+                        <Card key={product.id} className="bg-gray-800 border-gray-700">
                           <CardContent className="p-6">
                             {/* Imagem do Produto */}
                             {product.image && (
@@ -8461,18 +8649,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             )}
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex-1">
-                                <h3 className="font-bold text-lg mb-2">{product.title}</h3>
+                                <h3 className="font-bold text-lg mb-2 text-white">{product.title}</h3>
                                 <div className="flex gap-2 mb-2">
-                                  <Badge className={product.type === 'physical' ? 'bg-blue-600' : 'bg-purple-600'}>
+                                  <Badge className={product.type === 'physical' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}>
                                     {product.type === 'physical' ? 'Físico' : 'Digital'}
                                   </Badge>
-                                  {!product.active && <Badge variant="outline">Inativo</Badge>}
+                                  {!product.active && <Badge variant="outline" className="border-gray-600 text-gray-300">Inativo</Badge>}
                                 </div>
-                                <p className="text-gray-600 text-sm mb-2">
+                                <p className="text-green-400 text-sm mb-2 font-semibold">
                                   R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
                                 </p>
                                 {product.type === 'physical' && (
-                                  <p className="text-sm text-gray-500">Estoque: {product.stock || 0}</p>
+                                  <p className="text-sm text-gray-300">Estoque: {product.stock || 0}</p>
                                 )}
                               </div>
                             </div>
@@ -8491,6 +8679,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   });
                                   setIsDialogOpen(true);
                                 }}
+                                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                               >
                                 <Edit className="w-4 h-4 mr-1" />
                                 Editar
@@ -8509,6 +8698,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     }
                                   }
                                 }}
+                                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-red-600 hover:text-white"
                               >
                                 <Trash2 className="w-4 h-4 mr-1" />
                                 Remover
@@ -8522,43 +8712,43 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                 {/* Product Dialog */}
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[800px] lg:!max-w-[900px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8">
-                    <DialogHeader className="pb-4 sm:pb-6 border-b mb-4 sm:mb-6">
-                      <DialogTitle className="text-xl sm:text-2xl font-bold">
+                  <DialogContent className="!max-w-[95vw] sm:!max-w-[90vw] md:!max-w-[800px] lg:!max-w-[900px] !max-h-[95vh] sm:!max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8 bg-gray-800 border-gray-700">
+                    <DialogHeader className="pb-4 sm:pb-6 border-b border-gray-700 mb-4 sm:mb-6">
+                      <DialogTitle className="text-xl sm:text-2xl font-bold text-white">
                         {editingProduct ? "Editar Produto" : "Novo Produto"}
                       </DialogTitle>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4 space-y-6 sm:space-y-8">
                       {/* Informações Básicas */}
                       <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Informações Básicas</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-white border-b pb-2">Informações Básicas</h3>
                         <div>
-                          <Label className="text-sm sm:text-base mb-2 block">Título *</Label>
+                          <Label className="text-sm sm:text-base mb-2 block text-white">Título *</Label>
                           <Input
                             value={editingProduct?.title || ""}
                             onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })}
                             placeholder="Nome do produto"
-                            className="h-10 sm:h-11 text-sm sm:text-base"
+                            className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm sm:text-base mb-2 block">Descrição</Label>
+                          <Label className="text-sm sm:text-base mb-2 block text-white">Descrição</Label>
                           <Textarea
                             value={editingProduct?.description || ""}
                             onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
                             placeholder="Descrição do produto"
                             rows={4}
-                            className="text-sm sm:text-base resize-none"
+                            className="text-sm sm:text-base resize-none bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           />
                         </div>
                       </div>
 
                       {/* Preços */}
                       <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Preços</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-white border-b pb-2">Preços</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Preço *</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Preço *</Label>
                             <Input
                               type="number"
                               step="0.01"
@@ -8571,11 +8761,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 });
                               }}
                               placeholder="0.00"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Preço Original</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Preço Original</Label>
                             <Input
                               type="number"
                               step="0.01"
@@ -8588,7 +8778,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 });
                               }}
                               placeholder="0.00"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                         </div>
@@ -8596,59 +8786,59 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {/* Tipo e Configurações */}
                       <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Tipo e Configurações</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-white border-b pb-2">Tipo e Configurações</h3>
                         <div>
-                          <Label className="text-sm sm:text-base mb-2 block">Tipo *</Label>
+                          <Label className="text-sm sm:text-base mb-2 block text-white">Tipo *</Label>
                           <select
                             value={editingProduct?.type || ""}
                             onChange={(e) => setEditingProduct({ ...editingProduct, type: e.target.value })}
-                            className="w-full px-3 py-2 sm:py-2.5 border rounded-lg h-10 sm:h-11 text-sm sm:text-base"
+                            className="w-full px-3 py-2 sm:py-2.5 border border-gray-600 bg-gray-700 text-white rounded-lg h-10 sm:h-11 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="">Selecione um tipo</option>
-                            <option value="physical">Físico</option>
-                            <option value="digital">Digital</option>
+                            <option value="" className="bg-gray-700">Selecione um tipo</option>
+                            <option value="physical" className="bg-gray-700">Físico</option>
+                            <option value="digital" className="bg-gray-700">Digital</option>
                           </select>
                         </div>
                         {editingProduct?.type === 'physical' && (
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Estoque</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Estoque</Label>
                             <Input
                               type="number"
                               value={editingProduct?.stock || 0}
                               onChange={(e) => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value) })}
                               placeholder="0"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                         )}
                         {editingProduct?.type === 'digital' && (
-                          <div className="space-y-4 sm:space-y-5 bg-blue-50/50 p-4 sm:p-5 rounded-lg border border-blue-100">
+                          <div className="space-y-4 sm:space-y-5 bg-blue-900/20 p-4 sm:p-5 rounded-lg border border-blue-700/30">
                             <div>
-                              <Label className="text-sm sm:text-base mb-2 block font-medium">Tipo de Conteúdo Digital *</Label>
+                              <Label className="text-sm sm:text-base mb-2 block font-medium text-white">Tipo de Conteúdo Digital *</Label>
                               <select
                                 value={editingProduct?.digitalContentType || ""}
                                 onChange={(e) => setEditingProduct({ ...editingProduct, digitalContentType: e.target.value, digitalFileUrl: e.target.value === 'upload' ? undefined : editingProduct?.digitalFileUrl })}
-                                className="w-full px-3 py-2 sm:py-2.5 border rounded-lg h-10 sm:h-11 text-sm sm:text-base bg-white"
+                                className="w-full px-3 py-2 sm:py-2.5 border border-gray-600 bg-gray-700 text-white rounded-lg h-10 sm:h-11 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
-                                <option value="">Selecione o tipo</option>
-                                <option value="url">URL do Conteúdo</option>
-                                <option value="upload">Upload do Material</option>
+                                <option value="" className="bg-gray-700">Selecione o tipo</option>
+                                <option value="url" className="bg-gray-700">URL do Conteúdo</option>
+                                <option value="upload" className="bg-gray-700">Upload do Material</option>
                               </select>
                             </div>
                             {editingProduct?.digitalContentType === 'url' && (
                               <div>
-                                <Label className="text-sm sm:text-base mb-2 block font-medium">URL do Arquivo Digital *</Label>
+                                <Label className="text-sm sm:text-base mb-2 block font-medium text-white">URL do Arquivo Digital *</Label>
                                 <Input
                                   value={editingProduct?.digitalFileUrl || ""}
                                   onChange={(e) => setEditingProduct({ ...editingProduct, digitalFileUrl: e.target.value })}
                                   placeholder="https://..."
-                                  className="h-10 sm:h-11 text-sm sm:text-base"
+                                  className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                 />
                               </div>
                             )}
                             {editingProduct?.digitalContentType === 'upload' && (
                               <div>
-                                <Label className="text-sm sm:text-base mb-2 block font-medium">Arquivo Digital *</Label>
+                                <Label className="text-sm sm:text-base mb-2 block font-medium text-white">Arquivo Digital *</Label>
                                 <div className="space-y-3">
                                   <Input
                                     type="file"
@@ -8692,40 +8882,40 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                       {/* Informações Adicionais */}
                       <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Informações Adicionais</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-white border-b pb-2">Informações Adicionais</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Categoria</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Categoria</Label>
                             <Input
                               value={editingProduct?.category || ""}
                               onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
                               placeholder="Ex: Livros, E-books"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Autor/Instrutor</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Autor/Instrutor</Label>
                             <Input
                               value={editingProduct?.author || ""}
                               onChange={(e) => setEditingProduct({ ...editingProduct, author: e.target.value })}
                               placeholder="Nome do autor ou instrutor"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Quantidade de Páginas</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Quantidade de Páginas</Label>
                             <Input
                               type="number"
                               value={editingProduct?.pages || ""}
                               onChange={(e) => setEditingProduct({ ...editingProduct, pages: e.target.value ? parseInt(e.target.value) : undefined })}
                               placeholder="Ex: 300"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                           <div>
-                            <Label className="text-sm sm:text-base mb-2 block">Avaliação (0-5)</Label>
+                            <Label className="text-sm sm:text-base mb-2 block text-white">Avaliação (0-5)</Label>
                             <Input
                               type="number"
                               step="0.1"
@@ -8740,16 +8930,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 });
                               }}
                               placeholder="0.0"
-                              className="h-10 sm:h-11 text-sm sm:text-base"
+                              className="h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
                         </div>
                       </div>
                       {/* Imagem */}
                       <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">Imagem Principal</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-white border-b border-gray-700 pb-2">Imagem Principal</h3>
                         <div>
-                          <Label className="text-sm sm:text-base mb-3 block">Imagem Principal *</Label>
                           <input
                             type="file"
                             id="product-image-upload"
@@ -8768,7 +8957,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             variant="outline"
                             onClick={() => document.getElementById('product-image-upload')?.click()}
                             disabled={productImageUploading}
-                            className="w-full h-11 sm:h-12 text-sm sm:text-base"
+                            className="w-full h-11 sm:h-12 text-sm sm:text-base bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                           >
                             {productImageUploading ? (
                               <>
@@ -8783,25 +8972,21 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             )}
                           </Button>
                           {editingProduct?.image && editingProduct.image.trim() && (editingProduct.image.startsWith('http://') || editingProduct.image.startsWith('https://')) && (
-                            <div className="mt-4 space-y-2">
+                            <div className="mt-4">
                               <img 
                                 src={editingProduct.image} 
                                 alt="Preview" 
-                                className="w-full h-48 sm:h-56 lg:h-64 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+                                className="w-full h-48 sm:h-56 lg:h-64 object-cover rounded-lg border-2 border-gray-700 shadow-sm"
                                 onError={(e) => {
                                   console.error('Erro ao carregar imagem:', editingProduct.image);
                                   e.currentTarget.style.display = 'none';
                                 }}
                               />
-                              <div className="bg-gray-50 p-3 rounded-lg">
-                                <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1">Imagem atual</p>
-                                <p className="text-xs break-all text-gray-500">{editingProduct.image}</p>
-                              </div>
                             </div>
                           )}
                           {editingProduct?.image && editingProduct.image.trim() && !editingProduct.image.startsWith('http://') && !editingProduct.image.startsWith('https://') && (
                             <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                              <p className="text-sm text-yellow-700">Aguardando URL da imagem...</p>
+                              <p className="text-sm text-yellow-400">Aguardando URL da imagem...</p>
                             </div>
                           )}
                         </div>
@@ -8925,7 +9110,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               toast.error(error.message || "Erro ao salvar produto");
                             }
                           }}
-                          className="flex-1 h-11 sm:h-12 text-sm sm:text-base font-medium"
+                          className="flex-1 h-11 sm:h-12 text-sm sm:text-base font-medium bg-blue-600 hover:bg-blue-700 text-white"
                           disabled={productImageUploading}
                         >
                           {productImageUploading ? (
@@ -8948,7 +9133,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             setProductImageFile(null);
                           }}
                           disabled={productImageUploading}
-                          className="h-11 sm:h-12 text-sm sm:text-base"
+                          className="h-11 sm:h-12 text-sm sm:text-base bg-red-600 hover:bg-red-700 text-white border-red-600"
                         >
                           Cancelar
                         </Button>
@@ -8962,27 +9147,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             {mainView === "sales" && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8">
-                  <h2 className="text-xl sm:text-2xl font-bold mb-2">Gerenciar Vendas</h2>
-                  <p className="text-sm sm:text-base text-gray-600">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Vendas</h2>
+                  <p className="text-sm sm:text-base text-gray-400">
                     Visualize vendas com produtos físicos e adicione códigos de rastreamento
                   </p>
                 </div>
 
                 {salesLoading ? (
                   <div className="flex justify-center items-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
                   </div>
                 ) : allPurchases.length === 0 ? (
-                  <Card>
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-12 text-center">
                       <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <p className="text-gray-600">Nenhuma venda com produtos físicos encontrada.</p>
+                      <p className="text-gray-400">Nenhuma venda com produtos físicos encontrada.</p>
                     </CardContent>
                   </Card>
                 ) : (
                   <>
                     {/* Busca, Filtros e Ordenação */}
-                    <Card className="mb-6">
+                    <Card className="mb-6 bg-gray-800 border-gray-700">
                       <CardContent className="p-4 sm:p-6">
                         <div className="space-y-4">
                           {/* Busca */}
@@ -8993,7 +9178,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               placeholder="Buscar por cliente, email ou ID da compra..."
                               value={salesSearch}
                               onChange={(e) => setSalesSearch(e.target.value)}
-                              className="pl-10 h-10 sm:h-11"
+                              className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
                           </div>
 
@@ -9001,57 +9186,57 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                             {/* Filtro por Status */}
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Status</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Status</Label>
                               <select
                                 value={salesStatusFilter}
                                 onChange={(e) => setSalesStatusFilter(e.target.value as any)}
-                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
-                                <option value="all">Todos</option>
-                                <option value="with-proof">Com Comprovante</option>
-                                <option value="without-proof">Sem Comprovante</option>
+                                <option value="all" className="bg-gray-700">Todos</option>
+                                <option value="with-proof" className="bg-gray-700">Com Comprovante</option>
+                                <option value="without-proof" className="bg-gray-700">Sem Comprovante</option>
                               </select>
                             </div>
 
                             {/* Filtro por Data */}
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Período</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Período</Label>
                               <select
                                 value={salesDateFilter}
                                 onChange={(e) => setSalesDateFilter(e.target.value as any)}
-                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
-                                <option value="all">Todos</option>
-                                <option value="7d">Últimos 7 dias</option>
-                                <option value="30d">Últimos 30 dias</option>
-                                <option value="90d">Últimos 90 dias</option>
-                                <option value="month">Este mês</option>
-                                <option value="year">Este ano</option>
+                                <option value="all" className="bg-gray-700">Todos</option>
+                                <option value="7d" className="bg-gray-700">Últimos 7 dias</option>
+                                <option value="30d" className="bg-gray-700">Últimos 30 dias</option>
+                                <option value="90d" className="bg-gray-700">Últimos 90 dias</option>
+                                <option value="month" className="bg-gray-700">Este mês</option>
+                                <option value="year" className="bg-gray-700">Este ano</option>
                               </select>
                             </div>
 
                             {/* Ordenar por */}
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Ordenar por</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
                               <select
                                 value={salesSortBy}
                                 onChange={(e) => setSalesSortBy(e.target.value as any)}
-                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
-                                <option value="date">Data</option>
-                                <option value="total">Total</option>
-                                <option value="customer">Cliente</option>
-                                <option value="products">Nº Produtos</option>
+                                <option value="date" className="bg-gray-700">Data</option>
+                                <option value="total" className="bg-gray-700">Total</option>
+                                <option value="customer" className="bg-gray-700">Cliente</option>
+                                <option value="products" className="bg-gray-700">Nº Produtos</option>
                               </select>
                             </div>
 
                             {/* Ordem */}
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Ordem</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
                               <Button
                                 variant="outline"
                                 onClick={() => setSalesSortOrder(salesSortOrder === "asc" ? "desc" : "asc")}
-                                className="w-full h-10 sm:h-11"
+                                className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
                               >
                                 <ArrowUpDown className="w-4 h-4 mr-2" />
                                 {salesSortOrder === "asc" ? "Crescente" : "Decrescente"}
@@ -9060,19 +9245,27 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                             {/* Visualização */}
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Visualização</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
                               <div className="flex gap-2">
                                 <Button
                                   variant={salesViewMode === "cards" ? "default" : "outline"}
                                   onClick={() => setSalesViewMode("cards")}
-                                  className="flex-1 h-10 sm:h-11"
+                                  className={`flex-1 h-10 sm:h-11 ${
+                                    salesViewMode === "cards" 
+                                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                  }`}
                                 >
                                   <Grid3x3 className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant={salesViewMode === "table" ? "default" : "outline"}
                                   onClick={() => setSalesViewMode("table")}
-                                  className="flex-1 h-10 sm:h-11"
+                                  className={`flex-1 h-10 sm:h-11 ${
+                                    salesViewMode === "table" 
+                                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                  }`}
                                 >
                                   <List className="w-4 h-4" />
                                 </Button>
@@ -9081,7 +9274,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </div>
 
                           {/* Contador de resultados */}
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-400">
                             Mostrando {filteredAndSortedSales.length} de {allPurchases.length} vendas
                           </div>
                         </div>
@@ -9089,11 +9282,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </Card>
 
                     {filteredAndSortedSales.length === 0 ? (
-                      <Card>
+                      <Card className="bg-gray-800 border-gray-700">
                         <CardContent className="py-20 text-center">
                           <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-xl font-bold mb-2">Nenhuma venda encontrada</h3>
-                          <p className="text-gray-600 mb-6">
+                          <h3 className="text-xl font-bold mb-2 text-white">Nenhuma venda encontrada</h3>
+                          <p className="text-gray-400 mb-6">
                             Tente ajustar os filtros de busca
                           </p>
                           <Button
@@ -9103,6 +9296,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               setSalesStatusFilter("all");
                               setSalesDateFilter("all");
                             }}
+                            className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                           >
                             Limpar Filtros
                           </Button>
@@ -9111,44 +9305,44 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     ) : salesViewMode === "cards" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                         {filteredAndSortedSales.map((purchase: any) => (
-                          <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                          <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow bg-gray-800 border-gray-700">
                             <CardHeader className="pb-3">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1 min-w-0">
-                                  <CardTitle className="text-base sm:text-lg mb-1">Compra #{purchase.id.substring(0, 8)}</CardTitle>
-                                  <p className="text-xs sm:text-sm text-gray-600 truncate">
-                                    <strong>{purchase.user?.name || 'N/A'}</strong>
+                                  <CardTitle className="text-base sm:text-lg mb-1 text-white">Compra #{purchase.id.substring(0, 8)}</CardTitle>
+                                  <p className="text-xs sm:text-sm text-gray-300 truncate">
+                                    <strong className="text-white">{purchase.user?.name || 'N/A'}</strong>
                                   </p>
-                                  <p className="text-xs text-gray-500 truncate">
+                                  <p className="text-xs text-gray-400 truncate">
                                     {purchase.user?.email || 'N/A'}
                               </p>
                             </div>
-                                <Badge className="bg-green-500 text-white flex-shrink-0 ml-2">
+                                <Badge className="bg-green-600 text-white flex-shrink-0 ml-2">
                               {purchase.paymentStatus === 'paid' ? 'Pago' : purchase.paymentStatus}
                             </Badge>
                           </div>
-                              <div className="flex flex-col gap-1 text-xs sm:text-sm text-gray-600 mt-2">
+                              <div className="flex flex-col gap-1 text-xs sm:text-sm text-gray-300 mt-2">
                                 <p>
-                                  <Calendar className="w-3 h-3 inline mr-1" />
+                                  <Calendar className="w-3 h-3 inline mr-1 text-gray-400" />
                                   {purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString('pt-BR', {
                                     day: '2-digit',
                                     month: 'short',
                                     year: 'numeric',
                                   }) : 'N/A'}
                                 </p>
-                                <p className="font-semibold text-green-600">
+                                <p className="font-semibold text-green-400">
                                   R$ {((typeof purchase.finalAmount === 'string' ? parseFloat(purchase.finalAmount) : purchase.finalAmount) || 0).toFixed(2)}
                                 </p>
                           </div>
                         </CardHeader>
                             <CardContent className="pt-0">
                               <div className="space-y-3">
-                                <h3 className="font-semibold text-sm mb-2">Produtos Físicos:</h3>
+                                <h3 className="font-semibold text-sm mb-2 text-white">Produtos Físicos:</h3>
                             {purchase.physicalProducts.map((pp: any) => (
-                                  <div key={pp.id} className="border rounded-lg p-3 bg-gray-50">
+                                  <div key={pp.id} className="border border-gray-700 rounded-lg p-3 bg-gray-700">
                                     <div className="mb-2">
-                                      <h4 className="font-semibold text-sm">{pp.product?.title || 'Produto'}</h4>
-                                      <p className="text-xs text-gray-600">
+                                      <h4 className="font-semibold text-sm text-white">{pp.product?.title || 'Produto'}</h4>
+                                      <p className="text-xs text-gray-300">
                                         Qtd: {pp.quantity || 0} | R$ {((typeof pp.price === 'string' ? parseFloat(pp.price) : pp.price) || (typeof pp.priceAtPurchase === 'string' ? parseFloat(pp.priceAtPurchase) : pp.priceAtPurchase) || 0).toFixed(2)}
                                       </p>
                                 </div>
@@ -9160,7 +9354,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   
                                   return (
                                     <div className="mt-2 pt-2 border-t">
-                                      <p className="text-xs font-semibold text-gray-700 mb-1">Comprovante de Envio:</p>
+                                      <p className="text-xs font-semibold text-gray-300 mb-1">Comprovante de Envio:</p>
                                       
                                       {tracking?.proofOfDeliveryUrl ? (
                                         <div className="space-y-1">
@@ -9168,13 +9362,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             href={tracking.proofOfDeliveryUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-blue-600 hover:text-blue-800 text-xs underline flex items-center gap-1"
+                                            className="text-blue-400 hover:text-blue-300 text-xs underline flex items-center gap-1"
                                           >
                                             <FileText className="w-3 h-3" />
                                             Ver comprovante
                                           </a>
                                           {tracking.deliveredAt && (
-                                            <p className="text-xs text-gray-600">
+                                            <p className="text-xs text-gray-400">
                                               Entregue: {new Date(tracking.deliveredAt).toLocaleDateString('pt-BR')}
                                           </p>
                                         )}
@@ -9195,14 +9389,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                     }));
                                                   }
                                                 }}
-                                                className="text-xs h-7"
+                                                className="text-xs h-7 bg-gray-700 border-gray-600 text-white"
                                               />
                                               {proofFiles[trackingId] && (
                                       <Button
                                         size="sm"
                                                   onClick={() => handleUploadProof(trackingId)}
                                                   disabled={uploadingProof === trackingId}
-                                                  className="h-6 text-xs w-full"
+                                                  className="h-6 text-xs w-full bg-blue-600 hover:bg-blue-700 text-white"
                                                 >
                                                   {uploadingProof === trackingId ? (
                                                     <>
@@ -9225,7 +9419,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                 setProofFile(null);
                                                 setProofDialogOpen(true);
                                       }}
-                                              className="bg-blue-600 hover:bg-blue-700 h-7 text-xs w-full"
+                                              className="bg-blue-600 hover:bg-blue-700 h-7 text-xs w-full text-white"
                                               size="sm"
                                     >
                                               <FileText className="w-3 h-3 mr-1" />
@@ -9246,48 +9440,48 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </div>
                     ) : (
                       /* Visualização em Tabela */
-                      <Card>
+                      <Card className="bg-gray-800 border-gray-700">
                         <CardContent className="p-0">
                           <div className="overflow-x-auto">
                             <table className="w-full">
-                              <thead className="bg-gray-50 border-b border-gray-200">
+                              <thead className="bg-gray-900 border-b border-gray-700">
                                 <tr>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compra</th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produtos</th>
-                                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Compra</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Cliente</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Total</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Produtos</th>
+                                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                                 </tr>
                               </thead>
-                              <tbody className="bg-white divide-y divide-gray-200">
+                              <tbody className="bg-gray-800 divide-y divide-gray-700">
                                 {filteredAndSortedSales.map((purchase: any) => (
-                                  <tr key={purchase.id} className="hover:bg-gray-50 transition-colors">
+                                  <tr key={purchase.id} className="hover:bg-gray-900 transition-colors">
                                     <td className="px-4 py-4">
-                                      <div className="text-sm font-semibold text-gray-900">#{purchase.id.substring(0, 8)}</div>
+                                      <div className="text-sm font-semibold text-white">#{purchase.id.substring(0, 8)}</div>
                                     </td>
                                     <td className="px-4 py-4">
-                                      <div className="text-sm text-gray-900">{purchase.user?.name || 'N/A'}</div>
-                                      <div className="text-xs text-gray-500">{purchase.user?.email || 'N/A'}</div>
+                                      <div className="text-sm text-white">{purchase.user?.name || 'N/A'}</div>
+                                      <div className="text-xs text-gray-400">{purchase.user?.email || 'N/A'}</div>
                                     </td>
                                     <td className="px-4 py-4">
-                                      <div className="text-sm text-gray-900">
+                                      <div className="text-sm text-white">
                                         {purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
                                       </div>
                                     </td>
                                     <td className="px-4 py-4">
-                                      <span className="font-semibold text-green-600">
+                                      <span className="font-semibold text-green-400">
                                         R$ {((typeof purchase.finalAmount === 'string' ? parseFloat(purchase.finalAmount) : purchase.finalAmount) || 0).toFixed(2)}
                                       </span>
                                     </td>
                                     <td className="px-4 py-4">
-                                      <Badge className="bg-green-500 text-white">
+                                      <Badge className="bg-green-600 text-white">
                                         {purchase.paymentStatus === 'paid' ? 'Pago' : purchase.paymentStatus}
                                       </Badge>
                                     </td>
                                     <td className="px-4 py-4">
-                                      <div className="text-sm text-gray-900">
+                                      <div className="text-sm text-white">
                                         {purchase.physicalProducts?.length || 0} produto(s)
                                       </div>
                                     </td>
@@ -9296,12 +9490,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                          // Expandir detalhes ou abrir modal
-                                          const purchaseElement = document.getElementById(`purchase-${purchase.id}`);
-                                          if (purchaseElement) {
-                                            purchaseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                          }
+                                          setSelectedPurchaseDetail(purchase);
+                                          setPurchaseDetailDialogOpen(true);
                                         }}
+                                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                                       >
                                         <Eye className="w-4 h-4" />
                                       </Button>
@@ -9327,24 +9519,24 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </DialogTitle>
                       <DialogDescription className="mt-3">
                         {selectedProductPurchase && (
-                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
                             <div className="flex items-start gap-3">
                               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                 <Package className="w-6 h-6 text-blue-600" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 text-base mb-1">
+                                <p className="font-semibold text-white text-base mb-1">
                                   {selectedProductPurchase.product?.title}
                                 </p>
                             {allPurchases.find(p => p.physicalProducts?.some((pp: any) => pp.id === selectedProductPurchase.id)) && (
                                   <div className="space-y-1">
-                                    <p className="text-sm text-gray-600 flex items-center gap-1">
+                                    <p className="text-sm text-gray-400 flex items-center gap-1">
                                       <User className="w-4 h-4" />
                                       <span className="font-medium">
                                         {allPurchases.find(p => p.physicalProducts?.some((pp: any) => pp.id === selectedProductPurchase.id))?.user?.name}
                                       </span>
                                     </p>
-                                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                                    <p className="text-sm text-gray-400 flex items-center gap-1">
                                       <Mail className="w-4 h-4" />
                                       {allPurchases.find(p => p.physicalProducts?.some((pp: any) => pp.id === selectedProductPurchase.id))?.user?.email}
                                     </p>
@@ -9364,7 +9556,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           Comprovante de Envio
                           <span className="text-red-500">*</span>
                         </Label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+                        <div className="border-2 border-dashed border-gray-600 rounded-lg p-4 hover:border-blue-400 transition-colors">
                           <div className="flex flex-col items-center justify-center gap-3">
                             {proofFile ? (
                               <div className="w-full">
@@ -9372,10 +9564,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
                                     <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                      <p className="text-sm font-medium text-white truncate">
                                         {proofFile.name}
                                       </p>
-                                      <p className="text-xs text-gray-500">
+                                      <p className="text-xs text-gray-400">
                                         {(proofFile.size / 1024).toFixed(2)} KB
                                       </p>
                       </div>
@@ -9394,10 +9586,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <>
                                 <Upload className="w-8 h-8 text-gray-400" />
                                 <div className="text-center">
-                                  <p className="text-sm text-gray-600 mb-1">
+                                  <p className="text-sm text-gray-400 mb-1">
                                     Clique para selecionar ou arraste o arquivo aqui
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-400">
                                     Formatos aceitos: PDF, JPG, PNG (máx. 10MB)
                                   </p>
                                 </div>
@@ -9466,79 +9658,362 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                {/* Dialog para visualizar detalhes da compra */}
+                <Dialog open={purchaseDetailDialogOpen} onOpenChange={setPurchaseDetailDialogOpen}>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-800 border-gray-700">
+                    <DialogHeader className="pb-4 border-b border-gray-700">
+                      <DialogTitle className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                        <ShoppingCart className="w-5 h-5" />
+                        Detalhes da Compra #{selectedPurchaseDetail?.id?.substring(0, 8)}
+                      </DialogTitle>
+                      <DialogDescription className="text-gray-400 mt-2">
+                        Informações completas da venda e produtos físicos
+                      </DialogDescription>
+                    </DialogHeader>
+                    {selectedPurchaseDetail && (
+                      <div className="space-y-6 mt-4">
+                        {/* Informações do Cliente */}
+                        <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                          <h3 className="text-lg font-semibold text-white mb-3">Informações do Cliente</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-400 mb-1">Nome</p>
+                              <p className="text-white font-medium break-words">{selectedPurchaseDetail.user?.name || 'N/A'}</p>
+                            </div>
+                            <div className="md:col-span-1">
+                              <p className="text-sm text-gray-400 mb-1">Email</p>
+                              <p className="text-white font-medium break-all word-break break-words">{selectedPurchaseDetail.user?.email || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-400 mb-1">Data da Compra</p>
+                              <p className="text-white font-medium break-words">
+                                {selectedPurchaseDetail.createdAt 
+                                  ? new Date(selectedPurchaseDetail.createdAt).toLocaleDateString('pt-BR', {
+                                      day: '2-digit',
+                                      month: 'long',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })
+                                  : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-400 mb-1">Status do Pagamento</p>
+                              <Badge className={selectedPurchaseDetail.paymentStatus === 'paid' ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'}>
+                                {selectedPurchaseDetail.paymentStatus === 'paid' ? 'Pago' : selectedPurchaseDetail.paymentStatus || 'Pendente'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Produtos Físicos */}
+                        <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                          <h3 className="text-lg font-semibold text-white mb-3">Produtos Físicos</h3>
+                          <div className="space-y-3">
+                            {selectedPurchaseDetail.physicalProducts?.map((pp: any) => {
+                              const tracking = pp.tracking || pp.shippingTracking;
+                              return (
+                                <div key={pp.id} className="bg-gray-800 rounded-lg p-4 border border-gray-600">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-white mb-1">{pp.product?.title || 'Produto'}</h4>
+                                      <div className="flex gap-4 text-sm text-gray-300">
+                                        <span>Quantidade: <strong className="text-white">{pp.quantity || 0}</strong></span>
+                                        <span>Preço: <strong className="text-green-400">R$ {((typeof pp.price === 'string' ? parseFloat(pp.price) : pp.price) || (typeof pp.priceAtPurchase === 'string' ? parseFloat(pp.priceAtPurchase) : pp.priceAtPurchase) || 0).toFixed(2)}</strong></span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Comprovante de Envio */}
+                                  <div className="mt-3 pt-3 border-t border-gray-600">
+                                    <p className="text-sm font-semibold text-gray-300 mb-2">Comprovante de Envio:</p>
+                                    {tracking?.proofOfDeliveryUrl ? (
+                                      <div className="space-y-2">
+                                        <a
+                                          href={tracking.proofOfDeliveryUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-400 hover:text-blue-300 text-sm underline flex items-center gap-2"
+                                        >
+                                          <FileText className="w-4 h-4" />
+                                          Ver comprovante
+                                        </a>
+                                        {tracking.deliveredAt && (
+                                          <p className="text-xs text-gray-400">
+                                            Entregue em: {new Date(tracking.deliveredAt).toLocaleDateString('pt-BR')}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-gray-400">Nenhum comprovante adicionado ainda</p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Resumo Financeiro */}
+                        <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                          <h3 className="text-lg font-semibold text-white mb-3">Resumo Financeiro</h3>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-300">Total da Compra:</span>
+                            <span className="text-2xl font-bold text-green-400">
+                              R$ {((typeof selectedPurchaseDetail.finalAmount === 'string' ? parseFloat(selectedPurchaseDetail.finalAmount) : selectedPurchaseDetail.finalAmount) || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-700">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setPurchaseDetailDialogOpen(false);
+                          setSelectedPurchaseDetail(null);
+                        }}
+                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
+                      >
+                        Fechar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </section>
+            )}
+
+            {mainView === "sale-email" && (
+              <section className="container mx-auto px-4 py-6">
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-white">
+                      <Mail className="w-5 h-5" />
+                      Emails de Notificação de Vendas
+                    </CardTitle>
+                    <p className="text-sm text-gray-400 mt-2">
+                      Configure os emails que receberão notificações sempre que uma venda for confirmada.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {saleEmailLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-row items-stretch gap-4">
+                          <div className="flex-1 rounded-lg border border-gray-700 bg-gray-800/50 p-4 flex items-center justify-between">
+                            <div>
+                              <p className="text-white font-medium">Ativar notificações</p>
+                              <p className="text-sm text-gray-400">Se desativado, nenhum email será enviado.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSaleEmailActive(!saleEmailActive)}
+                              className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${
+                                saleEmailActive ? "bg-blue-600" : "bg-gray-600"
+                              }`}
+                              aria-pressed={saleEmailActive}
+                            >
+                              <span
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                  saleEmailActive ? "translate-x-6" : "translate-x-1"
+                                }`}
+                              />
+                            </button>
+                          </div>
+                          <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4 flex items-center justify-between gap-6 w-[220px] h-full">
+                            <div>
+                              <p className={`text-sm font-semibold ${saleEmailActive ? "text-emerald-400" : "text-gray-400"}`}>
+                                Status {saleEmailActive ? "Ativo" : "Inativo"}
+                              </p>
+                            </div>
+                            <Badge className="bg-blue-500/10 text-blue-300 border border-blue-500/30">
+                              {saleEmailList.length} {saleEmailList.length === 1 ? "email" : "emails"}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+                          <Label className="text-sm font-medium mb-3 block text-white">
+                            Adicionar email
+                          </Label>
+                          <div className="flex flex-col lg:flex-row gap-2">
+                            <div className="relative flex-1">
+                              <MailIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                              <Input
+                                value={saleEmailRaw}
+                                onChange={(e) => setSaleEmailRaw(e.target.value)}
+                                placeholder="Digite o email e clique em adicionar"
+                                className="w-full pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    addSaleEmail();
+                                  }
+                                }}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              onClick={addSaleEmail}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Adicionar
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                            <div>
+                              <p className="text-sm text-gray-300">Emails adicionados</p>
+                              <p className="text-xs text-gray-500">Gerencie e remova quando necessário.</p>
+                            </div>
+                            <div className="relative w-full md:w-64">
+                              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                              <Input
+                                value={saleEmailFilter}
+                                onChange={(e) => setSaleEmailFilter(e.target.value)}
+                                placeholder="Filtrar email..."
+                                className="pl-9 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                              />
+                            </div>
+                          </div>
+
+                          {saleEmailList.length > 0 ? (
+                            filteredSaleEmails.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {filteredSaleEmails.map((item) => (
+                                  <div
+                                    key={item.email}
+                                    className="flex items-center justify-between gap-3 bg-gray-700/60 border border-gray-600/80 text-white px-3 py-2 rounded-lg text-sm shadow-sm hover:border-gray-500 hover:shadow-md transition-all"
+                                  >
+                                    <div className="min-w-0 flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                                      <div className="truncate font-medium">{item.email}</div>
+                                      <div className="flex items-center gap-1 text-xs text-gray-300 mt-0.5 sm:mt-0">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{formatSaleEmailDate(item.createdAt)}</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSaleEmail(item.email)}
+                                      className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-md w-7 h-7 flex items-center justify-center transition-colors"
+                                      aria-label={`Remover ${item.email}`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400">Nenhum email encontrado para este filtro.</p>
+                            )
+                          ) : (
+                            <p className="text-xs text-gray-400">Nenhum email adicionado ainda.</p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <p className="text-xs text-gray-400">
+                            {saleEmailSaving ? "Salvando alterações..." : "As alterações são aplicadas após salvar."}
+                          </p>
+                          <Button
+                            onClick={saveSaleEmailSettings}
+                            disabled={saleEmailSaving}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {saleEmailSaving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Salvando...
+                              </>
+                            ) : (
+                              "Salvar configurações"
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               </section>
             )}
 
             {mainView === "theme" && (
               <section className="container mx-auto px-4 py-6">
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-white">
                       <Palette className="w-5 h-5" />
                       Gerenciar Paleta de Cores
                     </CardTitle>
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-gray-400 mt-2">
                       Personalize as cores do seu site. As alterações serão aplicadas em tempo real.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {themeLoading ? (
                       <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
                       </div>
                     ) : (
                       <>
                         {/* Cores Principais */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Cores Principais</h3>
+                          <h3 className="text-lg font-semibold border-b border-gray-700 pb-2 text-white">Cores Principais</h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Cor Primária</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Cor Primária</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.primary}
                                   onChange={(e) => updateColor('primary', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.primary}
                                   onChange={(e) => updateColor('primary', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#3B82F6"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Primária Escura (Hover)</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Primária Escura (Hover)</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.primaryDark}
                                   onChange={(e) => updateColor('primaryDark', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.primaryDark}
                                   onChange={(e) => updateColor('primaryDark', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#2563EB"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Primária Clara</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Primária Clara</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.primaryLight}
                                   onChange={(e) => updateColor('primaryLight', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.primaryLight}
                                   onChange={(e) => updateColor('primaryLight', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#60A5FA"
                                 />
                               </div>
@@ -9548,38 +10023,38 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         {/* Cores Secundárias */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Cores Secundárias</h3>
+                          <h3 className="text-lg font-semibold border-b border-gray-700 pb-2 text-white">Cores Secundárias</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Cor Secundária</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Cor Secundária</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.secondary}
                                   onChange={(e) => updateColor('secondary', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.secondary}
                                   onChange={(e) => updateColor('secondary', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#10B981"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Secundária Escura</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Secundária Escura</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.secondaryDark}
                                   onChange={(e) => updateColor('secondaryDark', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.secondaryDark}
                                   onChange={(e) => updateColor('secondaryDark', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#059669"
                                 />
                               </div>
@@ -9589,38 +10064,38 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         {/* Cores de Texto */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Cores de Texto</h3>
+                          <h3 className="text-lg font-semibold border-b border-gray-700 pb-2 text-white">Cores de Texto</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Texto Principal</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Texto Principal</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.textPrimary}
                                   onChange={(e) => updateColor('textPrimary', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.textPrimary}
                                   onChange={(e) => updateColor('textPrimary', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#1F2937"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Texto Secundário</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Texto Secundário</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.textSecondary}
                                   onChange={(e) => updateColor('textSecondary', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.textSecondary}
                                   onChange={(e) => updateColor('textSecondary', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#6B7280"
                                 />
                               </div>
@@ -9630,38 +10105,38 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         {/* Cores de Fundo */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Cores de Fundo</h3>
+                          <h3 className="text-lg font-semibold border-b border-gray-700 pb-2 text-white">Cores de Fundo</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Fundo Principal</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Fundo Principal</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.background}
                                   onChange={(e) => updateColor('background', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.background}
                                   onChange={(e) => updateColor('background', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#FFFFFF"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Fundo Secundário</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Fundo Secundário</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.backgroundSecondary}
                                   onChange={(e) => updateColor('backgroundSecondary', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.backgroundSecondary}
                                   onChange={(e) => updateColor('backgroundSecondary', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#F9FAFB"
                                 />
                               </div>
@@ -9671,72 +10146,72 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         {/* Cores de Status */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Cores de Status</h3>
+                          <h3 className="text-lg font-semibold border-b border-gray-700 pb-2 text-white">Cores de Status</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Destaque (Accent)</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Destaque (Accent)</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.accent}
                                   onChange={(e) => updateColor('accent', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.accent}
                                   onChange={(e) => updateColor('accent', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#F59E0B"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Sucesso</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Sucesso</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.success}
                                   onChange={(e) => updateColor('success', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.success}
                                   onChange={(e) => updateColor('success', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#10B981"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Erro/Perigo</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Erro/Perigo</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.danger}
                                   onChange={(e) => updateColor('danger', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.danger}
                                   onChange={(e) => updateColor('danger', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#EF4444"
                                 />
                               </div>
                             </div>
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Informação</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Informação</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.info}
                                   onChange={(e) => updateColor('info', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.info}
                                   onChange={(e) => updateColor('info', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#6366F1"
                                 />
                               </div>
@@ -9746,21 +10221,21 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         {/* Cor de Borda */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Bordas</h3>
+                          <h3 className="text-lg font-semibold border-b border-gray-700 pb-2 text-white">Bordas</h3>
                           <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">Cor da Borda</Label>
+                              <Label className="text-sm font-medium mb-2 block text-white">Cor da Borda</Label>
                               <div className="flex gap-2">
                                 <input
                                   type="color"
                                   value={themeColors.border}
                                   onChange={(e) => updateColor('border', e.target.value)}
-                                  className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                                  className="w-16 h-10 rounded border border-gray-600 cursor-pointer"
                                 />
                                 <Input
                                   value={themeColors.border}
                                   onChange={(e) => updateColor('border', e.target.value)}
-                                  className="flex-1"
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   placeholder="#E5E7EB"
                                 />
                               </div>
@@ -9769,8 +10244,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Preview */}
-                        <div className="space-y-4 border-t pt-6">
-                          <h3 className="text-lg font-semibold">Preview das Cores</h3>
+                        <div className="space-y-4 border-t border-gray-700 pt-6">
+                          <h3 className="text-lg font-semibold text-white">Preview das Cores</h3>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="p-4 rounded-lg" style={{ backgroundColor: themeColors.primary, color: '#fff' }}>
                               <p className="font-semibold">Primária</p>
@@ -9792,11 +10267,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         </div>
 
                         {/* Save Button */}
-                        <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
+                        <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-700">
                           <Button
                             onClick={saveTheme}
                             disabled={themeSaving}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             {themeSaving ? (
                               <>

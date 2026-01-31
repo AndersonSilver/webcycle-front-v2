@@ -14,8 +14,7 @@ import {
   Download,
   Loader2,
   Star,
-  X,
-  Award
+  X
 } from "lucide-react";
 import { apiClient } from "../../services/apiClient";
 import { toast } from "sonner";
@@ -59,8 +58,6 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [myReview, setMyReview] = useState<any | null>(null);
-  const [certificate, setCertificate] = useState<any | null>(null);
-  const [generatingCertificate, setGeneratingCertificate] = useState(false);
   const [autoCompleted, setAutoCompleted] = useState(false);
   const [videoStartTime, setVideoStartTime] = useState<number | null>(null);
   const [videoStartWatchTime, setVideoStartWatchTime] = useState(0); // Tempo assistido quando o vídeo começou
@@ -93,27 +90,6 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
     }
   }, [course.id, hasAccess]);
 
-  // Verificar se já existe certificado para este curso
-  useEffect(() => {
-    const checkCertificate = async () => {
-      if (!hasAccess) return;
-      try {
-        const response = await apiClient.getCertificates();
-        if (response?.certificates) {
-          const courseCertificate = response.certificates.find(
-            (cert: any) => cert.courseId === course.id || cert.course?.id === course.id
-          );
-          if (courseCertificate) {
-            setCertificate(courseCertificate);
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao verificar certificado:", error);
-      }
-    };
-
-    checkCertificate();
-  }, [course.id, hasAccess]);
 
   // Carregar detalhes da aula (definir ANTES de ser usado)
   const loadLesson = useCallback(async (lessonId: string) => {
@@ -471,39 +447,6 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
         toast.error(error?.message || "Erro ao enviar avaliação");
       }
       console.error(error);
-    }
-  };
-
-  const handleGenerateCertificate = async () => {
-    if (courseProgress < 100) {
-      toast.error("Você precisa completar 100% do curso para gerar o certificado");
-      return;
-    }
-
-    setGeneratingCertificate(true);
-    try {
-      const response = await apiClient.generateCertificate(course.id);
-      if (response?.certificate) {
-        setCertificate(response.certificate);
-        toast.success("Certificado gerado com sucesso!");
-      }
-    } catch (error: any) {
-      console.error("Erro ao gerar certificado:", error);
-      toast.error(error?.message || "Erro ao gerar certificado");
-    } finally {
-      setGeneratingCertificate(false);
-    }
-  };
-
-  const handleDownloadCertificate = async () => {
-    if (!certificate) return;
-    
-    try {
-      await apiClient.downloadCertificate(certificate.id);
-      toast.success("Certificado baixado com sucesso!");
-    } catch (error: any) {
-      console.error("Erro ao baixar certificado:", error);
-      toast.error(error?.message || "Erro ao baixar certificado");
     }
   };
 
@@ -1225,57 +1168,6 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
                             {material.title}
                           </Button>
                         ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Certificado */}
-                  {courseProgress === 100 && (
-                    <div className="mt-6 pt-6 border-t">
-                      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Award className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-lg mb-2 text-gray-800">
-                              {certificate ? "Certificado Disponível!" : "Parabéns! Curso Concluído!"}
-                            </h4>
-                            <p className="text-sm text-gray-600 mb-4">
-                              {certificate 
-                                ? "Você pode baixar seu certificado de conclusão agora mesmo."
-                                : "Gere seu certificado de conclusão para validar seu aprendizado."
-                              }
-                            </p>
-                            {certificate ? (
-                              <Button
-                                onClick={handleDownloadCertificate}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                Baixar Certificado PDF
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={handleGenerateCertificate}
-                                disabled={generatingCertificate}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                              >
-                                {generatingCertificate ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Gerando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Award className="w-4 h-4 mr-2" />
-                                    Gerar Certificado
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   )}

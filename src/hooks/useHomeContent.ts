@@ -66,7 +66,7 @@ const defaultHomeContent: HomeContent = {
     subtitle: "Somos uma plataforma dedicada a democratizar o conhecimento em psicologia, oferecendo cursos de alta qualidade criados por especialistas renomados.",
     cards: [
       { icon: "Brain", title: "Baseado em Ciência", description: "Todo conteúdo é validado por pesquisas e práticas da psicologia moderna", gradientColors: { from: "blue-500", to: "blue-600" } },
-      { icon: "Award", title: "Instrutores Especialistas", description: "Aprenda com psicólogos, terapeutas e professores certificados", gradientColors: { from: "teal-500", to: "teal-600" } },
+      { icon: "Award", title: "Instrutores Especialistas", description: "Aprenda com psicólogos, terapeutas e professores qualificados", gradientColors: { from: "teal-500", to: "teal-600" } },
       { icon: "TrendingUp", title: "Resultados Comprovados", description: "Mais de 50.000 alunos já transformaram suas vidas com nossos cursos", gradientColors: { from: "purple-500", to: "purple-600" } },
     ],
   },
@@ -93,7 +93,7 @@ const defaultHomeContent: HomeContent = {
     benefitCards: [
       { icon: "Heart", title: "Acesso Imediato", subtitle: "Comece agora", iconColor: "text-red-400" },
       { icon: "Shield", title: "Garantia de 7 dias", subtitle: "100% seguro", iconColor: "text-green-400" },
-      { icon: "Award", title: "Certificados", subtitle: "Reconhecidos", iconColor: "text-yellow-400" },
+      { icon: "MessageCircle", title: "Suporte Especializado", subtitle: "Sempre que precisar", iconColor: "text-blue-400" },
     ],
   },
 };

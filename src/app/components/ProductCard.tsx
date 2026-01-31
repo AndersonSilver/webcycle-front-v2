@@ -1,7 +1,4 @@
-import { Card, CardContent, CardFooter } from "./ui/card";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { Package, Download, ShoppingCart, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface Product {
@@ -23,16 +20,15 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onViewDetails: (productId: string) => void;
-  onAddToCart?: (productId: string) => void;
 }
 
-export function ProductCard({ product, onViewDetails, onAddToCart }: ProductCardProps) {
+export function ProductCard({ product, onViewDetails }: ProductCardProps) {
   const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
-  const originalPrice = product.originalPrice 
+  const originalPrice = product.originalPrice
     ? (typeof product.originalPrice === 'string' ? parseFloat(product.originalPrice) : product.originalPrice)
     : undefined;
-  
-  const discount = originalPrice 
+
+  const discount = originalPrice
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
 
@@ -44,114 +40,90 @@ export function ProductCard({ product, onViewDetails, onAddToCart }: ProductCard
   const isPhysical = product.type === 'physical';
   const isOutOfStock = isPhysical && product.stock !== undefined && product.stock <= 0;
 
+  // Determinar tag baseado no tipo
+  const tag = product.category || (isPhysical ? 'Livros' : 'E-books');
+
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group">
-      <div className="relative bg-gray-100 flex items-center justify-center" onClick={() => onViewDetails(product.id)}>
+    <div className="flex flex-col md:flex-row bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-all max-h-[420px] w-full">
+      {/* Imagem */}
+      <div className="md:w-1/2 relative h-40 md:h-[300px]">
         <ImageWithFallback
           src={product.image}
           alt={product.title}
-          className="w-full h-64 object-contain group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover"
         />
-        {discount > 0 && (
-          <Badge className="absolute top-4 right-4 bg-red-500 text-white">
-            -{discount}%
-          </Badge>
-        )}
-        <Badge className={`absolute top-4 left-4 ${isPhysical ? 'bg-blue-600' : 'bg-purple-600'} text-white flex items-center gap-1`}>
-          {isPhysical ? <Package className="w-3 h-3" /> : <Download className="w-3 h-3" />}
-          {isPhysical ? 'Físico' : 'Digital'}
-        </Badge>
-        {product.category && (
-          <Badge className="absolute bottom-4 left-4 bg-gray-800 text-white">
-            {product.category}
-          </Badge>
-        )}
+        {/* Badges no topo */}
+        <div className="absolute top-2 left-2 flex gap-1.5">
+          <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${isPhysical ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'}`}>
+            {isPhysical ? 'Físico' : 'Digital'}
+          </span>
+          {discount > 0 && (
+            <span className="px-1.5 py-0.5 bg-red-600 text-white text-[9px] font-bold uppercase rounded">
+              -{discount}%
+            </span>
+          )}
+        </div>
+        {/* Tag na parte inferior */}
+        <div className="absolute bottom-2 left-2">
+          <span className="px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[9px] font-medium rounded-full border border-white/10">
+            {tag}
+          </span>
+        </div>
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <Badge className="bg-red-600 text-white text-lg px-4 py-2">
+            <span className="bg-red-600 text-white text-sm px-3 py-1.5 rounded">
               Esgotado
-            </Badge>
+            </span>
           </div>
         )}
       </div>
-      
-      <CardContent className="p-6" onClick={() => onViewDetails(product.id)}>
-        <h3 className="font-bold text-xl mb-2 line-clamp-2 transition-colors" style={{ color: 'var(--theme-text-primary)' }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-primary)'}
-        >
-          {product.title}
-        </h3>
-        
+
+      {/* Conteúdo */}
+      <div className="md:w-1/2 p-3 flex flex-col justify-between space-y-2">
+        <div className="space-y-1.5">
+          <h3 className="text-base font-bold text-white line-clamp-2">{product.title}</h3>
+
+          {product.description && (
+            <p className="text-sm text-slate-300 line-clamp-2">{product.description}</p>
+          )}
+
+        </div>
+
+        {/* Preço e botões */}
+
+        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+            {product.pages && (
+              <span>{product.pages} páginas</span>
+            )}
+            {rating !== undefined && !isNaN(rating) && rating > 0 && (
+              <span className="flex items-center gap-0.5">
+                <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" /> {rating.toFixed(1)}
+              </span>
+            )}
+          </div>
         {product.author && (
-          <p className="text-sm text-gray-500 mb-1">
-            Por <strong>{product.author}</strong>
-          </p>
+          <p className="text-sm text-blue-400 font-medium">Por {product.author}</p>
         )}
-        
-        {product.description && (
-          <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-            {product.description}
-          </p>
-        )}
-        
-        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-          {product.pages && (
-            <span>{product.pages} páginas</span>
-          )}
-          {rating !== undefined && !isNaN(rating) && rating > 0 && (
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-semibold">{rating.toFixed(1)}</span>
-              {product.reviewsCount !== undefined && product.reviewsCount > 0 && (
-                <span className="text-gray-500">({product.reviewsCount})</span>
-              )}
-            </div>
-          )}
-        </div>
-        
-        {isPhysical && product.stock !== undefined && (
-          <div className="text-sm text-gray-600 mb-2">
-            Estoque: <strong>{product.stock}</strong> unidades
+        <div className="flex items-center justify-between pt-2.5 border-t border-white/5">
+
+          <div>
+            {originalPrice && (
+              <p className="text-[9px] text-slate-500 line-through">R$ {originalPrice.toFixed(2)}</p>
+            )}
+            <p className="text-base font-bold text-white">R$ {price.toFixed(2)}</p>
           </div>
-        )}
-      </CardContent>
-      
-      <CardFooter className="p-6 pt-0 flex items-center justify-between">
-        <div>
-          {originalPrice && (
-            <div className="text-sm text-gray-400 line-through">
-              R$ {originalPrice.toFixed(2)}
-            </div>
-          )}
-          <div className="font-bold text-2xl" style={{ color: 'var(--theme-primary)' }}>
-            R$ {price.toFixed(2)}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onViewDetails(product.id);
             }}
-            variant="outline"
+            className="px-3 py-1.5 bg-white text-black font-semibold rounded-xl transition-all text-xs shadow-md hover:shadow-lg hover:scale-105 hover:bg-slate-100"
           >
             Ver Detalhes
-          </Button>
-          {onAddToCart && !isOutOfStock && (
-            <Button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(product.id);
-              }}
-            >
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Comprar
-            </Button>
-          )}
+          </button>
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
 

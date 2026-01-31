@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "./ui/card";
-import { Button } from "./ui/button";
-import { Headphones, Plus, Check, Clock, Eye } from "lucide-react";
+import { Headphones, Plus, Check, Clock, Eye, Loader2 } from "lucide-react";
 import { apiClient } from "../../services/apiClient";
 import { toast } from "sonner";
 
@@ -91,7 +89,7 @@ export function PodcastSection({ onAddToMyCourses }: PodcastSectionProps) {
       await apiClient.addPodcastToMyCourses(podcast.id);
       setAddedPodcasts(prev => new Set(prev).add(podcast.id));
       toast.success("Podcast adicionado aos seus cursos!");
-      
+
       if (onAddToMyCourses) {
         onAddToMyCourses(podcast);
       }
@@ -106,10 +104,14 @@ export function PodcastSection({ onAddToMyCourses }: PodcastSectionProps) {
 
   if (loading) {
     return (
-      <section className="py-20 bg-gray-50">
+      <section
+        id="podcasts"
+        className="py-20 px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950"
+      >
         <div className="container mx-auto px-4">
-          <div className="text-center">
-            <p className="text-gray-600">Carregando podcasts...</p>
+          <div className="flex flex-col justify-center items-center space-y-4">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+            <p className="text-slate-400 text-lg">Carregando podcasts...</p>
           </div>
         </div>
       </section>
@@ -121,98 +123,97 @@ export function PodcastSection({ onAddToMyCourses }: PodcastSectionProps) {
   }
 
   return (
-    <section id="podcasts" className="py-20 bg-gradient-to-b from-white via-gray-50 to-white">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <div className="inline-block px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold mb-6">
-            🎧 Conteúdo Gratuito
+    <section id="podcasts" className="py-20 px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950 relative overflow-hidden">
+      {/* Background decorative elements - apenas azul */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-12 relative z-10">
+        <div className="text-center space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest border border-blue-500/30 backdrop-blur-sm">
+            <Headphones className="w-4 h-4" />
+            Conteúdo Gratuito
           </div>
-          <div className="inline-flex items-center gap-3 mb-6">
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-blue-600 to-transparent"></div>
-            <Headphones className="w-8 h-8 text-blue-600" />
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-blue-600 to-transparent"></div>
-          </div>
-          <h2 className="text-3xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-blue-200 to-white bg-clip-text text-transparent">
             Podcasts Gratuitos
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
             Adicione nossos podcasts gratuitos aos seus cursos e expanda seu conhecimento
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-          {podcasts.map((podcast) => (
-            <Card key={podcast.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto">
+          {podcasts.map((podcast, index) => (
+            <div
+              key={podcast.id}
+              className="flex flex-col md:flex-row bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-all max-h-[420px] w-full"
+              style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
+            >
+              {/* Imagem */}
               {podcast.image && (
-                <div className="relative h-48 bg-gray-200 flex-shrink-0">
+                <div className="md:w-1/2 relative h-40 md:h-[300px]">
                   <img
                     src={podcast.image}
                     alt={podcast.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    {addedPodcasts.has(podcast.id) ? (
-                      <Button
-                        size="lg"
-                        disabled
-                        className="bg-green-700 text-white hover:bg-green-800 border border-green-800"
-                      >
-                        <Check className="w-6 h-6 mr-2" />
-                        Já Adicionado
-                      </Button>
-                    ) : (
-                      <Button
-                        size="lg"
-                        onClick={() => handleAddToMyCourses(podcast)}
-                        className="bg-white text-blue-600 hover:bg-blue-50"
-                      >
-                        <Plus className="w-6 h-6 mr-2" />
-                        Adicionar
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-              <CardContent className="p-6 flex flex-col flex-1">
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-2 line-clamp-2">{podcast.title}</h3>
-                  {podcast.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{podcast.description}</p>
-                  )}
-                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    {podcast.duration && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {podcast.duration}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
-                      {podcast.listens || 0} visualizações
+                  {/* Tag na parte inferior */}
+                  <div className="absolute bottom-2 left-2">
+                    <span className="px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[9px] font-medium rounded-full border border-white/10">
+                      Podcast
                     </span>
                   </div>
                 </div>
-                <div className="mt-auto">
-                {addedPodcasts.has(podcast.id) ? (
-                  <Button
-                    disabled
-                    className="w-full bg-green-700 text-white hover:bg-green-800 border border-green-800"
-                  >
-                    <Check className="w-4 h-4 mr-2 text-black" />
-                    Já Adicionado
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => handleAddToMyCourses(podcast)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar aos Meus Cursos
-                  </Button>
-                )}
+              )}
+              
+              {/* Conteúdo */}
+              <div className="md:w-1/2 p-3 flex flex-col justify-between space-y-2">
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-bold text-white line-clamp-2">{podcast.title}</h3>
+                  
+                  {podcast.description && (
+                    <p className="text-sm text-slate-300 line-clamp-2">{podcast.description}</p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Detalhes */}
+                <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                  {podcast.duration && (
+                    <span className="flex items-center gap-0.5">
+                      <Clock className="w-3 h-3" /> {podcast.duration}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-0.5">
+                    <Eye className="w-3 h-3" /> {podcast.listens || 0} visualizações
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2.5 border-t border-white/5">
+                  <div className="text-xs text-slate-400">
+                    Conteúdo Gratuito
+                  </div>
+                  {addedPodcasts.has(podcast.id) ? (
+                    <button
+                      disabled
+                      className="px-3 py-1.5 bg-green-600 text-white font-semibold rounded-xl transition-all text-xs shadow-md hover:shadow-lg hover:scale-105 flex items-center gap-1 cursor-not-allowed opacity-80"
+                    >
+                      <Check className="w-3 h-3" />
+                      Adicionado
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleAddToMyCourses(podcast)}
+                      className="px-3 py-1.5 bg-white text-black font-semibold rounded-xl transition-all text-xs shadow-md hover:shadow-lg hover:scale-105 hover:bg-slate-100 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Adicionar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>

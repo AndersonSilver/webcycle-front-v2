@@ -238,7 +238,7 @@ export function ProductDetail() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
         </div>
       </div>
     );
@@ -248,8 +248,8 @@ export function ProductDetail() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
-          <p className="text-gray-600 text-lg">Produto não encontrado.</p>
-          <Button onClick={() => navigate("/")} className="mt-4">
+          <p className="text-gray-300 text-lg">Produto não encontrado.</p>
+          <Button onClick={() => navigate("/")} className="mt-4 bg-white text-black hover:bg-gray-100">
             Voltar
           </Button>
         </div>
@@ -276,14 +276,20 @@ export function ProductDetail() {
   const images = product.images && product.images.length > 0 ? product.images : [product.image];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div 
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
+        minHeight: '100vh'
+      }}
+    >
       {/* Header com botão voltar */}
-      <div className="bg-white border-b border-gray-200 pt-20 pb-4">
+      <div className="pt-20 pb-4" style={{ background: 'transparent' }}>
         <div className="container mx-auto px-4">
           <Button
             variant="ghost"
             onClick={() => navigate(-1)}
-            className="text-gray-600 hover:text-gray-900"
+            className="text-white hover:text-gray-200 hover:bg-white/10"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
@@ -292,13 +298,13 @@ export function ProductDetail() {
       </div>
 
       {/* Main Product Section - Estilo Amazon */}
-      <section className="bg-white py-8">
+      <section className="py-8" style={{ background: 'transparent' }}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-12 gap-8">
             {/* Left Column - Image */}
             <div className="md:col-span-4">
               <div className="sticky top-24">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="bg-white/5 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-white/10">
                   <ImageWithFallback
                     src={images[selectedImage]}
                     alt={product.title}
@@ -312,8 +318,8 @@ export function ProductDetail() {
                         key={index}
                         onClick={() => setSelectedImage(index)}
                         className={`border-2 rounded overflow-hidden transition-all ${selectedImage === index
-                            ? 'border-blue-600 shadow-md'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-gray-400 shadow-md'
+                            : 'border-white/20 hover:border-white/30'
                           }`}
                       >
                         <ImageWithFallback
@@ -331,13 +337,13 @@ export function ProductDetail() {
             {/* Center Column - Product Info */}
             <div className="md:col-span-5">
               {/* Title */}
-              <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{ color: 'var(--theme-text-primary)' }}>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2 text-white">
                 {product.title}
               </h1>
 
               {/* Format and Author */}
               <div className="mb-2">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-300">
                   {isPhysical ? 'Capa dura' : 'Digital'} - {product.specifications?.publicationDate
                     ? new Date(product.specifications.publicationDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
                     : 'Data não disponível'}
@@ -345,8 +351,8 @@ export function ProductDetail() {
               </div>
 
               {product.author && (
-                <p className="text-sm text-gray-600 mb-4">
-                  Edição Português por <span className="font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">{product.author}</span> (Autor)
+                <p className="text-sm text-gray-300 mb-4">
+                  Edição Português por <span className="font-semibold text-blue-400 hover:text-blue-300 cursor-pointer">{product.author}</span> (Autor)
                 </p>
               )}
 
@@ -364,11 +370,11 @@ export function ProductDetail() {
                       />
                     ))}
                   </div>
-                  <span className="text-blue-600 hover:text-blue-800 cursor-pointer font-semibold">
+                  <span className="text-blue-400 hover:text-blue-300 cursor-pointer font-semibold">
                     {rating.toFixed(1)}
                   </span>
                   {product.reviewsCount !== undefined && product.reviewsCount > 0 && (
-                    <span className="text-gray-600 text-sm">
+                    <span className="text-gray-300 text-sm">
                       ({product.reviewsCount})
                     </span>
                   )}
@@ -378,7 +384,7 @@ export function ProductDetail() {
               {/* Description */}
               {product.description && (
                 <div className="mb-6">
-                  <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+                  <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
                     {product.description}
                   </p>
 
@@ -389,18 +395,18 @@ export function ProductDetail() {
               <div className="mb-6 space-y-3">
                 {product.pages && (
                   <div className="flex items-center gap-2 text-sm">
-                    <Book className="w-5 h-5 text-gray-600" />
-                    <span className="text-gray-700"><strong>Número de páginas:</strong> {product.pages} páginas</span>
+                    <Book className="w-5 h-5 text-gray-400" />
+                    <span className="text-gray-300"><strong>Número de páginas:</strong> {product.pages} páginas</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-sm">
-                  <Globe className="w-5 h-5 text-gray-600" />
-                  <span className="text-gray-700"><strong>Idioma:</strong> Português</span>
+                  <Globe className="w-5 h-5 text-gray-400" />
+                  <span className="text-gray-300"><strong>Idioma:</strong> Português</span>
                 </div>
                 {product.specifications?.publicationDate && (
                   <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="w-5 h-5 text-gray-600" />
-                    <span className="text-gray-700">
+                    <Calendar className="w-5 h-5 text-gray-400" />
+                    <span className="text-gray-300">
                       <strong>Data da publicação:</strong> {new Date(product.specifications.publicationDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
@@ -411,16 +417,16 @@ export function ProductDetail() {
             {/* Right Column - Price and Buy Buttons */}
             <div className="md:col-span-3">
               <div className="sticky top-24">
-                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 shadow-sm">
                   {/* Price Section */}
                   <div className="mb-6">
                     {originalPrice && (
-                      <div className="text-sm text-gray-500 line-through mb-1">
+                      <div className="text-sm text-gray-400 line-through mb-1">
                         De: R$ {originalPrice.toFixed(2)}
                       </div>
                     )}
                     <div className="flex items-baseline gap-2 mb-2">
-                      <span className="text-3xl font-bold" style={{ color: 'var(--theme-primary)' }}>
+                      <span className="text-3xl font-bold text-white">
                         R$ {price.toFixed(2)}
                       </span>
                       {discount > 0 && (
@@ -444,7 +450,7 @@ export function ProductDetail() {
                   {/* Quantity Selector */}
                   {isPhysical && !isOutOfStock && (
                     <div className="mb-6">
-                      <label className="block mb-2 font-medium text-sm" style={{ color: 'var(--theme-text-primary)' }}>
+                      <label className="block mb-2 font-medium text-sm text-white">
                         Quantidade:
                       </label>
                       <div className="flex items-center gap-3">
@@ -491,8 +497,7 @@ export function ProductDetail() {
                         </Button>
                         <Button
                           onClick={handleBuyNow}
-                          variant="outline"
-                          className="w-full mt-3 border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold"
+                          className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold"
                           size="lg"
                         >
                           Comprar Agora
@@ -503,14 +508,14 @@ export function ProductDetail() {
 
                   {/* Shipping Info */}
                   {isPhysical && (
-                    <div className="text-sm text-gray-600 mb-2">
+                    <div className="text-sm text-gray-300 mb-2">
                       <Package className="w-4 h-4 inline mr-1" />
                       Envio via Correios com rastreamento
                     </div>
                   )}
 
                   {!isPhysical && product.digitalFileUrl && (
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-300">
                       <Download className="w-4 h-4 inline mr-1" />
                       Download imediato após a compra
                     </div>
@@ -523,60 +528,60 @@ export function ProductDetail() {
       </section>
 
       {/* Product Details and Reviews Section */}
-      <section className="bg-gray-50 py-12 border-t border-gray-200">
+      <section className="py-12" style={{ background: 'transparent' }}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8">
             {/* Left Column - Product Details */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: 'var(--theme-text-primary)' }}>
-                <Book className="w-6 h-6" style={{ color: 'var(--theme-primary)' }} />
+            <div className="bg-white/5 backdrop-blur-sm rounded-lg shadow-sm border border-white/10 p-6">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
+                <Book className="w-6 h-6 text-gray-400" />
                 Detalhes do produto
               </h2>
               <div className="space-y-4">
                 {/* Especificações em cards */}
                 <div className="grid grid-cols-1 gap-4">
                   {product.specifications?.asin && (
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Award className="w-5 h-5 text-blue-600" />
+                    <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg border border-gray-600/40">
+                      <div className="p-2 bg-gray-700/50 rounded-lg">
+                        <Award className="w-5 h-5 text-gray-300" />
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-blue-900 block">ASIN</span>
-                        <span className="text-sm text-blue-700">{product.specifications.asin}</span>
+                        <span className="text-xs font-semibold text-gray-300 block">ASIN</span>
+                        <span className="text-sm text-gray-400">{product.specifications.asin}</span>
                       </div>
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Globe className="w-5 h-5 text-purple-600" />
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg border border-gray-600/40">
+                    <div className="p-2 bg-gray-700/50 rounded-lg">
+                      <Globe className="w-5 h-5 text-gray-300" />
                     </div>
                     <div>
-                      <span className="text-xs font-semibold text-purple-900 block">Idioma</span>
-                      <span className="text-sm text-purple-700">Português</span>
+                      <span className="text-xs font-semibold text-gray-300 block">Idioma</span>
+                      <span className="text-sm text-gray-400">Português</span>
                     </div>
                   </div>
 
                   {product.pages && (
-                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <Book className="w-5 h-5 text-green-600" />
+                    <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg border border-gray-600/40">
+                      <div className="p-2 bg-gray-700/50 rounded-lg">
+                        <Book className="w-5 h-5 text-gray-300" />
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-green-900 block">Número de páginas</span>
-                        <span className="text-sm text-green-700">{product.pages} páginas</span>
+                        <span className="text-xs font-semibold text-gray-300 block">Número de páginas</span>
+                        <span className="text-sm text-gray-400">{product.pages} páginas</span>
                       </div>
                     </div>
                   )}
 
                   {product.specifications?.publicationDate && (
-                    <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <Calendar className="w-5 h-5 text-orange-600" />
+                    <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg border border-gray-600/40">
+                      <div className="p-2 bg-gray-700/50 rounded-lg">
+                        <Calendar className="w-5 h-5 text-gray-300" />
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-orange-900 block">Data da publicação</span>
-                        <span className="text-sm text-orange-700">
+                        <span className="text-xs font-semibold text-gray-300 block">Data da publicação</span>
+                        <span className="text-sm text-gray-400">
                           {new Date(product.specifications.publicationDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
                       </div>
@@ -584,13 +589,13 @@ export function ProductDetail() {
                   )}
 
                   {rating !== undefined && !isNaN(rating) && rating > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg border border-pink-100">
-                      <div className="p-2 bg-pink-100 rounded-lg">
-                        <Star className="w-5 h-5 text-pink-600 fill-pink-600" />
+                    <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg border border-gray-600/40">
+                      <div className="p-2 bg-gray-700/50 rounded-lg">
+                        <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-pink-900 block">Avaliações dos clientes</span>
-                        <span className="text-sm text-pink-700">
+                        <span className="text-xs font-semibold text-gray-300 block">Avaliações dos clientes</span>
+                        <span className="text-sm text-gray-400">
                           {rating.toFixed(1)} ★★★★★ ({product.reviewsCount || 0})
                         </span>
                       </div>
@@ -599,33 +604,33 @@ export function ProductDetail() {
                 </div>
 
                 {/* Informações de garantia e envio */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--theme-text-primary)' }}>
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <h3 className="text-lg font-semibold mb-4 text-white">
                     Informações importantes
                   </h3>
                   <div className="space-y-3">
                     {isPhysical ? (
                       <div className="flex items-start gap-3">
-                        <Truck className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <Truck className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                         <div>
-                          <span className="text-sm font-semibold block">Envio</span>
-                          <span className="text-xs text-gray-600">Envio via Correios com rastreamento. Prazo de 5 a 10 dias úteis.</span>
+                          <span className="text-sm font-semibold block text-white">Envio</span>
+                          <span className="text-xs text-gray-300">Envio via Correios com rastreamento. Prazo de 5 a 10 dias úteis.</span>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-start gap-3">
-                        <Download className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <Download className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                         <div>
-                          <span className="text-sm font-semibold block">Download Imediato</span>
-                          <span className="text-xs text-gray-600">Acesso imediato após a confirmação do pagamento.</span>
+                          <span className="text-sm font-semibold block text-white">Download Imediato</span>
+                          <span className="text-xs text-gray-300">Acesso imediato após a confirmação do pagamento.</span>
                         </div>
                       </div>
                     )}
                     <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <span className="text-sm font-semibold block">Compra Segura</span>
-                        <span className="text-xs text-gray-600">Pagamento 100% seguro através do Mercado Pago.</span>
+                        <span className="text-sm font-semibold block text-white">Compra Segura</span>
+                        <span className="text-xs text-gray-300">Pagamento 100% seguro através do Mercado Pago.</span>
                       </div>
                     </div>
                   </div>
@@ -634,14 +639,14 @@ export function ProductDetail() {
             </div>
 
             {/* Right Column - Customer Reviews */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: 'var(--theme-text-primary)' }}>
-                <Users className="w-6 h-6" style={{ color: 'var(--theme-primary)' }} />
+            <div className="bg-white/5 backdrop-blur-sm rounded-lg shadow-sm border border-white/10 p-6">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
+                <Users className="w-6 h-6 text-gray-400" />
                 Avaliações de clientes
               </h2>
               <div>
                 {/* Rating Summary */}
-                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6 mb-6 border border-yellow-100">
+                <div className="bg-gray-800/30 rounded-lg p-6 mb-6 border border-gray-600/40">
                   <div className="flex items-center gap-4 mb-3">
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -649,25 +654,25 @@ export function ProductDetail() {
                           key={star}
                           className={`w-6 h-6 ${reviewsStats && reviewsStats.totalReviews > 0 && star <= Math.round(reviewsStats.averageRating)
                               ? 'fill-yellow-400 text-yellow-400'
-                              : 'fill-gray-300 text-gray-300'
+                              : 'fill-gray-500 text-gray-500'
                             }`}
                         />
                       ))}
                     </div>
                     <div>
-                      <span className="text-3xl font-bold block" style={{ color: 'var(--theme-text-primary)' }}>
+                      <span className="text-3xl font-bold block text-white">
                         {reviewsStats && reviewsStats.totalReviews > 0
                           ? reviewsStats.averageRating.toFixed(1)
                           : '0.0'}
                       </span>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-gray-300">
                         de 5 estrelas
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm font-semibold text-gray-700">
+                    <Users className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-semibold text-gray-300">
                       {reviewsStats?.totalReviews || 0} avaliações globais
                     </span>
                   </div>
@@ -675,7 +680,7 @@ export function ProductDetail() {
 
                 {/* Star Breakdown */}
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--theme-text-primary)' }}>
+                  <h3 className="text-sm font-semibold mb-3 text-white">
                     Distribuição de avaliações
                   </h3>
                   {(reviewsStats?.starDistribution || []).map((dist) => {
@@ -684,18 +689,18 @@ export function ProductDetail() {
                     return (
                       <div key={dist.stars} className="flex items-center gap-3">
                         <div className="flex items-center gap-1 w-24">
-                          <span className="text-sm font-medium text-gray-700">{dist.stars}</span>
+                          <span className="text-sm font-medium text-gray-300">{dist.stars}</span>
                           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                         </div>
-                        <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div className="flex-1 bg-gray-700 rounded-full h-3 overflow-hidden">
                           <div
                             className="bg-gradient-to-r from-yellow-400 to-orange-400 h-3 rounded-full transition-all duration-500"
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
                         <div className="flex items-center gap-2 w-20 justify-end">
-                          <span className="text-sm font-semibold text-gray-700">{dist.count}</span>
-                          <span className="text-xs text-gray-500">({percentage}%)</span>
+                          <span className="text-sm font-semibold text-gray-300">{dist.count}</span>
+                          <span className="text-xs text-gray-400">({percentage}%)</span>
                         </div>
                       </div>
                     );
@@ -704,12 +709,12 @@ export function ProductDetail() {
 
                 {/* Empty State */}
                 {(!reviewsStats || reviewsStats.totalReviews === 0) && (
-                  <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200 text-center">
-                    <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-600">
+                  <div className="mt-6 p-6 bg-gray-800/30 rounded-lg border border-gray-600/40 text-center">
+                    <Star className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                    <p className="text-sm text-gray-300">
                       Ainda não há avaliações para este produto.
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Seja o primeiro a avaliar após a compra!
                     </p>
                   </div>
@@ -722,22 +727,22 @@ export function ProductDetail() {
 
       {/* Reviews List Section */}
       {reviews.length > 0 && (
-        <section className="bg-white py-8 border-t border-gray-200">
+        <section className="py-8" style={{ background: 'transparent' }}>
           <div className="container mx-auto px-4">
             <div className="max-w-4xl">
-              <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--theme-text-primary)' }}>
+              <h2 className="text-2xl font-bold mb-6 text-white">
                 Avaliações dos Clientes
               </h2>
               <div className="space-y-6">
                 {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-gray-200 pb-6 last:border-0">
+                  <div key={review.id} className="border-b border-white/10 pb-6 last:border-0">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                        <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full flex items-center justify-center text-white font-bold">
                           {review.userName?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-sm" style={{ color: 'var(--theme-text-primary)' }}>
+                          <h3 className="font-semibold text-sm text-white">
                             {review.userName || 'Usuário'}
                           </h3>
                           <div className="flex items-center gap-1 mt-1">
@@ -746,14 +751,14 @@ export function ProductDetail() {
                                 key={star}
                                 className={`w-4 h-4 ${star <= review.rating
                                     ? 'fill-yellow-400 text-yellow-400'
-                                    : 'text-gray-300'
+                                    : 'text-gray-500'
                                   }`}
                               />
                             ))}
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-400">
                         {new Date(review.createdAt).toLocaleDateString('pt-BR', {
                           day: '2-digit',
                           month: 'long',
@@ -761,11 +766,11 @@ export function ProductDetail() {
                         })}
                       </span>
                     </div>
-                    <p className="text-gray-700 text-sm leading-relaxed mb-2">
+                    <p className="text-gray-300 text-sm leading-relaxed mb-2">
                       {review.comment}
                     </p>
                     {review.helpful > 0 && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {review.helpful} pessoa{review.helpful !== 1 ? 's' : ''} achou útil
                       </p>
                     )}
@@ -779,19 +784,19 @@ export function ProductDetail() {
 
       {/* Related Products - Estilo Amazon */}
       {relatedProducts.length > 0 && (
-        <section className="bg-white py-8 border-t border-gray-200">
+        <section className="py-8" style={{ background: 'transparent' }}>
           <div className="container mx-auto px-4">
-            <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--theme-text-primary)' }}>
+            <h2 className="text-2xl font-bold mb-6 text-white">
               Produtos relacionados
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               {relatedProducts.map((relatedProduct) => (
                 <div
                   key={relatedProduct.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                  className="border border-white/10 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group bg-white/5 backdrop-blur-sm"
                   onClick={() => navigate(`/produto/${relatedProduct.id}`)}
                 >
-                  <div className="bg-gray-50 flex items-center justify-center h-48 p-4">
+                  <div className="bg-gray-800/30 flex items-center justify-center h-48 p-4">
                     <ImageWithFallback
                       src={relatedProduct.image}
                       alt={relatedProduct.title}
@@ -799,11 +804,11 @@ export function ProductDetail() {
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="font-semibold text-base mb-2 line-clamp-2 hover:text-blue-600" style={{ color: 'var(--theme-text-primary)' }}>
+                    <h3 className="font-semibold text-base mb-2 line-clamp-2 hover:text-blue-400 text-white">
                       {relatedProduct.title}
                     </h3>
                     {relatedProduct.author && (
-                      <p className="text-sm text-blue-600 mb-2">
+                      <p className="text-sm text-blue-400 mb-2">
                         por {relatedProduct.author}
                       </p>
                     )}
@@ -811,13 +816,13 @@ export function ProductDetail() {
                       {relatedProduct.rating !== undefined && relatedProduct.rating > 0 && (
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs text-blue-600">
+                          <span className="text-xs text-blue-400">
                             {typeof relatedProduct.rating === 'string' ? parseFloat(relatedProduct.rating).toFixed(1) : relatedProduct.rating.toFixed(1)}
                           </span>
                         </div>
                       )}
                     </div>
-                    <div className="font-bold text-lg mt-2" style={{ color: 'var(--theme-primary)' }}>
+                    <div className="font-bold text-lg mt-2 text-white">
                       R$ {typeof relatedProduct.price === 'string' ? parseFloat(relatedProduct.price).toFixed(2) : relatedProduct.price.toFixed(2)}
                     </div>
                   </div>

@@ -254,9 +254,9 @@ export function SupportChat() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col border-0 overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-50 w-96 h-[600px] bg-gray-800 rounded-2xl shadow-2xl flex flex-col border border-gray-700 overflow-hidden">
       {/* Header melhorado */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white p-5 rounded-t-2xl flex justify-between items-center shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white p-5 rounded-t-2xl flex justify-between items-center shadow-xl relative overflow-hidden flex-shrink-0">
         {/* Efeito de brilho no fundo */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50"></div>
         <div className="flex-1 relative z-10">
@@ -302,12 +302,12 @@ export function SupportChat() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <div className="flex-1 flex flex-col overflow-hidden bg-gray-800 min-h-0">
         {loading && !currentTicket ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
-              <p className="text-sm text-gray-500">Carregando...</p>
+              <Loader2 className="w-10 h-10 animate-spin text-blue-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">Carregando...</p>
             </div>
           </div>
         ) : !currentTicket ? (
@@ -330,15 +330,15 @@ export function SupportChat() {
                   {tickets.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
                       <div className="relative mb-6">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-xl animate-pulse">
-                          <MessageCircle className="w-10 h-10 text-blue-500" />
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-600/20 via-blue-700/20 to-blue-800/20 flex items-center justify-center shadow-xl animate-pulse border border-blue-600/30">
+                          <MessageCircle className="w-10 h-10 text-blue-400" />
                         </div>
                         <div className="absolute -top-1 -right-1">
                           <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
                         </div>
                       </div>
-                      <p className="text-lg font-bold text-gray-700 mb-2">Nenhuma conversa encontrada</p>
-                      <p className="text-sm text-gray-500 text-center">Crie uma nova conversa para começar a receber suporte</p>
+                      <p className="text-lg font-bold text-white mb-2">Nenhuma conversa encontrada</p>
+                      <p className="text-sm text-gray-400 text-center">Crie uma nova conversa para começar a receber suporte</p>
                     </div>
                   ) : (
                     tickets.map((ticket) => {
@@ -349,8 +349,8 @@ export function SupportChat() {
                         key={ticket.id}
                         className={`p-4 cursor-pointer transition-all hover:shadow-xl rounded-xl border-2 group ${
                           isSelected
-                            ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 shadow-lg ring-2 ring-blue-200' 
-                            : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/30'
+                            ? 'bg-gradient-to-br from-blue-600/20 to-blue-700/20 border-blue-500 shadow-lg ring-2 ring-blue-500/30' 
+                            : 'bg-gray-700 border-gray-600 hover:border-blue-500 hover:bg-gray-600'
                         }`}
                         onClick={() => openTicket(ticket.id)}
                       >
@@ -366,8 +366,8 @@ export function SupportChat() {
                               {ticket.status === 'closed' && <CheckCircle2 className="w-5 h-5 text-white" />}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-gray-900 truncate mb-1 group-hover:text-blue-700 transition-colors">{ticket.subject}</h4>
-                              <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <h4 className="font-bold text-white truncate mb-1 group-hover:text-blue-400 transition-colors">{ticket.subject}</h4>
+                              <p className="text-xs text-gray-400 flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 {(() => {
                                   const dateStr = String(ticket.createdAt);
@@ -381,9 +381,9 @@ export function SupportChat() {
                           </div>
                           <span
                             className={`text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap flex items-center gap-1.5 shadow-sm ${
-                              ticket.status === 'open' ? 'bg-green-100 text-green-700 border border-green-300' :
-                              ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-700 border border-blue-300' :
-                              'bg-gray-100 text-gray-700 border border-gray-300'
+                              ticket.status === 'open' ? 'bg-green-900/30 text-green-400 border border-green-700' :
+                              ticket.status === 'in_progress' ? 'bg-blue-900/30 text-blue-400 border border-blue-700' :
+                              'bg-gray-700 text-gray-300 border border-gray-600'
                             }`}
                           >
                             {ticket.status === 'open' && (
@@ -413,24 +413,24 @@ export function SupportChat() {
                 </div>
               </>
             ) : (
-              <Card className="p-5 bg-white shadow-lg rounded-xl border-2 border-gray-200">
+              <Card className="p-5 bg-gray-700 shadow-lg rounded-xl border-2 border-gray-600">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-blue-400" />
                     Nova Conversa
                   </h3>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowNewTicket(false)}
-                    className="rounded-full hover:bg-gray-100"
+                    className="rounded-full hover:bg-gray-600 text-gray-300"
                   >
                     <X className="w-5 h-5" />
                   </Button>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-white mb-2">
                       Assunto da conversa
                     </label>
                     <Input
@@ -444,9 +444,9 @@ export function SupportChat() {
                       }}
                       placeholder="Ex: Dúvida sobre o curso..."
                       disabled={loading}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     />
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-400 mt-2">
                       Mínimo de 5 caracteres
                     </p>
                   </div>
@@ -474,7 +474,7 @@ export function SupportChat() {
                         setShowNewTicket(false);
                         setNewTicketSubject('');
                       }}
-                      className="px-4 py-3 rounded-xl border-2 hover:bg-gray-50"
+                      className="px-4 py-3 rounded-xl border-2 border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
                     >
                       Cancelar
                     </Button>
@@ -484,12 +484,12 @@ export function SupportChat() {
             )}
           </div>
         ) : (
-          <>
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               {loading && currentTicket.messages?.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
                 </div>
               ) : currentTicket.messages && currentTicket.messages.length > 0 ? (
                 currentTicket.messages.map((msg) => (
@@ -500,7 +500,7 @@ export function SupportChat() {
                     }`}
                   >
                     {msg.senderType !== 'user' && (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center text-white text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-gray-800">
                         {(msg.sender.name || 'S').charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -508,42 +508,44 @@ export function SupportChat() {
                       className={`max-w-[75%] rounded-2xl px-5 py-3.5 shadow-lg transition-all hover:shadow-xl ${
                         msg.senderType === 'user'
                           ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-md'
-                          : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md shadow-md'
+                          : 'bg-gray-700 text-white border border-gray-600 rounded-bl-md shadow-md'
                       }`}
                     >
-                      <p className={`font-bold text-xs mb-2 ${
-                        msg.senderType === 'user' ? 'text-blue-100' : 'text-gray-600'
-                      }`}>
-                        {msg.sender.name || (msg.senderType === 'user' ? 'Você' : 'Suporte')}
-                      </p>
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <p className={`font-bold text-xs ${
+                          msg.senderType === 'user' ? 'text-blue-100' : 'text-gray-300'
+                        }`}>
+                          {msg.sender.name || (msg.senderType === 'user' ? 'Você' : 'Suporte')}
+                        </p>
+                        <p className={`text-xs ${
+                          msg.senderType === 'user' ? 'text-blue-100 opacity-80' : 'text-gray-400'
+                        }`}>
+                          {(() => {
+                            // Converter data UTC para horário do Brasil
+                            const dateStr = String(msg.createdAt);
+                            // Se não tem Z, adicionar para forçar UTC
+                            const utcDateStr = dateStr.endsWith('Z') ? dateStr : (dateStr.match(/[+-]\d{2}:?\d{2}$/) ? dateStr : dateStr + 'Z');
+                            const utcDate = new Date(utcDateStr);
+                            
+                            // Converter UTC para horário do Brasil (UTC-3)
+                            // Criar uma nova data ajustando o offset
+                            const brDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
+                            
+                            return brDate.toLocaleTimeString('pt-BR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            });
+                          })()}
+                        </p>
+                      </div>
                       <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                        msg.senderType === 'user' ? 'text-white' : 'text-gray-800'
+                        msg.senderType === 'user' ? 'text-white' : 'text-gray-200'
                       }`}>
                         {msg.content}
                       </p>
-                      <p className={`text-xs mt-2.5 ${
-                        msg.senderType === 'user' ? 'text-blue-100 opacity-80' : 'text-gray-500'
-                      }`}>
-                        {(() => {
-                          // Converter data UTC para horário do Brasil
-                          const dateStr = String(msg.createdAt);
-                          // Se não tem Z, adicionar para forçar UTC
-                          const utcDateStr = dateStr.endsWith('Z') ? dateStr : (dateStr.match(/[+-]\d{2}:?\d{2}$/) ? dateStr : dateStr + 'Z');
-                          const utcDate = new Date(utcDateStr);
-                          
-                          // Converter UTC para horário do Brasil (UTC-3)
-                          // Criar uma nova data ajustando o offset
-                          const brDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
-                          
-                          return brDate.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          });
-                        })()}
-                      </p>
                     </div>
                     {msg.senderType === 'user' && (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-white">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-lg flex-shrink-0 ring-2 ring-gray-800">
                         {(msg.sender.name || 'V').charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -552,38 +554,46 @@ export function SupportChat() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
                   <div className="relative mb-6">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center shadow-xl">
-                      <MessageSquare className="w-10 h-10 text-blue-500" />
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-600/20 via-blue-700/20 to-blue-800/20 flex items-center justify-center shadow-xl border border-blue-600/30">
+                      <MessageSquare className="w-10 h-10 text-blue-400" />
                     </div>
                     <div className="absolute -top-1 -right-1">
                       <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
                     </div>
                   </div>
-                  <p className="text-lg font-bold text-gray-700 mb-2">Nenhuma mensagem ainda</p>
-                  <p className="text-sm text-gray-500 text-center">Inicie a conversa enviando uma mensagem abaixo</p>
+                  <p className="text-lg font-bold text-white mb-2">Nenhuma mensagem ainda</p>
+                  <p className="text-sm text-gray-400 text-center">Inicie a conversa enviando uma mensagem abaixo</p>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
-            {currentTicket.status !== 'closed' && (
-              <div className="p-5 border-t border-gray-200 bg-white shadow-2xl">
+            {currentTicket.status !== 'closed' ? (
+              <div className="p-5 border-t border-gray-700 bg-gray-800 shadow-2xl flex-shrink-0">
                 <div className="flex gap-3 items-end">
                   <div className="flex-1 relative">
-                    <Input
+                    <input
+                      type="text"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                       placeholder="Digite sua mensagem..."
                       disabled={loading}
-                      className="w-full px-5 py-3.5 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base"
+                      className="w-full px-5 py-3.5 rounded-xl border-2 bg-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-base"
+                      style={{ 
+                        backgroundColor: '#374151', 
+                        borderColor: '#9CA3AF', 
+                        color: '#FFFFFF',
+                        outline: 'none',
+                        minHeight: '48px'
+                      }}
                     />
                   </div>
                   <Button 
                     onClick={sendMessage} 
                     disabled={loading || !message.trim()}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-7 py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed h-auto min-w-[60px]"
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-7 py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed h-auto min-h-[48px] min-w-[60px]"
                   >
                     {loading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -593,18 +603,16 @@ export function SupportChat() {
                   </Button>
                 </div>
               </div>
-            )}
-
-            {currentTicket.status === 'closed' && (
-              <div className="p-5 bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 border-t border-gray-200 text-center">
-                <div className="inline-flex items-center gap-3 text-gray-700 bg-white px-6 py-3 rounded-full shadow-lg border-2 border-gray-300">
-                  <Ban className="w-5 h-5 text-gray-500" />
+            ) : (
+              <div className="p-5 bg-gradient-to-r from-gray-800 via-gray-800 to-gray-800 border-t border-gray-700 text-center flex-shrink-0">
+                <div className="inline-flex items-center gap-3 text-gray-300 bg-gray-700 px-6 py-3 rounded-full shadow-lg border-2 border-gray-600">
+                  <Ban className="w-5 h-5 text-gray-400" />
                   <span className="text-sm font-semibold">Esta conversa foi fechada</span>
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <CheckCircle2 className="w-5 h-5 text-green-400" />
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

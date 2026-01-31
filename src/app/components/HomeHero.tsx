@@ -53,25 +53,24 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
       <div className="absolute inset-0 bg-black/20"></div>
 
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}></div>
-      <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}></div>
-
-      <div className="relative container mx-auto px-4 py-20 lg:py-32">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
-            <div className="inline-block px-6 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-4" >
-              <span className="text-sm font-semibold">{heroContent.badge}</span>
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full" />
+      <div className="relative container mx-auto px-4 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8 xl:gap-12 items-center">
+          <div className="space-y-4 sm:space-y-6 md:space-y-8">
+            <div className="inline-block px-3 sm:px-4 md:px-5 lg:px-6 py-1.5 sm:py-2 md:py-2.5 bg-white/20 backdrop-blur-sm rounded-full mb-3 sm:mb-4">
+              <span className="text-xs sm:text-sm md:text-base font-semibold whitespace-nowrap">{heroContent.badge}</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight">
               {heroContent.title}
             </h1>
 
-            <p className="text-base sm:text-lg lg:text-2xl max-w-3xl" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl max-w-3xl leading-relaxed" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
               {heroContent.subtitle}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 pt-3 sm:pt-4 md:pt-6">
               <Button
                 size="lg"
                 onClick={() => {
@@ -79,11 +78,7 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
                     onExplore();
                   }
                 }}
-                className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
-                style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
-              >
+                className="px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-all shadow-lg flex items-center gap-2 group text-xs sm:text-sm md:text-base">
                 {heroContent.primaryButton.text}
               </Button>
               <Button
@@ -93,63 +88,59 @@ export function HomeHero({ onExplore, onGoToPodcasts }: HomeHeroProps) {
                     onGoToPodcasts();
                   }
                 }}
-                className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
-                style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
-              >
+                className="px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl border border-white/10 transition-all text-xs sm:text-sm md:text-base">
                 {heroContent.secondaryButton.text}
               </Button>
             </div>
 
-            {/* Stats - Mobile: Grid 2x2, Desktop: Flex horizontal */}
-            <div className="pt-12">
-              <div className="grid grid-cols-2 gap-6 sm:hidden">
+            {/* Stats - Mobile: Grid 2x2, Tablet+: Flex horizontal */}
+            <div className="pt-6 sm:pt-8 md:pt-12">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 md:hidden">
                 <div className="text-center">
-                  <div className="font-bold text-2xl mb-1">{totalCourses}</div>
-                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Cursos Especializados</div>
+                  <div className="font-bold text-base sm:text-lg mb-0.5 sm:mb-1">{totalCourses}</div>
+                  <div className="text-[9px] sm:text-[10px] leading-tight px-0.5 sm:px-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Cursos Especializados</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-2xl mb-1">50.000+</div>
-                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Alunos Transformados</div>
+                  <div className="font-bold text-base sm:text-lg mb-0.5 sm:mb-1">50.000+</div>
+                  <div className="text-[9px] sm:text-[10px] leading-tight px-0.5 sm:px-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Alunos Transformados</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-2xl mb-1">{averageRating}</div>
-                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Avaliação Média</div>
+                  <div className="font-bold text-base sm:text-lg mb-0.5 sm:mb-1">{averageRating}</div>
+                  <div className="text-[9px] sm:text-[10px] leading-tight px-0.5 sm:px-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Avaliação Média</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-2xl mb-1">{totalHours}</div>
-                  <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>de Conteúdo</div>
+                  <div className="font-bold text-base sm:text-lg mb-0.5 sm:mb-1">{totalHours}</div>
+                  <div className="text-[9px] sm:text-[10px] leading-tight px-0.5 sm:px-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>de Conteúdo</div>
                 </div>
               </div>
 
-              <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:justify-start gap-8 text-sm">
-                <div className="text-center">
-                  <div className="font-bold text-3xl mb-1">{totalCourses}</div>
-                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Cursos Especializados</div>
+              <div className="hidden md:flex md:flex-wrap md:items-center md:justify-start gap-1.5 md:gap-2 lg:gap-3 xl:gap-4 2xl:gap-6">
+                <div className="text-center min-w-[75px] md:min-w-[85px] lg:min-w-[95px] xl:min-w-[105px] 2xl:min-w-[120px]">
+                  <div className="font-bold text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl mb-0.5 md:mb-1">{totalCourses}</div>
+                  <div className="text-[9px] md:text-[10px] lg:text-[11px] xl:text-xs 2xl:text-sm leading-tight" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Cursos Especializados</div>
                 </div>
-                <div className="w-px h-12 bg-white/30"></div>
-                <div className="text-center">
-                  <div className="font-bold text-3xl mb-1">50.000+</div>
-                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Alunos Transformados</div>
+                <div className="w-px h-6 md:h-7 lg:h-8 xl:h-10 2xl:h-12 bg-white/30"></div>
+                <div className="text-center min-w-[75px] md:min-w-[85px] lg:min-w-[95px] xl:min-w-[105px] 2xl:min-w-[120px]">
+                  <div className="font-bold text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl mb-0.5 md:mb-1">50.000+</div>
+                  <div className="text-[9px] md:text-[10px] lg:text-[11px] xl:text-xs 2xl:text-sm leading-tight" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Alunos Transformados</div>
                 </div>
-                <div className="w-px h-12 bg-white/30"></div>
-                <div className="text-center">
-                  <div className="font-bold text-3xl mb-1">{averageRating}</div>
-                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Avaliação Média</div>
+                <div className="w-px h-6 md:h-7 lg:h-8 xl:h-10 2xl:h-12 bg-white/30"></div>
+                <div className="text-center min-w-[75px] md:min-w-[85px] lg:min-w-[95px] xl:min-w-[105px] 2xl:min-w-[120px]">
+                  <div className="font-bold text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl mb-0.5 md:mb-1">{averageRating}</div>
+                  <div className="text-[9px] md:text-[10px] lg:text-[11px] xl:text-xs 2xl:text-sm leading-tight" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Avaliação Média</div>
                 </div>
-                <div className="w-px h-12 bg-white/30"></div>
-                <div className="text-center">
-                  <div className="font-bold text-3xl mb-1">{totalHours}</div>
-                  <div style={{ color: 'rgba(255, 255, 255, 0.8)' }}>de Conteúdo</div>
+                <div className="w-px h-6 md:h-7 lg:h-8 xl:h-10 2xl:h-12 bg-white/30"></div>
+                <div className="text-center min-w-[75px] md:min-w-[85px] lg:min-w-[95px] xl:min-w-[105px] 2xl:min-w-[120px]">
+                  <div className="font-bold text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl mb-0.5 md:mb-1">{totalHours}</div>
+                  <div className="text-[9px] md:text-[10px] lg:text-[11px] xl:text-xs 2xl:text-sm leading-tight" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>de Conteúdo</div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Image Carousel */}
-          <div className="hidden lg:block">
-            <div className="relative h-[500px]">
+          <div className="hidden xl:block">
+            <div className="relative h-[400px] xl:h-[500px]">
               <div className="absolute inset-0 blur-3xl" style={{ background: `linear-gradient(to top right, var(--theme-primary-light), var(--theme-secondary))`, opacity: 0.3 }}></div>
               <div className="relative h-full shadow-2xl">
                 <ImageCarousel images={content?.carousel} />

@@ -87,7 +87,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
       paid: { label: 'Pago', color: 'bg-green-500', icon: CheckCircle2 },
-      pending: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock },
+      pending: { label: 'Pendente', color: 'bg-red-500', icon: Clock },
       failed: { label: 'Falhou', color: 'bg-red-500', icon: AlertCircle },
       refunded: { label: 'Reembolsado', color: 'bg-gray-500', icon: AlertCircle },
     };
@@ -105,10 +105,16 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div 
+        className="min-h-screen"
+        style={{
+          background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
+          minHeight: '100vh'
+        }}
+      >
         <div className="container mx-auto px-4 py-12">
           <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
           </div>
         </div>
       </div>
@@ -210,7 +216,13 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--theme-background)' }}>
+    <div 
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
+        minHeight: '100vh'
+      }}
+    >
       {/* Header */}
       <section 
         className="relative text-white overflow-hidden pt-24 pb-12"
@@ -241,46 +253,46 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" style={{ background: 'transparent' }}>
         {/* Estatísticas */}
         {hasPurchases && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card>
+            <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Total Gasto</p>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--theme-primary)' }}>
+                    <p className="text-sm text-gray-300 mb-1">Total Gasto</p>
+                    <p className="text-2xl font-bold text-white">
                       R$ {totalSpent.toFixed(2)}
                     </p>
                   </div>
-                  <div className="p-3 rounded-full bg-blue-100">
-                    <TrendingUp className="w-6 h-6" style={{ color: 'var(--theme-primary)' }} />
+                  <div className="p-3 rounded-full bg-white/10">
+                    <TrendingUp className="w-6 h-6 text-gray-300" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Total de Compras</p>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--theme-primary)' }}>
+                    <p className="text-sm text-gray-300 mb-1">Total de Compras</p>
+                    <p className="text-2xl font-bold text-white">
                       {totalPurchases}
                     </p>
                   </div>
-                  <div className="p-3 rounded-full bg-green-100">
-                    <Package className="w-6 h-6 text-green-600" />
+                  <div className="p-3 rounded-full bg-white/10">
+                    <Package className="w-6 h-6 text-gray-300" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Última Compra</p>
-                    <p className="text-lg font-semibold">
+                    <p className="text-sm text-gray-300 mb-1">Última Compra</p>
+                    <p className="text-lg font-semibold text-white">
                       {lastPurchase 
                         ? new Date(lastPurchase.createdAt).toLocaleDateString('pt-BR', {
                             day: '2-digit',
@@ -290,8 +302,8 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                         : 'N/A'}
                     </p>
                   </div>
-                  <div className="p-3 rounded-full bg-purple-100">
-                    <Calendar className="w-6 h-6 text-purple-600" />
+                  <div className="p-3 rounded-full bg-white/10">
+                    <Calendar className="w-6 h-6 text-gray-300" />
                   </div>
                 </div>
               </CardContent>
@@ -301,7 +313,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
 
         {/* Filtros e Busca */}
         {hasPurchases && (
-          <Card className="mb-6">
+          <Card className="mb-6 bg-white/5 backdrop-blur-sm border border-white/10">
             <CardContent className="p-6">
               <div className="space-y-4">
                 {/* Busca */}
@@ -311,80 +323,80 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                     placeholder="Buscar por ID da compra, nome do produto ou curso..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
                   />
                 </div>
 
                 {/* Filtros em linha */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="paid">Pago</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="failed">Falhou</SelectItem>
+                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
+                      <SelectItem value="all" className="text-white hover:bg-white/10">Todos os Status</SelectItem>
+                      <SelectItem value="paid" className="text-white hover:bg-white/10">Pago</SelectItem>
+                      <SelectItem value="pending" className="text-white hover:bg-white/10">Pendente</SelectItem>
+                      <SelectItem value="failed" className="text-white hover:bg-white/10">Falhou</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
                       <SelectValue placeholder="Tipo" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="courses">Cursos</SelectItem>
-                      <SelectItem value="products">Produtos</SelectItem>
+                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
+                      <SelectItem value="all" className="text-white hover:bg-white/10">Todos</SelectItem>
+                      <SelectItem value="courses" className="text-white hover:bg-white/10">Cursos</SelectItem>
+                      <SelectItem value="products" className="text-white hover:bg-white/10">Produtos</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
                       <SelectValue placeholder="Período" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todo Período</SelectItem>
-                      <SelectItem value="7d">Últimos 7 dias</SelectItem>
-                      <SelectItem value="30d">Últimos 30 dias</SelectItem>
-                      <SelectItem value="90d">Últimos 90 dias</SelectItem>
-                      <SelectItem value="year">Último ano</SelectItem>
+                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
+                      <SelectItem value="all" className="text-white hover:bg-white/10">Todo Período</SelectItem>
+                      <SelectItem value="7d" className="text-white hover:bg-white/10">Últimos 7 dias</SelectItem>
+                      <SelectItem value="30d" className="text-white hover:bg-white/10">Últimos 30 dias</SelectItem>
+                      <SelectItem value="90d" className="text-white hover:bg-white/10">Últimos 90 dias</SelectItem>
+                      <SelectItem value="year" className="text-white hover:bg-white/10">Último ano</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="date">Data</SelectItem>
-                      <SelectItem value="amount">Valor</SelectItem>
+                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
+                      <SelectItem value="date" className="text-white hover:bg-white/10">Data</SelectItem>
+                      <SelectItem value="amount" className="text-white hover:bg-white/10">Valor</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
                       <SelectValue placeholder="Ordem" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="desc">Decrescente</SelectItem>
-                      <SelectItem value="asc">Crescente</SelectItem>
+                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
+                      <SelectItem value="desc" className="text-white hover:bg-white/10">Decrescente</SelectItem>
+                      <SelectItem value="asc" className="text-white hover:bg-white/10">Crescente</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Botão limpar filtros */}
                 {hasActiveFilters && (
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <p className="text-sm text-gray-600">
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <p className="text-sm text-gray-300">
                       Mostrando {filteredAndSortedPurchases.length} de {purchases.length} compras
                     </p>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={clearFilters}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 border-white/20 text-white hover:bg-white/10"
                     >
                       <X className="w-4 h-4" />
                       Limpar Filtros
@@ -397,27 +409,27 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
         )}
 
         {!hasPurchases ? (
-          <Card>
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
             <CardContent className="p-12 text-center">
               <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-bold mb-2">Nenhuma compra encontrada</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-xl font-bold mb-2 text-white">Nenhuma compra encontrada</h3>
+              <p className="text-gray-300 mb-6">
                 Você ainda não realizou nenhuma compra.
               </p>
-              <Button onClick={onBack}>
+              <Button onClick={onBack} className="bg-white text-black hover:bg-gray-200">
                 Explorar Produtos
               </Button>
             </CardContent>
           </Card>
         ) : filteredAndSortedPurchases.length === 0 ? (
-          <Card>
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
             <CardContent className="p-12 text-center">
               <Filter className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-bold mb-2">Nenhuma compra encontrada</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-xl font-bold mb-2 text-white">Nenhuma compra encontrada</h3>
+              <p className="text-gray-300 mb-6">
                 Não há compras que correspondam aos filtros selecionados.
               </p>
-              <Button onClick={clearFilters}>
+              <Button onClick={clearFilters} className="bg-white text-black hover:bg-gray-200">
                 Limpar Filtros
               </Button>
             </CardContent>
@@ -425,15 +437,14 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
         ) : (
           <div className="space-y-4">
             {filteredAndSortedPurchases.map((purchase) => (
-              <Card key={purchase.id} className="hover:shadow-md transition-shadow">
+              <Card key={purchase.id} className="hover:shadow-md transition-shadow bg-white/5 backdrop-blur-sm border border-white/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">Compra #{purchase.id.substring(0, 8)}</h3>
                         {getStatusBadge(purchase.paymentStatus)}
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-300">
                         {new Date(purchase.createdAt).toLocaleDateString('pt-BR', {
                           day: '2-digit',
                           month: 'long',
@@ -442,7 +453,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                           minute: '2-digit',
                         })}
                       </p>
-                      <p className="text-lg font-bold mt-2">
+                      <p className="text-lg font-bold mt-2 text-white">
                         Total: R$ {(typeof purchase.finalAmount === 'string' ? parseFloat(purchase.finalAmount) : purchase.finalAmount).toFixed(2)}
                       </p>
                     </div>
@@ -451,10 +462,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                         setSelectedPurchase(purchase);
                         setModalOpen(true);
                       }}
-                      className="shadow-2xl text-white border-0 hover:scale-105 transition-transform"
-                      style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
+                      className="shadow-2xl text-black border-0 hover:scale-105 transition-transform bg-white hover:bg-gray-200"
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       Ver Detalhes
@@ -468,14 +476,14 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
 
         {/* Modal de Detalhes */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border border-white/10">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">
-                Detalhes da Compra #{selectedPurchase?.id.substring(0, 8)}
+              <DialogTitle className="text-2xl font-bold text-white">
+                Detalhes da Compra
               </DialogTitle>
               <DialogDescription>
                 {selectedPurchase && (
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-300 mt-2">
                     Realizada em {new Date(selectedPurchase.createdAt).toLocaleDateString('pt-BR', {
                       day: '2-digit',
                       month: 'long',
@@ -491,29 +499,25 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
             {selectedPurchase && (
               <div className="space-y-6 mt-4">
                 {/* Informações da Compra */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Informações da Compra</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white/5 backdrop-blur-sm p-4 rounded-lg border border-white/10">
+                  <h3 className="font-semibold mb-3 text-white">Informações da Compra</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600">Status:</span>
+                      <span className="text-gray-300">Status:</span>
                       <div className="mt-1">{getStatusBadge(selectedPurchase.paymentStatus)}</div>
                     </div>
                     <div>
-                      <span className="text-gray-600">Método de Pagamento:</span>
-                      <p className="font-medium mt-1">
+                      <span className="text-gray-300">Método de Pagamento:</span>
+                      <p className="font-medium mt-1 text-white">
                         {selectedPurchase.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : 
                          selectedPurchase.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Valor Total:</span>
-                      <p className="font-bold text-lg mt-1" style={{ color: 'var(--theme-primary)' }}>
+                      <span className="text-gray-300">Valor Total:</span>
+                      <p className="font-bold text-lg mt-1 text-white">
                         R$ {(typeof selectedPurchase.finalAmount === 'string' ? parseFloat(selectedPurchase.finalAmount) : selectedPurchase.finalAmount).toFixed(2)}
                       </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">ID da Compra:</span>
-                      <p className="font-mono text-xs mt-1">{selectedPurchase.id}</p>
                     </div>
                   </div>
                 </div>
@@ -521,25 +525,25 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                 {/* Cursos */}
                 {selectedPurchase.courses && selectedPurchase.courses.length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <BookOpen className="w-5 h-5" />
+                    <h3 className="font-semibold mb-4 flex items-center gap-2 text-white">
+                      <BookOpen className="w-5 h-5 text-gray-400" />
                       Cursos ({selectedPurchase.courses.length})
                     </h3>
                     <div className="space-y-3">
                       {selectedPurchase.courses.map((pc) => (
-                        <div key={pc.course.id} className="flex gap-4 p-4 border rounded-lg">
+                        <div key={pc.course.id} className="flex gap-4 p-4 border border-white/10 rounded-lg bg-white/5 backdrop-blur-sm">
                           <ImageWithFallback
                             src={pc.course.image}
                             alt={pc.course.title}
                             className="w-20 h-20 object-cover rounded"
                           />
                           <div className="flex-1">
-                            <h4 className="font-semibold">{pc.course.title}</h4>
-                            <p className="text-sm text-gray-600">{pc.course.instructor}</p>
+                            <h4 className="font-semibold text-white">{pc.course.title}</h4>
+                            <p className="text-sm text-gray-300">{pc.course.instructor}</p>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="mt-2"
+                              className="mt-2 border-white/20 text-white hover:bg-white/10"
                               onClick={() => {
                                 setModalOpen(false);
                                 navigate(`/curso/${pc.course.id}`);
@@ -557,13 +561,13 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                 {/* Produtos */}
                 {selectedPurchase.products && selectedPurchase.products.length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <Package className="w-5 h-5" />
+                    <h3 className="font-semibold mb-4 flex items-center gap-2 text-white">
+                      <Package className="w-5 h-5 text-gray-400" />
                       Produtos ({selectedPurchase.products.length})
                     </h3>
                     <div className="space-y-4">
                       {selectedPurchase.products.map((pp) => (
-                        <div key={pp.id} className="border rounded-lg p-4">
+                        <div key={pp.id} className="border border-white/10 rounded-lg p-4 bg-white/5 backdrop-blur-sm">
                           <div className="flex gap-4">
                             <ImageWithFallback
                               src={pp.product.image}
@@ -572,13 +576,13 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                <Badge className={pp.product.type === 'physical' ? 'bg-blue-600' : 'bg-purple-600'}>
+                                <Badge className={pp.product.type === 'physical' ? 'bg-blue-600' : 'bg-gray-600'}>
                                   {pp.product.type === 'physical' ? 'Físico' : 'Digital'}
                                 </Badge>
                               </div>
-                              <h4 className="font-semibold text-lg">{pp.product.title}</h4>
-                              <p className="text-sm text-gray-600">Quantidade: {pp.quantity}</p>
-                              <p className="text-xl font-bold mt-2" style={{ color: 'var(--theme-primary)' }}>
+                              <h4 className="font-semibold text-lg text-white">{pp.product.title}</h4>
+                              <p className="text-sm text-gray-300">Quantidade: {pp.quantity}</p>
+                              <p className="text-xl font-bold mt-2 text-white">
                                 R$ {(typeof pp.price === 'string' ? parseFloat(pp.price) : pp.price).toFixed(2)}
                               </p>
 
@@ -588,6 +592,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                                   <Button
                                     variant="outline"
                                     size="sm"
+                                    className="border-white/20 text-white hover:bg-white/10"
                                     onClick={() => {
                                       if (pp.product.digitalFileUrl) {
                                         window.open(pp.product.digitalFileUrl, '_blank');
@@ -664,15 +669,15 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                 {/* Botão de Pagamento para compras PENDENTES */}
                 {selectedPurchase.paymentStatus !== 'paid' && 
                  selectedPurchase.paymentStatus !== 'refunded' && (
-                  <div className="border-t pt-4">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="border-t border-white/10 pt-4">
+                    <div className="bg-red-900/30 border border-red-500/50 rounded-lg p-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-yellow-100 rounded-full">
-                          <Clock className="w-5 h-5 text-yellow-600" />
+                        <div className="p-2 bg-red-500/20 rounded-full">
+                          <Clock className="w-5 h-5 text-red-400" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-semibold text-yellow-900 mb-1">Pagamento Pendente</h4>
-                          <p className="text-sm text-yellow-800 mb-4">
+                          <h4 className="font-semibold text-red-300 mb-1">Pagamento Pendente</h4>
+                          <p className="text-sm text-red-200 mb-4">
                             Esta compra ainda não foi paga. Complete o pagamento para receber seus produtos.
                           </p>
                           <Button
@@ -692,7 +697,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                                 }
                               });
                             }}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            className="bg-green-600 hover:bg-green-700 text-white"
                           >
                             <Clock className="w-4 h-4 mr-2" />
                             Finalizar Pagamento
@@ -707,21 +712,21 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                 {selectedPurchase.products && selectedPurchase.products.some(pp => 
                   pp.product.type === 'physical' && pp.tracking?.proofOfDeliveryUrl
                 ) && (
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
+                  <div className="border-t border-white/10 pt-4">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2 text-white">
+                      <FileText className="w-5 h-5 text-gray-400" />
                       Comprovantes de Envio
                     </h3>
                     <div className="space-y-3">
                       {selectedPurchase.products
                         .filter(pp => pp.product.type === 'physical' && pp.tracking?.proofOfDeliveryUrl)
                         .map((pp) => (
-                          <div key={pp.id} className="bg-gray-50 p-4 rounded-lg">
+                          <div key={pp.id} className="bg-white/5 backdrop-blur-sm p-4 rounded-lg border border-white/10">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-medium">{pp.product.title}</p>
+                                <p className="font-medium text-white">{pp.product.title}</p>
                                 {pp.tracking?.deliveredAt && (
-                                  <p className="text-xs text-gray-600 mt-1">
+                                  <p className="text-xs text-gray-300 mt-1">
                                     Entregue em: {new Date(pp.tracking.deliveredAt).toLocaleString('pt-BR')}
                                   </p>
                                 )}
@@ -730,6 +735,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  className="border-white/20 text-white hover:bg-white/10"
                                   onClick={() => window.open(pp.tracking!.proofOfDeliveryUrl!, '_blank')}
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
@@ -737,6 +743,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                                 </Button>
                                 <Button
                                   size="sm"
+                                  className="bg-white hover:bg-gray-200 text-black"
                                   onClick={async () => {
                                     try {
                                       const url = pp.tracking!.proofOfDeliveryUrl!;

@@ -121,35 +121,35 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <Card className="w-full max-w-md my-8 relative">
+      <Card className="w-full max-w-md my-8 relative bg-gray-800 border-gray-700">
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-4 top-4 z-10"
+          className="absolute right-4 top-4 z-10 text-gray-300 hover:bg-gray-700 hover:text-white"
           onClick={onClose}
         >
           <X className="w-5 h-5" />
         </Button>
 
         <CardHeader>
-          <CardTitle className="text-2xl">Bem-vindo a WebCycle</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl text-white">Bem-vindo a WebCycle</CardTitle>
+          <CardDescription className="text-gray-400">
             Faça login ou crie sua conta para continuar
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Criar Conta</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-700 border-gray-600">
+              <TabsTrigger value="login" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-300">Login</TabsTrigger>
+              <TabsTrigger value="register" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-300">Criar Conta</TabsTrigger>
             </TabsList>
 
             {/* Login Tab */}
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-white">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -157,7 +157,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                       name="email"
                       type="email"
                       placeholder="seu@email.com"
-                      className="pl-10"
+                      className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       value={loginData.email}
                       onChange={handleLoginChange}
                       required
@@ -166,7 +166,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
+                  <Label htmlFor="login-password" className="text-white">Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -174,7 +174,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                       name="password"
                       type="password"
                       placeholder="••••••••"
-                      className="pl-10"
+                      className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       value={loginData.password}
                       onChange={handleLoginChange}
                       required
@@ -183,18 +183,18 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="rounded" />
+                  <label className="flex items-center gap-2 text-sm text-gray-300">
+                    <input type="checkbox" className="rounded accent-blue-600" />
                     Lembrar de mim
                   </label>
-                  <button type="button" className="text-sm text-purple-600 hover:text-purple-700">
+                  <button type="button" className="text-sm text-blue-400 hover:text-blue-300">
                     Esqueci a senha
                   </button>
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   size="lg"
                   disabled={loading}
                 >
@@ -202,8 +202,8 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </Button>
 
                 <div className="relative my-6">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-sm text-gray-500">
+                  <Separator className="bg-gray-700" />
+                  <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 px-2 text-sm text-gray-400">
                     ou
                   </span>
                 </div>
@@ -212,7 +212,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full"
+                    className="w-full bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                     onClick={() => {
                       // Redirecionar para login Google
                       const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
@@ -247,7 +247,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
             <TabsContent value="register">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="register-name">Nome Completo</Label>
+                  <Label htmlFor="register-name" className="text-white">Nome Completo</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -255,7 +255,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                       name="name"
                       type="text"
                       placeholder="João Silva"
-                      className="pl-10"
+                      className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       value={registerData.name}
                       onChange={handleRegisterChange}
                       required
@@ -264,7 +264,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
+                  <Label htmlFor="register-email" className="text-white">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -272,7 +272,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                       name="email"
                       type="email"
                       placeholder="seu@email.com"
-                      className="pl-10"
+                      className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       value={registerData.email}
                       onChange={handleRegisterChange}
                       required
@@ -281,7 +281,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-password">Senha</Label>
+                  <Label htmlFor="register-password" className="text-white">Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -289,7 +289,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                       name="password"
                       type="password"
                       placeholder="Mínimo 6 caracteres"
-                      className="pl-10"
+                      className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       value={registerData.password}
                       onChange={handleRegisterChange}
                       required
@@ -299,7 +299,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-confirm-password">Confirmar Senha</Label>
+                  <Label htmlFor="register-confirm-password" className="text-white">Confirmar Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -307,7 +307,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                       name="confirmPassword"
                       type="password"
                       placeholder="Digite a senha novamente"
-                      className="pl-10"
+                      className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                       value={registerData.confirmPassword}
                       onChange={handleRegisterChange}
                       required
@@ -315,16 +315,16 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                   </div>
                 </div>
 
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-300">
                   <label className="flex items-start gap-2">
-                    <input type="checkbox" className="rounded mt-0.5" required />
+                    <input type="checkbox" className="rounded mt-0.5 accent-blue-600" required />
                     <span>
                       Eu concordo com os{" "}
-                      <a href="#" className="text-blue-600 hover:text-blue-700">
+                      <a href="#" className="text-blue-400 hover:text-blue-300">
                         Termos de Uso
                       </a>{" "}
                       e{" "}
-                      <a href="#" className="text-blue-600 hover:text-blue-700">
+                      <a href="#" className="text-blue-400 hover:text-blue-300">
                         Política de Privacidade
                       </a>
                     </span>
@@ -333,7 +333,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   size="lg"
                   disabled={loading}
                 >
@@ -341,8 +341,8 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                 </Button>
 
                 <div className="relative my-6">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-sm text-gray-500">
+                  <Separator className="bg-gray-700" />
+                  <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 px-2 text-sm text-gray-400">
                     ou
                   </span>
                 </div>
@@ -351,7 +351,7 @@ export function Login({ onClose, onLoginSuccess }: LoginProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full"
+                    className="w-full bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
                     onClick={() => {
                       // Redirecionar para login Google
                       const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';

@@ -30,7 +30,7 @@ const benefits = [
   {
     icon: Headphones,
     title: "Suporte Especializado",
-    description: "Tire dúvidas com psicólogos e terapeutas certificados"
+    description: "Tire dúvidas com psicólogos e terapeutas experientes"
   }
 ];
 

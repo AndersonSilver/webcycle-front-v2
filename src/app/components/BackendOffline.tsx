@@ -91,9 +91,15 @@ export function BackendOffline() {
           onClick={checkBackend}
           disabled={isChecking}
           className="shadow-2xl text-lg px-10 py-6 hover:scale-105 transition-transform text-white"
-          style={{ background: 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))' }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 60% / 0.9), hsl(280 70% 65% / 0.9))'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, hsl(250 75% 65% / 0.9), hsl(280 70% 60% / 0.9))'}
+          style={{ background: '#9333ea', color: 'white' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#7e22ce';
+            e.currentTarget.style.color = 'white';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#9333ea';
+            e.currentTarget.style.color = 'white';
+          }}
         >
           {isChecking ? (
             <>

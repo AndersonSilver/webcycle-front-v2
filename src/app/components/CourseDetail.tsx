@@ -160,7 +160,13 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
   }, [course.id]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div 
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
+        minHeight: '100vh'
+      }}
+    >
       {/* Hero Section */}
       <section 
         className="relative text-white overflow-hidden"
@@ -238,12 +244,12 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                 
                 <div className="flex flex-col gap-2">
                   {alreadyOwned ? (
-                    <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 text-center max-w-md mx-auto">
-                      <div className="flex items-center justify-center gap-2 text-green-700 mb-2">
+                    <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-4 text-center max-w-md mx-auto">
+                      <div className="flex items-center justify-center gap-2 text-green-300 mb-2">
                         <CheckCircle2 className="w-5 h-5" />
-                        <span className="font-bold text-lg">Você já possui este curso!</span>
+                        <span className="font-bold text-lg text-white">Você já possui este curso!</span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-gray-300 mb-3">
                         Acesse em "Meus Cursos" para continuar assistindo
                       </p>
                       <Button
@@ -255,7 +261,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                             onBack();
                           }
                         }}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl"
+                        className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-xl"
                       >
                         <PlayCircle className="w-4 h-4 mr-2" />
                         Ir para Meus Cursos
@@ -266,7 +272,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                       <Button
                         size="lg"
                         onClick={() => onEnroll(course)}
-                        className="bg-green-600 hover:bg-green-700 text-white shadow-xl"
+                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-xl"
                       >
                         🛒 Comprar Agora
                       </Button>
@@ -275,7 +281,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                           size="lg"
                           onClick={() => onAddToCart(course)}
                           variant="outline"
-                          className="bg-white text-blue-700 hover:bg-blue-50 border-2 border-white shadow-xl"
+                          className="bg-white/10 text-white hover:bg-white/20 border-2 border-white/30 shadow-xl backdrop-blur-sm"
                         >
                           Adicionar ao Carrinho
                         </Button>
@@ -302,21 +308,21 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
 
       {/* Video de Apresentação - Seção dedicada */}
       {course.videoUrl && (
-        <section className="py-12 bg-white">
+        <section className="py-12" style={{ background: 'transparent' }}>
           <div className="container mx-auto px-4">
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-3 mb-3">
-                <div className="h-px w-12 bg-gradient-to-r from-transparent to-blue-600"></div>
-                <PlayCircle className="w-6 h-6 text-blue-600" />
-                <div className="h-px w-12 bg-gradient-to-l from-transparent to-blue-600"></div>
+                <div className="h-px w-12 bg-gradient-to-r from-transparent via-gray-500 to-transparent"></div>
+                <PlayCircle className="w-6 h-6 text-gray-400" />
+                <div className="h-px w-12 bg-gradient-to-l from-transparent via-gray-500 to-transparent"></div>
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+              <h2 className="text-3xl lg:text-4xl font-bold text-white mb-2">
                 Apresentação do Curso
               </h2>
-              <p className="text-gray-600 text-sm">Conheça mais sobre este curso</p>
+              <p className="text-gray-300 text-sm">Conheça mais sobre este curso</p>
             </div>
-            <div className="max-w-4xl mx-auto">
-              <div className="relative rounded-2xl shadow-2xl overflow-hidden bg-black aspect-video">
+            <div className="max-w-4xl mx-auto px-2 sm:px-0">
+              <div className="relative rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden bg-black w-full" style={{ aspectRatio: '16/9' }}>
                 {(() => {
                   const isYouTube = course.videoUrl?.includes('youtube.com') || course.videoUrl?.includes('youtu.be');
                   if (isYouTube && course.videoUrl) {
@@ -331,7 +337,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                       const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
                       return (
                         <iframe
-                          className="w-full h-full min-h-[400px]"
+                          className="w-full h-full absolute inset-0"
                           src={embedUrl}
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -343,17 +349,17 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                   // Fallback para outros formatos de vídeo ou se não for YouTube
                   if (!course.videoUrl) {
                     return (
-                      <div className="flex items-center justify-center w-full h-full min-h-[400px] text-white">
+                      <div className="flex items-center justify-center w-full h-full absolute inset-0 text-white" style={{ minHeight: '200px' }}>
                         <div className="text-center">
-                          <PlayCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg">Vídeo não disponível</p>
+                          <PlayCircle className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 opacity-50" />
+                          <p className="text-base sm:text-lg">Vídeo não disponível</p>
                         </div>
                       </div>
                     );
                   }
                   
                   return (
-                    <div className="relative w-full h-full min-h-[400px]">
+                    <div className="relative w-full h-full absolute inset-0">
                       {videoLoading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
                           <div className="text-white text-center">
@@ -382,7 +388,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                       <video
                         src={useDirectUrl ? (course.videoUrl || '') : getStreamingUrl(course.videoUrl || '')}
                         controls
-                        className="w-full h-full min-h-[400px]"
+                        className="w-full h-full absolute inset-0 object-contain"
                         preload="auto"
                         playsInline
                         crossOrigin="anonymous"
@@ -505,76 +511,190 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
       )}
 
       {/* Benefits */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20" style={{ background: 'transparent' }}>
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-12 text-center">
-            O Que Você Vai Aprender
-          </h2>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-3 mb-3">
+              <div className="h-px w-12 bg-gradient-to-r from-transparent via-gray-500 to-transparent"></div>
+              <Brain className="w-6 h-6 text-gray-400" />
+              <div className="h-px w-12 bg-gradient-to-l from-transparent via-gray-500 to-transparent"></div>
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-2 text-white">
+              O Que Você Vai Aprender
+            </h2>
+            <p className="text-gray-300 text-sm">Conhecimentos práticos e aplicáveis para transformar sua vida</p>
+          </div>
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {(course.benefits || []).map((benefit, index) => {
               const Icon = iconMap[benefit.icon] || Heart;
               return (
-                <Card key={index} className="border-none shadow-lg">
+                <Card key={index} className="border border-white/10 shadow-lg bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all group">
                   <CardContent className="p-6">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                      <Icon className="w-6 h-6 text-blue-600" />
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-gray-600 to-gray-700 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                        <Icon className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg mb-2 text-white group-hover:text-gray-100 transition-colors">{benefit.title}</h3>
+                        <p className="text-gray-300 text-sm leading-relaxed">{benefit.description}</p>
+                      </div>
                     </div>
-                    <h3 className="font-bold text-lg mb-2">{benefit.title}</h3>
-                    <p className="text-gray-600">{benefit.description}</p>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
+
+          {/* Informações adicionais do curso */}
+          <div className="mt-16 grid md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-center">
+              <BookOpen className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white mb-1">{course.lessons}</div>
+              <div className="text-xs text-gray-400">Aulas Disponíveis</div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-center">
+              <Clock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white mb-1">{course.duration}</div>
+              <div className="text-xs text-gray-400">de Conteúdo</div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-center">
+              <Users className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white mb-1">{course.students.toLocaleString('pt-BR')}</div>
+              <div className="text-xs text-gray-400">Alunos Inscritos</div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-center">
+              <Star className="w-8 h-8 text-yellow-400 fill-yellow-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white mb-1">{course.rating}</div>
+              <div className="text-xs text-gray-400">Avaliação Média</div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Course Content */}
-      <section className="py-20 bg-white">
+      <section className="py-20" style={{ background: 'transparent' }}>
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-12 text-center">
-            Conteúdo do Curso
-          </h2>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-3 mb-3">
+              <div className="h-px w-12 bg-gradient-to-r from-transparent via-gray-500 to-transparent"></div>
+              <BookOpen className="w-6 h-6 text-gray-400" />
+              <div className="h-px w-12 bg-gradient-to-l from-transparent via-gray-500 to-transparent"></div>
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-2 text-white">
+              Conteúdo do Curso
+            </h2>
+            <p className="text-gray-300 text-sm">Explore todos os módulos e aulas disponíveis</p>
+          </div>
           
-          <div className="max-w-4xl mx-auto">
-            <Card className="p-6">
+          <div className="max-w-5xl mx-auto">
+            <Card className="p-6 bg-gray-800/30 backdrop-blur-sm border-2 border-gray-600/40">
               <Accordion type="single" collapsible className="w-full">
                 {(course.modules || []).map((module, index) => {
                   // Extract lesson titles from module
                   const moduleTopics = module.lessons?.map(l => l.title) || [];
                   const lessonCount = module.lessons?.length || 0;
+                  const lessons = module.lessons || [];
+                  
+                  // Calcular duração total do módulo a partir das aulas
+                  const calculateModuleDuration = () => {
+                    if (lessons.length === 0) return module.duration || '0h';
+                    
+                    let totalMinutes = 0;
+                    lessons.forEach((lesson) => {
+                      if (typeof lesson === 'object' && lesson.duration) {
+                        const duration = lesson.duration.toLowerCase();
+                        // Parsear diferentes formatos: "30min", "30m", "1h 30min", "1h30min", etc.
+                        const hoursMatch = duration.match(/(\d+)\s*h/);
+                        const minutesMatch = duration.match(/(\d+)\s*min?/);
+                        
+                        if (hoursMatch) totalMinutes += parseInt(hoursMatch[1]) * 60;
+                        if (minutesMatch) totalMinutes += parseInt(minutesMatch[1]);
+                        // Se só tem número sem h/min, assumir minutos
+                        if (!hoursMatch && !minutesMatch) {
+                          const numMatch = duration.match(/(\d+)/);
+                          if (numMatch) totalMinutes += parseInt(numMatch[1]);
+                        }
+                      }
+                    });
+                    
+                    if (totalMinutes === 0) return module.duration || '0h';
+                    
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    
+                    if (hours > 0 && minutes > 0) {
+                      return `${hours}h ${minutes}min`;
+                    } else if (hours > 0) {
+                      return `${hours}h`;
+                    } else {
+                      return `${minutes}min`;
+                    }
+                  };
+                  
+                  const moduleDuration = calculateModuleDuration();
                   
                   return (
-                  <AccordionItem key={index} value={`item-${index}`}>
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-start gap-4 text-left w-full">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="font-bold text-blue-600">{index + 1}</span>
+                  <AccordionItem key={index} value={`item-${index}`} className="border-b border-white/10 last:border-0">
+                    <AccordionTrigger className="hover:no-underline text-white py-4 sm:py-6 px-3 sm:px-4 hover:bg-white/5 rounded-lg transition-all">
+                      <div className="flex items-start gap-2 sm:gap-4 text-left w-full">
+                        <div className="w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                          <span className="font-bold text-base sm:text-xl text-white">{index + 1}</span>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg">{module.title}</h3>
-                          <div className="flex gap-4 mt-2 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <PlayCircle className="w-4 h-4" />
-                              {lessonCount} aulas
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-base sm:text-lg text-white mb-1 sm:mb-2 break-words">{module.title}</h3>
+                          <div className="flex items-center gap-1.5 sm:gap-4 text-xs sm:text-sm text-gray-300 overflow-x-auto">
+                            <span className="flex items-center gap-1 sm:gap-1.5 bg-white/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md whitespace-nowrap flex-shrink-0">
+                              <PlayCircle className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                              <span className="font-medium">{lessonCount} {lessonCount === 1 ? 'aula' : 'aulas'}</span>
                             </span>
-                            <span className="flex items-center gap-1">
-                              <FileText className="w-4 h-4" />
-                              {module.duration}
+                            <span className="flex items-center gap-1 sm:gap-1.5 bg-white/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md whitespace-nowrap flex-shrink-0">
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                              <span className="font-medium">{moduleDuration}</span>
+                            </span>
+                            <span className="flex items-center gap-1 sm:gap-1.5 bg-white/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md whitespace-nowrap flex-shrink-0">
+                              <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                              <span className="font-medium">Módulo {index + 1}</span>
                             </span>
                           </div>
                         </div>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="pl-16 pr-4 space-y-3 mt-4">
-                        {moduleTopics.map((topic, topicIndex) => (
-                          <div key={topicIndex} className="flex items-center gap-3 text-gray-700">
-                            <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                            <span>{typeof topic === 'string' ? topic : topic}</span>
+                      <div className="pr-2 sm:pr-4 pb-4 space-y-2 mt-4">
+                        {lessons.map((lesson, lessonIndex) => (
+                          <div 
+                            key={lessonIndex} 
+                            className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-all border border-white/5 hover:border-white/10 group"
+                          >
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-700/50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-gray-600 transition-colors">
+                              <span className="text-xs font-bold text-gray-300">{lessonIndex + 1}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 sm:gap-2">
+                                <PlayCircle className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                                <span className="text-xs sm:text-sm font-medium text-white group-hover:text-gray-100 transition-colors break-words">
+                                  {typeof lesson === 'object' && lesson.title ? lesson.title : String(lesson)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Badge className="bg-gray-700/50 text-gray-300 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 border-0 whitespace-nowrap">
+                                {typeof lesson === 'object' && lesson.duration ? lesson.duration : '--'}
+                              </Badge>
+                            </div>
                           </div>
                         ))}
+                        {moduleTopics.length > 0 && lessons.length === 0 && (
+                          <div className="space-y-2">
+                            {moduleTopics.map((topic, topicIndex) => (
+                              <div key={topicIndex} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-all">
+                                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0" />
+                                <span className="text-xs sm:text-sm text-gray-300 break-words">{typeof topic === 'string' ? topic : String(topic)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -584,14 +704,14 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
             </Card>
             
             {/* Bonuses */}
-            <div className="mt-8 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <div className="mt-8 p-6 bg-gray-800/30 rounded-lg border-2 border-gray-600/40 backdrop-blur-sm">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-bold text-xl mb-2">Bônus Exclusivos Inclusos</h3>
-                  <ul className="space-y-2 text-gray-700">
+                  <h3 className="font-bold text-xl mb-2 text-white">Bônus Exclusivos Inclusos</h3>
+                  <ul className="space-y-2 text-gray-300">
                     {(course.bonuses || []).map((bonus: any, index: number) => (
                       <li key={index} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        <CheckCircle2 className="w-5 h-5 text-green-400" />
                         <span>{bonus.title || bonus.name || 'Material de Apoio'}</span>
                       </li>
                     ))}
@@ -599,11 +719,11 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                 </div>
                 {originalPrice && (
                   <div className="text-center md:text-right">
-                    <div className="text-sm text-gray-600">Valor adicional</div>
-                    <div className="font-bold text-3xl text-blue-600">
+                    <div className="text-sm text-gray-400">Valor adicional</div>
+                    <div className="font-bold text-3xl bg-gradient-to-r from-gray-300 to-gray-400 bg-clip-text text-transparent">
                       R$ {(originalPrice - price).toFixed(2)}
                     </div>
-                    <div className="text-sm text-green-600 font-semibold">GRÁTIS</div>
+                    <div className="text-sm text-green-400 font-semibold">GRÁTIS</div>
                   </div>
                 )}
               </div>
@@ -614,13 +734,13 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
 
       {/* Reviews */}
       {reviews.length > 0 && (
-        <section className="py-20 bg-gray-50">
+        <section className="py-20" style={{ background: 'transparent' }}>
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">
+              <h2 className="text-3xl font-bold mb-4 text-white">
                 O Que Nossos Alunos Dizem
               </h2>
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-300 text-lg">
                 Avaliações reais de alunos que já transformaram suas vidas
               </p>
             </div>
@@ -628,23 +748,23 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
             {reviews.length === 0 ? (
               <div className="text-center py-12">
                 <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">
+                <p className="text-gray-300">
                   Seja o primeiro a avaliar este curso!
                 </p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {reviews.map((review) => (
-                  <Card key={review.id} className="border-none shadow-lg hover:shadow-xl transition-shadow">
+                  <Card key={review.id} className="border border-white/10 shadow-lg hover:shadow-xl transition-shadow bg-white/5 backdrop-blur-sm">
                     <CardContent className="p-6">
                       {/* Header with avatar and stars */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                          <div className="w-12 h-12 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full flex items-center justify-center text-white font-bold text-lg">
                             {review.userName.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <h3 className="font-bold">{review.userName}</h3>
+                            <h3 className="font-bold text-white">{review.userName}</h3>
                             <div className="flex items-center gap-1 mt-1">
                               {Array.from({ length: 5 }).map((_, i) => (
                                 <Star
@@ -652,23 +772,23 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                                   className={`w-4 h-4 ${
                                     i < review.rating
                                       ? 'fill-yellow-400 text-yellow-400'
-                                      : 'text-gray-300'
+                                      : 'text-gray-500'
                                   }`}
                                 />
                               ))}
                             </div>
                           </div>
                         </div>
-                        <Quote className="w-8 h-8 text-blue-200" />
+                        <Quote className="w-8 h-8 text-gray-400" />
                       </div>
 
                       {/* Comment */}
-                      <p className="text-gray-700 leading-relaxed mb-3">
+                      <p className="text-gray-300 leading-relaxed mb-3">
                         "{review.comment}"
                       </p>
 
                       {/* Date */}
-                      <div className="text-xs text-gray-500 pt-3 border-t">
+                      <div className="text-xs text-gray-400 pt-3 border-t border-white/10">
                         {new Date(review.date).toLocaleDateString('pt-BR', {
                           day: '2-digit',
                           month: 'long',
@@ -684,22 +804,22 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
             {/* Summary stats */}
             {reviews.length > 0 && (
               <div className="mt-12 text-center">
-                <div className="inline-flex items-center gap-6 bg-white rounded-xl shadow-lg px-8 py-4">
+                <div className="inline-flex items-center gap-6 bg-white/5 backdrop-blur-sm rounded-xl shadow-lg px-8 py-4 border border-white/10">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <Star className="w-6 h-6 fill-yellow-400 text-yellow-400" />
-                      <span className="text-3xl font-bold">
+                      <span className="text-3xl font-bold text-white">
                         {(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600">Avaliação média</p>
+                    <p className="text-sm text-gray-300">Avaliação média</p>
                   </div>
-                  <div className="w-px h-12 bg-gray-200"></div>
+                  <div className="w-px h-12 bg-white/20"></div>
                   <div>
-                    <div className="text-3xl font-bold text-blue-600 mb-1">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-gray-300 to-gray-400 bg-clip-text text-transparent mb-1">
                       {reviews.length}
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-300">
                       {reviews.length === 1 ? 'Avaliação' : 'Avaliações'}
                     </p>
                   </div>
@@ -711,21 +831,24 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
       )}
 
       {/* CTA Final */}
-      <section className="py-20 bg-gradient-to-br from-blue-600 to-teal-700 text-white">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-20 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl"></div>
+        <div className="container mx-auto px-4 text-center relative z-10">
           <h2 className="text-3xl lg:text-4xl font-bold mb-6">
             Pronto Para Começar Sua Transformação?
           </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Junte-se a {course.students.toLocaleString('pt-BR')} alunos que já estão transformando suas vidas
+          <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+            Junte-se a mais de 50 alunos que já estão transformando suas vidas
           </p>
           {alreadyOwned ? (
-            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 text-center max-w-md mx-auto">
-              <div className="flex items-center justify-center gap-2 text-green-700 mb-2">
+            <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-4 text-center max-w-md mx-auto">
+              <div className="flex items-center justify-center gap-2 text-green-300 mb-2">
                 <CheckCircle2 className="w-5 h-5" />
-                <span className="font-bold">Você já possui este curso!</span>
+                <span className="font-bold text-white">Você já possui este curso!</span>
               </div>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-gray-300 mb-3">
                 Acesse em "Meus Cursos" para continuar assistindo
               </p>
               <Button
@@ -737,7 +860,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                     onBack();
                   }
                 }}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl"
+                className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-xl"
               >
                 <PlayCircle className="w-4 h-4 mr-2" />
                 Ir para Meus Cursos
@@ -747,13 +870,18 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
             <Button
               size="lg"
               onClick={() => onEnroll(course)}
-              className="bg-white text-blue-700 hover:bg-blue-50 shadow-xl"
+              // cor roxa do botão
+              style={{
+                backgroundColor: '#9333ea',
+                color: '#ffffff'
+              }}
+              className="bg-white text-black hover:bg-gray-100 shadow-xl font-semibold "
             >
               Garantir Minha Vaga Agora - R$ {price.toFixed(2)}
             </Button>
           )}
-          <p className="mt-4 text-sm text-blue-200">
-            💕 Acesso imediato • ✅ Garantia de 7 dias • 🎓 Certificado incluído
+          <p className="mt-4 text-sm text-gray-300">
+            💕 Acesso imediato • ✅ Garantia de 7 dias • 🎓 Conteúdo exclusivo
           </p>
         </div>
       </section>

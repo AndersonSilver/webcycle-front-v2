@@ -639,47 +639,6 @@ class ApiClient {
     );
   }
 
-  // ==================== CERTIFICADOS ====================
-
-  async getCertificates() {
-    return this.request<{ certificates: any[] }>('/certificates');
-  }
-
-  async getCertificateById(id: string) {
-    return this.request<{ certificate: any }>(`/certificates/${id}`);
-  }
-
-  async downloadCertificate(id: string) {
-    const response = await fetch(`${API_BASE_URL}/certificates/${id}/download`, {
-      headers: {
-        Authorization: `Bearer ${this.getToken()}`,
-      },
-    });
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `certificado-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  }
-
-  async generateCertificate(courseId: string) {
-    return this.request<{ certificate: any }>(
-      `/certificates/generate/${courseId}`,
-      { method: 'POST' }
-    );
-  }
-
-  async verifyCertificate(code: string) {
-    return this.request<{ valid: boolean; certificate: any }>(
-      `/certificates/verify/${code}`,
-      { requiresAuth: false }
-    );
-  }
-
   // ==================== CUPONS ====================
 
   async validateCoupon(code: string, totalAmount?: number) {
@@ -1767,6 +1726,31 @@ class ApiClient {
       message: string;
       theme: any;
     }>('/theme/admin', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ==================== EMAIL DE VENDAS (ADMIN) ====================
+
+  async getSaleEmailSettings() {
+    return this.request<{
+      active: boolean;
+      recipients: Array<{
+        email: string;
+        createdAt: string;
+      }>;
+    }>('/admin/sale-email-settings');
+  }
+
+  async updateSaleEmailSettings(data: {
+    active?: boolean;
+    recipientEmails?: string[];
+  }) {
+    return this.request<{
+      message: string;
+      settings: any;
+    }>('/admin/sale-email-settings', {
       method: 'PUT',
       body: JSON.stringify(data),
     });

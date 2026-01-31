@@ -34,11 +34,17 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
   
   if (!hasContent) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--theme-background)' }}>
+      <div 
+        className="min-h-screen"
+        style={{
+          background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
+          minHeight: '100vh'
+        }}
+      >
         <div className="container mx-auto px-4 pt-24 pb-12">
           <Button
             variant="ghost"
-            className="mb-6"
+            className="mb-6 text-white hover:text-gray-200 hover:bg-white/10"
             onClick={onBack}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -46,17 +52,17 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
           </Button>
 
           <div className="text-center py-20">
-            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <BookOpen className="w-12 h-12 text-blue-600" />
+            <div className="w-24 h-24 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/20">
+              <BookOpen className="w-12 h-12 text-gray-400" />
             </div>
-            <h2 className="text-3xl font-bold mb-4">Você ainda não tem cursos</h2>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            <h2 className="text-3xl font-bold mb-4 text-white">Você ainda não tem cursos</h2>
+            <p className="text-gray-300 mb-8 max-w-md mx-auto">
               Explore nosso catálogo e comece sua jornada de transformação pessoal hoje mesmo!
             </p>
             <Button
               size="lg"
               onClick={onBack}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-white text-black hover:bg-gray-200"
             >
               Explorar Cursos
             </Button>
@@ -72,7 +78,13 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
   const completedCourses = purchasedCourses.filter(c => c.progress === 100).length;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--theme-background)' }}>
+    <div 
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
+        minHeight: '100vh'
+      }}
+    >
       {/* Header */}
       <section 
         className="relative text-white overflow-hidden pt-24 pb-12"
@@ -130,17 +142,17 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
       </section>
 
       {/* Course List */}
-      <section className="container mx-auto px-4 py-12" style={{ backgroundColor: 'var(--theme-background)' }}>
+      <section className="container mx-auto px-4 py-12" style={{ background: 'transparent' }}>
         {purchasedCourses.length > 0 && (
           <>
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2">Continue Aprendendo</h2>
-              <p className="text-gray-600">Retome de onde parou</p>
+              <h2 className="text-2xl font-bold mb-2 text-white">Continue Aprendendo</h2>
+              <p className="text-gray-300">Retome de onde parou</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
               {purchasedCourses.map((course) => (
-                <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white/5 backdrop-blur-sm border border-white/10">
                   <CardContent className="p-4 flex flex-col h-full">
                     <div className="flex flex-col gap-4 h-full">
                       {/* Course Image */}
@@ -157,8 +169,8 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                         <div>
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="min-w-0 flex-1">
-                              <span className="text-xs text-blue-600 font-semibold">{course.category}</span>
-                              <h3 className="font-bold mt-0.5 line-clamp-1">{course.title}</h3>
+                              <span className="text-xs text-purple-400 font-semibold">{course.category}</span>
+                              <h3 className="font-bold mt-0.5 line-clamp-1 text-white">{course.title}</h3>
                             </div>
                             {course.progress === 100 && (
                               <div className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0">
@@ -168,9 +180,9 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                             )}
                           </div>
 
-                          <p className="text-gray-600 text-sm mb-2 line-clamp-1">{course.description}</p>
+                          <p className="text-gray-300 text-sm mb-2 line-clamp-1">{course.description}</p>
 
-                          <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-2">
+                          <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-2">
                             <div className="flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
                               <span>{course.completedLessons}/{course.lessons} aulas</span>
@@ -184,8 +196,8 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                           {/* Progress Bar */}
                           <div className="mb-3">
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-gray-600">Progresso do Curso</span>
-                              <span className="text-blue-600 font-bold">{course.progress}%</span>
+                              <span className="text-gray-300">Progresso do Curso</span>
+                              <span className="text-purple-400 font-bold">{course.progress}%</span>
                             </div>
                             <Progress value={course.progress} className="h-2" />
                           </div>
@@ -194,7 +206,7 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                         <div>
                           <Button
                             onClick={() => onWatchCourse(course)}
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                             size="sm"
                           >
                             <PlayCircle className="w-4 h-4 mr-2" />
@@ -213,13 +225,13 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
         {podcasts.length > 0 && (
           <>
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2">Meus Podcasts</h2>
-              <p className="text-gray-600">Assista seus podcasts gratuitos</p>
+              <h2 className="text-2xl font-bold mb-2 text-white">Meus Podcasts</h2>
+              <p className="text-gray-300">Assista seus podcasts gratuitos</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {podcasts.map((podcast) => (
-                <Card key={podcast.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                <Card key={podcast.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white/5 backdrop-blur-sm border border-white/10">
                   <CardContent className="p-4 flex flex-col h-full">
                     <div className="flex flex-col gap-4 h-full">
                       {/* Podcast Image */}
@@ -231,7 +243,7 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                             className="w-full h-full object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-teal-600 rounded-lg flex items-center justify-center">
+                          <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
                             <Headphones className="w-12 h-12 text-white" />
                           </div>
                         )}
@@ -240,12 +252,12 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                       {/* Podcast Info */}
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
-                          <h3 className="font-bold text-lg mb-1 line-clamp-2">{podcast.title}</h3>
+                          <h3 className="font-bold text-lg mb-1 line-clamp-2 text-white">{podcast.title}</h3>
                           {podcast.description && (
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{podcast.description}</p>
+                            <p className="text-gray-300 text-sm mb-3 line-clamp-2">{podcast.description}</p>
                           )}
 
-                          <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-3">
+                          <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-3">
                             {podcast.duration && (
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
@@ -258,7 +270,7 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                         <div>
                           <Button
                             onClick={() => onWatchPodcast?.(podcast)}
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                             size="sm"
                           >
                             <PlayCircle className="w-4 h-4 mr-2" />

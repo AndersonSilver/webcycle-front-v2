@@ -123,16 +123,48 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="relative hover:bg-blue-50 border-blue-200">
-          <ShoppingCart className="w-5 h-5 text-blue-700" />
+        <Button 
+          variant="ghost" 
+          className="relative transition-all duration-300 rounded-lg group border-0"
+          style={{
+            backgroundColor: 'transparent',
+            color: 'white',
+            width: '48px',
+            height: '48px',
+            padding: '0'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            e.currentTarget.style.transform = 'translateY(-1px) scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+          }}
+        >
+          <ShoppingCart 
+            className="text-white transition-all duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" 
+            style={{ 
+              color: 'rgba(255, 255, 255, 0.9)',
+              width: '28px',
+              height: '28px'
+            }}
+          />
           {(items.length > 0 || cartProducts.length > 0) && (
-            <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-red-500 to-pink-500 text-white border-2 border-white shadow-lg">
+            <Badge 
+              className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0 text-white border-2 shadow-lg font-bold text-xs transition-all duration-300 group-hover:scale-110 group-hover:animate-pulse"
+              style={{
+                background: 'linear-gradient(135deg, #ef4444, #ec4899)',
+                borderColor: 'rgba(26, 26, 26, 0.8)',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.5), 0 0 0 2px rgba(239, 68, 68, 0.2)'
+              }}
+            >
               {items.length + cartProducts.length}
             </Badge>
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg flex flex-col p-0 gap-0">
+      <SheetContent className="w-full sm:max-w-lg flex flex-col p-0 gap-0 bg-gray-800 border-gray-700">
         {/* Header */}
         <SheetHeader className="sr-only">
           <SheetTitle>Carrinho de Compras</SheetTitle>
@@ -162,16 +194,16 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
 
         {items.length === 0 && cartProducts.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-16">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-teal-100 rounded-full flex items-center justify-center mb-6">
-              <ShoppingCart className="w-12 h-12 text-blue-600" />
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-600/20 to-teal-600/20 rounded-full flex items-center justify-center mb-6 border border-blue-600/30">
+              <ShoppingCart className="w-12 h-12 text-blue-400" />
             </div>
-            <h3 className="font-bold text-xl mb-2 text-gray-900">Seu carrinho está vazio</h3>
-            <p className="text-gray-600 mb-8 max-w-sm">
+            <h3 className="font-bold text-xl mb-2 text-white">Seu carrinho está vazio</h3>
+            <p className="text-gray-400 mb-8 max-w-sm">
               Explore nossos cursos de psicologia e comece sua jornada de transformação
             </p>
             <Button 
               onClick={onContinueShopping} 
-              className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg"
+              className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg text-white"
               size="lg"
             >
               <ShoppingBag className="w-4 h-4 mr-2" />
@@ -181,7 +213,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
         ) : (
           <>
             {/* Items List */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50">
+            <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-800">
               <div className="space-y-4">
                 {items.map((course) => {
                   const discount = course.originalPrice 
@@ -189,7 +221,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                     : 0;
 
                   return (
-                    <Card key={course.id} className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 group">
+                    <Card key={course.id} className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 group bg-gray-700 border-gray-600">
                       <CardContent className="p-0">
                         <div className="flex gap-4 p-4">
                           {/* Image */}
@@ -209,20 +241,20 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between gap-2 mb-2">
-                              <h4 className="font-bold text-sm line-clamp-2 text-gray-900">
+                              <h4 className="font-bold text-sm line-clamp-2 text-white">
                                 {course.title}
                               </h4>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onRemoveItem(course.id)}
-                                className="text-gray-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0 flex-shrink-0"
+                                className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0 flex-shrink-0"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                             
-                            <p className="text-xs text-gray-600 mb-3 flex items-center gap-1">
+                            <p className="text-xs text-gray-400 mb-3 flex items-center gap-1">
                               👨‍🏫 {course.instructor}
                             </p>
                             
@@ -240,7 +272,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                                         R$ {originalPrice.toFixed(2)}
                                       </div>
                                     )}
-                                    <div className="font-bold text-lg text-green-600">
+                                    <div className="font-bold text-lg text-green-400">
                                       R$ {price.toFixed(2)}
                                     </div>
                                   </>
@@ -261,7 +293,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                     : 0;
 
                   return (
-                    <Card key={`${product.id}-${index}`} className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 group">
+                    <Card key={`${product.id}-${index}`} className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 group bg-gray-700 border-gray-600">
                       <CardContent className="p-0">
                         <div className="flex gap-4 p-4">
                           {/* Image */}
@@ -284,20 +316,20 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between gap-2 mb-2">
-                              <h4 className="font-bold text-sm line-clamp-2 text-gray-900">
+                              <h4 className="font-bold text-sm line-clamp-2 text-white">
                                 {product.title}
                               </h4>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleRemoveProduct(product.id)}
-                                className="text-gray-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0 flex-shrink-0"
+                                className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0 flex-shrink-0"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                             
-                            <p className="text-xs text-gray-600 mb-3 flex items-center gap-1">
+                            <p className="text-xs text-gray-400 mb-3 flex items-center gap-1">
                               {product.type === 'physical' ? '📦 Produto Físico' : '💾 Produto Digital'}
                             </p>
                             
@@ -315,7 +347,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                                         R$ {originalPrice.toFixed(2)}
                                       </div>
                                     )}
-                                    <div className="font-bold text-lg text-green-600">
+                                    <div className="font-bold text-lg text-green-400">
                                       R$ {price.toFixed(2)}
                                     </div>
                                   </>
@@ -330,7 +362,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                 })}
                 
                 {productsLoading && (
-                  <div className="text-center py-4 text-sm text-gray-500">
+                  <div className="text-center py-4 text-sm text-gray-400">
                     Carregando produtos...
                   </div>
                 )}
@@ -338,31 +370,31 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
             </div>
 
             {/* Summary Footer */}
-            <div className="border-t bg-white px-6 py-6 space-y-4">
+            <div className="border-t border-gray-700 bg-gray-800 px-6 py-6 space-y-4">
               {/* Pricing Details */}
               <div className="space-y-3">
                 {items.length > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <div className="flex justify-between text-sm text-gray-400">
                     <span>Subtotal ({items.length} {items.length === 1 ? 'curso' : 'cursos'}):</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-white">
                       R$ {coursesTotal.toFixed(2)}
                     </span>
                   </div>
                 )}
                 {cartProducts.length > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <div className="flex justify-between text-sm text-gray-400">
                     <span>Subtotal ({cartProducts.length} {cartProducts.length === 1 ? 'produto' : 'produtos'}):</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-white">
                       R$ {productsTotal.toFixed(2)}
                     </span>
                   </div>
                 )}
 
-                <Separator />
+                <Separator className="bg-gray-700" />
 
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-gray-900">Total:</span>
-                  <span className="text-2xl font-bold text-blue-600">
+                  <span className="text-lg font-bold text-white">Total:</span>
+                  <span className="text-2xl font-bold text-blue-400">
                     R$ {total.toFixed(2)}
                   </span>
                 </div>
@@ -382,7 +414,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                 <Button
                   onClick={handleContinueShopping}
                   variant="outline"
-                  className="w-full border-2 hover:bg-gray-50"
+                  className="w-full border-2 border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
                   size="lg"
                 >
                   Continuar Comprando
@@ -390,14 +422,14 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
               </div>
 
               {/* Trust Badges */}
-              <div className="flex items-center justify-center gap-4 pt-4 text-xs text-gray-600">
+              <div className="flex items-center justify-center gap-4 pt-4 text-xs text-gray-400">
                 <div className="flex items-center gap-1">
-                  <Shield className="w-4 h-4 text-green-600" />
+                  <Shield className="w-4 h-4 text-green-400" />
                   <span>Pagamento seguro</span>
                 </div>
-                <div className="w-px h-4 bg-gray-300"></div>
+                <div className="w-px h-4 bg-gray-600"></div>
                 <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4 text-blue-600" />
+                  <Clock className="w-4 h-4 text-blue-400" />
                   <span>Acesso imediato</span>
                 </div>
               </div>

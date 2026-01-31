@@ -30,7 +30,7 @@ export function Hero({ onEnrollClick }: HeroProps) {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-300" />
-                <span>Certificado por psicólogos especializados</span>
+                <span>Conteúdo por psicólogos especializados</span>
               </div>
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-300" />

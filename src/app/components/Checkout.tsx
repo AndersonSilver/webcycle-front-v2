@@ -740,8 +740,8 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
           }}
         >
           {/* Header do Modal - Mobile: fixo no topo */}
-          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-white flex-shrink-0">
-            <h2 className="text-base sm:text-lg font-semibold">Finalizar Pagamento</h2>
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700 bg-gray-800 flex-shrink-0">
+            <h2 className="text-base sm:text-lg font-semibold text-white">Finalizar Pagamento</h2>
             <Button
               variant="ghost"
               size="icon"
@@ -749,7 +749,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                 setShowPaymentModal(false);
                 setPaymentUrl(null);
               }}
-              className="h-8 w-8 sm:h-10 sm:w-10"
+              className="h-8 w-8 sm:h-10 sm:w-10 text-gray-300 hover:bg-gray-700"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
@@ -757,7 +757,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
           
           {/* Container do iframe - Ocupa todo o espaço restante */}
           <div 
-            className="flex-1 overflow-hidden relative bg-white min-w-0" 
+            className="flex-1 overflow-hidden relative bg-gray-800 min-w-0" 
             style={{ 
               overflowX: 'hidden',
               maxWidth: '100%',
@@ -807,7 +807,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                   setShowPaymentModal(false);
                   setPaymentUrl(null);
                 }}
-                className="bg-white shadow-lg text-xs sm:text-sm h-7 sm:h-9 px-2 sm:px-4"
+                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 shadow-lg text-xs sm:text-sm h-7 sm:h-9 px-2 sm:px-4"
               >
                 Abrir em nova aba
               </Button>
@@ -817,7 +817,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
       )}
 
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-      <Card className="w-full max-w-6xl my-2 sm:my-4 md:my-8 relative max-h-[95vh] overflow-y-auto">
+      <Card className="w-full max-w-6xl my-2 sm:my-4 md:my-8 relative max-h-[95vh] overflow-y-auto bg-gray-800 border-gray-700">
         <Button
           variant="ghost"
           size="icon"
@@ -830,16 +830,16 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         <CardHeader className="pb-2 sm:pb-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex-1">
-              <CardTitle className="text-xl sm:text-2xl mb-1 sm:mb-2">Finalizar Compra</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
+              <CardTitle className="text-xl sm:text-2xl mb-1 sm:mb-2 text-white">Finalizar Compra</CardTitle>
+              <CardDescription className="text-xs sm:text-sm text-gray-400">
                 Revise seu pedido e finalize o pagamento
               </CardDescription>
             </div>
             {/* Logo Mercado Pago */}
             <div className="hidden md:block">
-              <div className="flex items-center gap-2 bg-blue-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg">
-                <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
-                <span className="text-xs sm:text-sm font-semibold text-blue-600">Pagamento via Mercado Pago</span>
+              <div className="flex items-center gap-2 bg-blue-600/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-blue-600/30">
+                <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
+                <span className="text-xs sm:text-sm font-semibold text-blue-400">Pagamento via Mercado Pago</span>
               </div>
             </div>
           </div>
@@ -849,13 +849,13 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
           <div className="flex flex-col lg:grid lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {/* Resumo do Pedido - 1 coluna - Primeiro no mobile */}
             <div className="order-1 lg:order-2 space-y-3 sm:space-y-4">
-              <Card className="bg-gradient-to-br from-blue-50 to-teal-50 border-2 border-blue-200 lg:sticky lg:top-2 sm:top-4">
+              <Card className="bg-gray-800 border-2 border-gray-700 lg:sticky lg:top-2 sm:top-4">
                 <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-white">
+                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     Resumo do Pedido
                   </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
+                  <CardDescription className="text-xs sm:text-sm text-gray-400">
                     {courses.length > 0 && products.length > 0 
                       ? `${courses.length} ${courses.length === 1 ? 'curso' : 'cursos'} e ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`
                       : courses.length > 0
@@ -869,39 +869,39 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                   {/* Lista de Cursos e Produtos */}
                   <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
                     {courses.map((course) => (
-                      <div key={course.id} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-blue-200 last:border-b-0">
+                      <div key={course.id} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-gray-700 last:border-b-0">
                         <img 
                           src={course.image} 
                           alt={course.title}
                           className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1">{course.title}</h4>
-                          <p className="text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">{course.instructor}</p>
-                          <p className="text-xs sm:text-sm font-bold text-green-600">
+                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1 text-white">{course.title}</h4>
+                          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 sm:mb-2">{course.instructor}</p>
+                          <p className="text-xs sm:text-sm font-bold text-green-400">
                             R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}
                           </p>
                         </div>
                       </div>
                     ))}
                     {products.map((product, index) => (
-                      <div key={`${product.id}-${index}`} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-blue-200 last:border-b-0">
+                      <div key={`${product.id}-${index}`} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-gray-700 last:border-b-0">
                         <img 
                           src={product.image} 
                           alt={product.title}
                           className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1">{product.title}</h4>
-                          <p className="text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">{product.type === 'physical' ? 'Produto Físico' : 'Produto Digital'}</p>
-                          <p className="text-xs sm:text-sm font-bold text-green-600">
+                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1 text-white">{product.title}</h4>
+                          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 sm:mb-2">{product.type === 'physical' ? 'Produto Físico' : 'Produto Digital'}</p>
+                          <p className="text-xs sm:text-sm font-bold text-green-400">
                             R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
                           </p>
                         </div>
                       </div>
                     ))}
                     {productsLoading && (
-                      <div className="text-xs text-gray-500 text-center py-2">Carregando produtos...</div>
+                      <div className="text-xs text-gray-400 text-center py-2">Carregando produtos...</div>
                     )}
                   </div>
 
@@ -915,22 +915,22 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           placeholder="Código do cupom"
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          className="flex-1 text-xs sm:text-sm h-8 sm:h-10"
+                          className="flex-1 text-xs sm:text-sm h-8 sm:h-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                         />
                         <Button
                           type="button"
                           onClick={handleApplyCoupon}
                           variant="outline"
-                          className="whitespace-nowrap text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-4"
+                          className="whitespace-nowrap text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-4 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
                         >
                           Aplicar
                         </Button>
                       </div>
                     ) : (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2">
+                      <div className="bg-green-900/20 border border-green-700 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                          <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm font-semibold text-green-800 truncate">
+                          <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-400 flex-shrink-0" />
+                          <span className="text-xs sm:text-sm font-semibold text-green-400 truncate">
                             Cupom: {couponCode}
                           </span>
                         </div>
@@ -943,7 +943,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           }}
                           variant="ghost"
                           size="sm"
-                          className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs flex-shrink-0"
+                          className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs flex-shrink-0 text-gray-300 hover:bg-gray-700"
                         >
                           Remover
                         </Button>
@@ -956,32 +956,32 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                   {/* Totais */}
                   <div className="space-y-1.5 sm:space-y-2">
                     <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className={totalSavings > 0 ? "line-through text-gray-500" : "font-semibold"}>
+                      <span className="text-gray-400">Subtotal:</span>
+                      <span className={totalSavings > 0 ? "line-through text-gray-500" : "font-semibold text-white"}>
                         R$ {totalOriginal.toFixed(2)}
                       </span>
                     </div>
                     {discount > 0 && (
                       <div className="flex justify-between text-xs sm:text-sm">
-                        <span className="text-green-700 font-semibold">Desconto:</span>
-                        <span className="text-green-700 font-semibold">-R$ {discount.toFixed(2)}</span>
+                        <span className="text-green-400 font-semibold">Desconto:</span>
+                        <span className="text-green-400 font-semibold">-R$ {discount.toFixed(2)}</span>
                       </div>
                     )}
                     {couponDiscount > 0 && (
                       <div className="flex justify-between text-xs sm:text-sm">
-                        <span className="text-green-700 font-semibold">Desconto do Cupom:</span>
-                        <span className="text-green-700 font-semibold">-R$ {couponDiscount.toFixed(2)}</span>
+                        <span className="text-green-400 font-semibold">Desconto do Cupom:</span>
+                        <span className="text-green-400 font-semibold">-R$ {couponDiscount.toFixed(2)}</span>
                       </div>
                     )}
-                    <Separator />
+                    <Separator className="bg-gray-700" />
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-sm sm:text-base md:text-lg">Total</span>
-                      <span className="font-bold text-lg sm:text-xl md:text-2xl text-blue-600">R$ {totalWithDiscount.toFixed(2)}</span>
+                      <span className="font-bold text-sm sm:text-base md:text-lg text-white">Total</span>
+                      <span className="font-bold text-lg sm:text-xl md:text-2xl text-blue-400">R$ {totalWithDiscount.toFixed(2)}</span>
                     </div>
                   </div>
 
                   {totalSavings > 0 && (
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 sm:p-3 rounded-lg">
+                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-2 sm:p-3 rounded-lg">
                       <p className="text-xs sm:text-sm font-bold mb-0.5 sm:mb-1">
                         🎉 Você está economizando R$ {totalSavings.toFixed(2)}!
                       </p>
@@ -996,26 +996,26 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                     </div>
                   )}
 
-                  <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
-                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                  <div className="bg-gray-700 p-2 sm:p-3 md:p-4 rounded-lg border border-gray-600">
+                    <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2 text-white">
+                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
                       Incluso no seu pedido:
                     </h4>
-                    <div className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs">
+                    <div className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs text-gray-300">
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
                         <span>Acesso vitalício</span>
                       </div>
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
-                        <span>Certificados digitais</span>
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
+                        <span>Materiais digitais</span>
                       </div>
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
                         <span>Material complementar</span>
                       </div>
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-600 rounded-full flex-shrink-0"></div>
+                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
                         <span>Suporte com instrutores</span>
                       </div>
                     </div>
@@ -1028,10 +1028,10 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
             <div className="order-2 lg:order-1 lg:col-span-2">
               <div className="space-y-3 sm:space-y-4 md:space-y-6">
                 {/* Métodos de Pagamento */}
-                <Card className="border-2">
+                <Card className="border-2 border-gray-700 bg-gray-800">
                   <CardHeader className="p-3 sm:p-6">
-                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-white">
+                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                       Finalizar Pagamento
                     </CardTitle>
                   </CardHeader>
@@ -1039,10 +1039,10 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
 
                     {/* Se PIX foi gerado, mostrar QR code */}
                     {pixCode ? (
-                      <div className="space-y-4 bg-green-50 p-6 rounded-lg border-2 border-green-200">
+                      <div className="space-y-4 bg-green-900/20 p-6 rounded-lg border-2 border-green-700">
                         <div className="text-center">
-                          <h3 className="text-lg font-bold text-gray-900 mb-2">Escaneie o QR Code</h3>
-                          <p className="text-sm text-gray-600 mb-4">
+                          <h3 className="text-lg font-bold text-white mb-2">Escaneie o QR Code</h3>
+                          <p className="text-sm text-gray-400 mb-4">
                             Abra o app do seu banco e escaneie o código para pagar
                           </p>
                         </div>
@@ -1060,12 +1060,12 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
 
                         {/* Código PIX para copiar */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-semibold">Código PIX (Copiar e Colar)</Label>
+                          <Label className="text-sm font-semibold text-white">Código PIX (Copiar e Colar)</Label>
                           <div className="flex gap-2">
                             <Input
                               value={pixCode}
                               readOnly
-                              className="font-mono text-xs"
+                              className="font-mono text-xs bg-gray-700 border-gray-600 text-white"
                             />
                             <Button
                               type="button"
@@ -1075,14 +1075,15 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                               }}
                               variant="outline"
                               size="icon"
+                              className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
                             >
                               <Copy className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
 
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                          <p className="text-xs text-yellow-800">
+                        <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
+                          <p className="text-xs text-yellow-300">
                             ⏱️ O pagamento será confirmado automaticamente após a confirmação do PIX.
                             Você receberá um email quando o pagamento for aprovado.
                           </p>
@@ -1091,7 +1092,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                         <Button
                           type="button"
                           onClick={onBack}
-                          className="w-full"
+                          className="w-full bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
                           variant="outline"
                         >
                           Voltar
@@ -1100,96 +1101,96 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                     ) : (
                       <div className="relative overflow-hidden">
                         {/* Background decorativo */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-teal-50 opacity-50"></div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 opacity-50"></div>
                         
                         <div className="relative space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
                           {/* Seção de Endereço de Envio (apenas para produtos físicos) */}
                           {products.some(p => p.type === 'physical') && addressLoaded && (
-                            <Card className="bg-white/90 backdrop-blur-sm border-2 border-blue-200">
+                            <Card className="bg-gray-700/90 backdrop-blur-sm border-2 border-gray-600">
                               <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-white">
+                                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                                   Endereço de Envio
                                 </CardTitle>
-                                <CardDescription className="text-xs sm:text-sm">
+                                <CardDescription className="text-xs sm:text-sm text-gray-400">
                                   Confirme o endereço para entrega dos produtos físicos
                                 </CardDescription>
                               </CardHeader>
                               <CardContent className="space-y-3 sm:space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                                   <div className="md:col-span-2">
-                                    <Label htmlFor="shipping-street" className="text-xs sm:text-sm">Rua *</Label>
+                                    <Label htmlFor="shipping-street" className="text-xs sm:text-sm text-white">Rua *</Label>
                                     <Input
                                       id="shipping-street"
                                       value={shippingAddress.street}
                                       onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
                                       placeholder="Nome da rua"
-                                      className="text-xs sm:text-sm"
+                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
                                   </div>
                                   <div>
-                                    <Label htmlFor="shipping-number" className="text-xs sm:text-sm">Número *</Label>
+                                    <Label htmlFor="shipping-number" className="text-xs sm:text-sm text-white">Número *</Label>
                                     <Input
                                       id="shipping-number"
                                       value={shippingAddress.number}
                                       onChange={(e) => setShippingAddress({ ...shippingAddress, number: e.target.value })}
                                       placeholder="123"
-                                      className="text-xs sm:text-sm"
+                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
                                   </div>
                                 </div>
                                 <div>
-                                  <Label htmlFor="shipping-complement" className="text-xs sm:text-sm">Complemento</Label>
+                                  <Label htmlFor="shipping-complement" className="text-xs sm:text-sm text-white">Complemento</Label>
                                   <Input
                                     id="shipping-complement"
                                     value={shippingAddress.complement}
                                     onChange={(e) => setShippingAddress({ ...shippingAddress, complement: e.target.value })}
                                     placeholder="Apto, Bloco, etc."
-                                    className="text-xs sm:text-sm"
+                                    className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                   />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                   <div>
-                                    <Label htmlFor="shipping-neighborhood" className="text-xs sm:text-sm">Bairro *</Label>
+                                    <Label htmlFor="shipping-neighborhood" className="text-xs sm:text-sm text-white">Bairro *</Label>
                                     <Input
                                       id="shipping-neighborhood"
                                       value={shippingAddress.neighborhood}
                                       onChange={(e) => setShippingAddress({ ...shippingAddress, neighborhood: e.target.value })}
                                       placeholder="Nome do bairro"
-                                      className="text-xs sm:text-sm"
+                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
                                   </div>
                                   <div>
-                                    <Label htmlFor="shipping-zipcode" className="text-xs sm:text-sm">CEP *</Label>
+                                    <Label htmlFor="shipping-zipcode" className="text-xs sm:text-sm text-white">CEP *</Label>
                                     <Input
                                       id="shipping-zipcode"
                                       value={shippingAddress.zipCode}
                                       onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })}
                                       placeholder="00000-000"
-                                      className="text-xs sm:text-sm"
+                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                   <div>
-                                    <Label htmlFor="shipping-city" className="text-xs sm:text-sm">Cidade *</Label>
+                                    <Label htmlFor="shipping-city" className="text-xs sm:text-sm text-white">Cidade *</Label>
                                     <Input
                                       id="shipping-city"
                                       value={shippingAddress.city}
                                       onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
                                       placeholder="Nome da cidade"
-                                      className="text-xs sm:text-sm"
+                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
                                   </div>
                                   <div>
-                                    <Label htmlFor="shipping-state" className="text-xs sm:text-sm">Estado *</Label>
+                                    <Label htmlFor="shipping-state" className="text-xs sm:text-sm text-white">Estado *</Label>
                                     <Input
                                       id="shipping-state"
                                       value={shippingAddress.state}
                                       onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value.toUpperCase() })}
                                       placeholder="UF"
                                       maxLength={2}
-                                      className="text-xs sm:text-sm"
+                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                                     />
                                   </div>
                                 </div>
@@ -1209,27 +1210,27 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
 
                           {/* Título */}
                           <div className="text-center space-y-1 sm:space-y-2">
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
+                            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                               Finalizar Pagamento
                             </h3>
-                            <p className="text-gray-600 text-xs sm:text-sm">
+                            <p className="text-gray-400 text-xs sm:text-sm">
                               Você será redirecionado para uma página segura de pagamento
                             </p>
                           </div>
 
                           {/* Informações de segurança */}
-                          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-5 border border-gray-200 shadow-sm">
+                          <div className="bg-gray-700/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-5 border border-gray-600 shadow-sm">
                             <div className="flex items-start gap-2 sm:gap-3">
                               <div className="flex-shrink-0 mt-0.5">
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-green-600" />
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-green-600/20 rounded-full flex items-center justify-center">
+                                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-green-400" />
                                 </div>
                               </div>
                               <div className="flex-1">
-                                <p className="text-xs sm:text-sm font-semibold text-gray-900 mb-0.5 sm:mb-1">
+                                <p className="text-xs sm:text-sm font-semibold text-white mb-0.5 sm:mb-1">
                                   Pagamento 100% Seguro
                                 </p>
-                                <p className="text-[10px] sm:text-xs text-gray-600 leading-relaxed">
+                                <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed">
                                   Seus dados são protegidos e processados de forma segura pelo Mercado Pago.
                                 </p>
                               </div>
@@ -1241,7 +1242,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                             type="button"
                             onClick={handleCheckout}
                             disabled={isProcessing || productsLoading || (products.length === 0 && courses.length === 0)}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isProcessing ? (
                               <div className="flex items-center justify-center gap-3">
@@ -1259,7 +1260,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           </Button>
 
                           {/* Badge de segurança */}
-                          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
                             <Lock className="w-3 h-3" />
                             <span>Criptografado e seguro</span>
                           </div>
@@ -1270,12 +1271,12 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                 </Card>
 
 
-                <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
                   <div className="flex items-center gap-1">
                     <Lock className="w-3 h-3" />
                     <span>Pagamento 100% seguro</span>
                   </div>
-                  <div className="w-px h-4 bg-gray-300"></div>
+                  <div className="w-px h-4 bg-gray-600"></div>
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>Criptografado</span>
