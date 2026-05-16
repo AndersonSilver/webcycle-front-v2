@@ -66,6 +66,8 @@ import {
   Heart,
   Palette,
   Package,
+  Images,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -88,6 +90,7 @@ import { handleApiError, extractValidationErrors } from "../../utils/errorHandle
 import { Loader2 } from "lucide-react";
 import { useSocket } from "../../hooks/useSocket";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { LANDING_BANNER_DEFAULTS } from "../../constants/landingBannersDefaults";
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -170,7 +173,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [currentTab, setCurrentTab] = useState<"info" | "content" | "modules">("info");
-  const [mainView, setMainView] = useState<"dashboard" | "courses" | "students" | "revenue" | "coupons" | "reviews" | "podcasts" | "newsletter" | "support" | "home-content" | "theme" | "products" | "sales" | "sale-email">("dashboard");
+  const [mainView, setMainView] = useState<"dashboard" | "courses" | "students" | "revenue" | "coupons" | "reviews" | "podcasts" | "newsletter" | "support" | "home-content" | "landing" | "theme" | "products" | "sales" | "sale-email">("dashboard");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -334,6 +337,21 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [ctaSecondaryButtonText, setCtaSecondaryButtonText] = useState("");
   const [ctaSecondaryButtonAction, setCtaSecondaryButtonAction] = useState("free-class");
   const [ctaBenefitCards, setCtaBenefitCards] = useState<Array<{ icon: string; title: string; subtitle: string; iconColor: string }>>([]);
+
+  // Landing (/landing)
+  const [landingBanners, setLandingBanners] = useState<Array<{ id?: string; imageUrl: string; alt: string; link: string; order: number }>>([]);
+  const [landingBannersLoading, setLandingBannersLoading] = useState(false);
+  const [landingBannersSaving, setLandingBannersSaving] = useState(false);
+  const [landingModalOpen, setLandingModalOpen] = useState(false);
+  const [landingEditingIndex, setLandingEditingIndex] = useState<number | null>(null);
+  const [landingDraft, setLandingDraft] = useState<{
+    id?: string;
+    imageUrl: string;
+    alt: string;
+    link: string;
+    order: number;
+  }>({ imageUrl: "", alt: "", link: "", order: 0 });
+  const [landingModalUploading, setLandingModalUploading] = useState(false);
 
   // Theme Management
   const [themeLoading, setThemeLoading] = useState(false);
@@ -630,6 +648,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       loadSupportTickets();
     }
 
+    if (mainView === "landing") {
+      loadLandingBanners();
+    }
+
     if (mainView === "home-content") {
       // Apenas carregar conteúdo da home em desenvolvimento
       if (import.meta.env.DEV) {
@@ -852,6 +874,116 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     } finally {
       setHomeContentLoading(false);
     }
+  };
+
+  const loadLandingBanners = async () => {
+    try {
+      setLandingBannersLoading(true);
+      const response = await apiClient.getAdminHomeContent();
+      const raw = response.content.landingBanners;
+      if (raw && raw.length > 0) {
+        setLandingBanners([...raw].sort((a, b) => a.order - b.order));
+      } else {
+        setLandingBanners(
+          LANDING_BANNER_DEFAULTS.map((d, i) => ({
+            id: `default-slot-${i}`,
+            imageUrl: "",
+            alt: d.alt,
+            link: d.link,
+            order: d.order,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao carregar landing:", error);
+      toast.error("Erro ao carregar banners da landing");
+    } finally {
+      setLandingBannersLoading(false);
+    }
+  };
+
+  const saveLandingBanners = async () => {
+    try {
+      setLandingBannersSaving(true);
+      await apiClient.updateHomeContent({
+        landingBanners: landingBanners.map((b, index) => ({
+          id: b.id,
+          imageUrl: (b.imageUrl || "").trim(),
+          alt: b.alt || `Banner ${index + 1}`,
+          link: (b.link || "").trim() || "#",
+          order: b.order ?? index,
+        })),
+      });
+      toast.success("Landing atualizada com sucesso!");
+      await loadLandingBanners();
+    } catch (error: any) {
+      console.error("Erro ao salvar landing:", error);
+      toast.error(error.message || "Erro ao salvar landing");
+    } finally {
+      setLandingBannersSaving(false);
+    }
+  };
+
+  const openLandingCreateModal = () => {
+    const nextOrder =
+      landingBanners.length > 0 ? Math.max(...landingBanners.map((b) => b.order), 0) + 1 : 0;
+    setLandingEditingIndex(null);
+    setLandingDraft({
+      id: `new-${Date.now()}`,
+      imageUrl: "",
+      alt: `Banner ${landingBanners.length + 1}`,
+      link: "",
+      order: nextOrder,
+    });
+    setLandingModalOpen(true);
+  };
+
+  const openLandingEditModal = (index: number) => {
+    const b = landingBanners[index];
+    if (!b) return;
+    setLandingEditingIndex(index);
+    setLandingDraft({ ...b });
+    setLandingModalOpen(true);
+  };
+
+  const applyLandingModal = () => {
+    if (landingEditingIndex === null) {
+      setLandingBanners((prev) => [...prev, { ...landingDraft }]);
+    } else {
+      setLandingBanners((prev) => {
+        const next = [...prev];
+        next[landingEditingIndex] = { ...landingDraft };
+        return next;
+      });
+    }
+    setLandingModalOpen(false);
+    toast.success(
+      landingEditingIndex === null ? "Banner adicionado à lista" : "Banner atualizado na lista"
+    );
+  };
+
+  const deleteLandingFromModal = () => {
+    if (landingEditingIndex !== null) {
+      setLandingBanners((prev) => prev.filter((_, i) => i !== landingEditingIndex));
+      setLandingModalOpen(false);
+      toast.success("Banner removido");
+    }
+  };
+
+  const formatLandingLinkLabel = (link: string) => {
+    const t = link.trim();
+    if (!t) return "—";
+    try {
+      if (t.startsWith("http://") || t.startsWith("https://")) {
+        const u = new URL(t);
+        const path = u.pathname === "/" ? "" : u.pathname;
+        const s = `${u.hostname}${path}${u.search ? "…" : ""}`;
+        return s.length > 48 ? `${s.slice(0, 45)}…` : s;
+      }
+    } catch {
+      /* URL inválida */
+    }
+    return t.length > 48 ? `${t.slice(0, 45)}…` : t;
   };
 
   // Salvar conteúdo da home
@@ -2642,6 +2774,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 { id: "podcasts", label: "Podcasts", icon: Headphones },
                 { id: "newsletter", label: "Newsletter", icon: Mail },
                 { id: "support", label: "Suporte", icon: MessageCircle },
+                { id: "landing", label: "Landing", icon: Images },
                 ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
               ].map((item) => {
                 const Icon = item.icon;
@@ -2693,6 +2826,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               { id: "newsletter", label: "Newsletter", icon: Mail },
               { id: "sale-email", label: "Email de Vendas", icon: Mail },
               { id: "support", label: "Suporte", icon: MessageCircle },
+              { id: "landing", label: "Landing", icon: Images },
               ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
               { id: "theme", label: "Tema", icon: Palette },
             ].map((item) => {
@@ -7579,7 +7713,366 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </section>
       )}
 
-            {/* Home Content View - Apenas em desenvolvimento */}
+            {/* Editor da landing (/landing) */}
+            {mainView === "landing" && (
+              <section className="relative mx-auto max-w-6xl px-4 py-6 sm:py-10">
+                <header className="mb-8 flex flex-col gap-4 border-b border-gray-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                      Banners da landing
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
+                      Cartões exibidos em{" "}
+                      <code className="rounded border border-gray-800 bg-gray-900 px-1.5 py-0.5 font-mono text-xs text-gray-400">
+                        /landing
+                      </code>
+                      . Clique num item para editar; use <span className="text-gray-400">Salvar alterações</span> ao final
+                      para publicar.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={openLandingCreateModal}
+                    className="h-9 shrink-0 bg-blue-600 px-4 text-white hover:bg-blue-600/90"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo banner
+                  </Button>
+                </header>
+
+                {landingBannersLoading ? (
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-gray-800 bg-gray-950/40 py-24">
+                    <Loader2 className="h-9 w-9 animate-spin text-blue-500" />
+                    <p className="text-sm text-gray-500">Carregando…</p>
+                  </div>
+                ) : (
+                  <>
+                    {landingBanners.length > 0 && (
+                      <p className="mb-4 text-xs text-gray-500">
+                        {landingBanners.length} {landingBanners.length === 1 ? "item" : "itens"} · ordem crescente na página
+                      </p>
+                    )}
+
+                    {landingBanners.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-gray-800 bg-gray-950/30 py-16 text-center">
+                        <p className="mb-4 text-sm text-gray-500">Nenhum banner configurado.</p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={openLandingCreateModal}
+                          className="bg-blue-600 text-white hover:bg-blue-600/90"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Criar banner
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                        {[...landingBanners]
+                          .map((banner, originalIndex) => ({ banner, originalIndex }))
+                          .sort(
+                            (a, b) =>
+                              a.banner.order - b.banner.order || a.originalIndex - b.originalIndex
+                          )
+                          .map(({ banner, originalIndex }, sortedIndex) => (
+                            <div
+                              key={banner.id || `landing-tile-${originalIndex}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => openLandingEditModal(originalIndex)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openLandingEditModal(originalIndex);
+                                }
+                              }}
+                              className="group flex cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-800 bg-gray-950/50 transition-colors hover:border-gray-700 hover:bg-gray-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950"
+                            >
+                              <div className="flex items-center justify-between gap-2 border-b border-gray-800/90 px-2.5 py-2 sm:px-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <span className="font-mono text-[11px] font-semibold tabular-nums text-gray-500">
+                                    {String(sortedIndex + 1).padStart(2, "0")}
+                                  </span>
+                                  <span className="truncate text-[11px] text-gray-500">
+                                    Ordem {banner.order}
+                                    {!banner.imageUrl && (
+                                      <span className="text-amber-600/90"> · sem imagem</span>
+                                    )}
+                                    {!banner.link?.trim() && (
+                                      <span className="text-gray-600"> · sem link</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex shrink-0 gap-0.5">
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-gray-500 hover:bg-gray-800 hover:text-gray-200"
+                                    aria-label="Editar"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openLandingEditModal(originalIndex);
+                                    }}
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-gray-500 hover:bg-red-950/50 hover:text-red-400"
+                                    aria-label="Remover"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLandingBanners((prev) =>
+                                        prev.filter((_, i) => i !== originalIndex)
+                                      );
+                                      toast.success("Banner removido");
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="flex h-[6.5rem] w-full items-center justify-center bg-zinc-950 sm:h-[7.25rem]">
+                                {banner.imageUrl ? (
+                                  <img
+                                    src={banner.imageUrl}
+                                    alt={banner.alt || "Pré-visualização do banner"}
+                                    className="max-h-full max-w-full object-contain px-2 py-1.5"
+                                  />
+                                ) : (
+                                  <div className="flex flex-col items-center gap-1 text-gray-600">
+                                    <Upload className="h-6 w-6 opacity-40" aria-hidden />
+                                    <span className="text-[10px]">Sem mídia</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex flex-1 flex-col gap-1 border-t border-gray-800/80 px-2.5 py-2.5 sm:px-3">
+                                <p className="truncate text-left text-sm font-medium text-gray-100">
+                                  {banner.alt?.trim() || `Banner ${originalIndex + 1}`}
+                                </p>
+                                <div className="flex min-h-[1.25rem] items-center gap-1.5">
+                                  <ExternalLink className="h-3 w-3 shrink-0 text-gray-600" aria-hidden />
+                                  <span
+                                    className="truncate text-left font-mono text-[11px] text-gray-500"
+                                    title={banner.link?.trim() || undefined}
+                                  >
+                                    {formatLandingLinkLabel(banner.link || "")}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
+                    <div className="sticky bottom-4 z-10 mt-10 flex flex-col gap-3 border-t border-gray-800 bg-gray-950/80 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-gray-500 sm:text-sm">
+                        As mudanças só entram no ar após <span className="text-gray-400">Salvar alterações</span>. Pré-visualize
+                        em{" "}
+                        <code className="rounded border border-gray-800 bg-gray-900 px-1 py-0.5 font-mono text-[11px] text-gray-400">
+                          /landing
+                        </code>
+                        .
+                      </p>
+                      <Button
+                        onClick={saveLandingBanners}
+                        disabled={landingBannersSaving}
+                        className="h-9 w-full shrink-0 bg-blue-600 px-6 text-white hover:bg-blue-600/90 sm:w-auto"
+                      >
+                        {landingBannersSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvando…
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Salvar alterações
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    <Dialog open={landingModalOpen} onOpenChange={setLandingModalOpen}>
+                      <DialogContent className="max-h-[min(90vh,720px)] w-[min(100vw-1rem,42rem)] gap-0 overflow-hidden border-gray-700 bg-gray-800 p-0 text-white sm:max-w-2xl">
+                        <DialogHeader className="space-y-1 border-b border-gray-700 px-6 pb-4 pt-2 pr-12">
+                          <DialogTitle className="text-left text-lg text-white">
+                            {landingEditingIndex === null ? "Novo banner" : "Editar banner"}
+                          </DialogTitle>
+                          <DialogDescription className="text-left text-sm text-gray-400">
+                            Ajuste imagem, texto e link. Use <strong className="text-gray-300">Aplicar à lista</strong> para
+                            guardar neste painel; depois confirme com <strong className="text-gray-300">Salvar alterações</strong>{" "}
+                            para publicar.
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="max-h-[calc(min(90vh,720px)-200px)] space-y-5 overflow-y-auto px-6 py-5">
+                          <div>
+                            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                              Pré-visualização
+                            </p>
+                            <div className="overflow-hidden rounded-xl border border-gray-600/50 bg-[#0a0d12] p-1 ring-1 ring-black/40">
+                              <div className="relative flex min-h-[140px] items-center justify-center rounded-lg bg-gradient-to-b from-gray-900/90 to-black/80 sm:min-h-[180px]">
+                                <div
+                                  className="pointer-events-none absolute inset-0 opacity-[0.1]"
+                                  style={{
+                                    backgroundImage:
+                                      "radial-gradient(circle at 1px 1px, rgb(148 163 184) 1px, transparent 0)",
+                                    backgroundSize: "14px 14px",
+                                  }}
+                                  aria-hidden
+                                />
+                                <div className="relative z-[1] flex w-full items-center justify-center px-2 py-3">
+                                  {landingModalUploading ? (
+                                    <div className="flex flex-col items-center gap-2 py-8">
+                                      <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
+                                      <span className="text-xs text-gray-400">Enviando…</span>
+                                    </div>
+                                  ) : landingDraft.imageUrl ? (
+                                    <img
+                                      src={landingDraft.imageUrl}
+                                      alt={landingDraft.alt || "Preview"}
+                                      className="max-h-48 w-full object-contain drop-shadow-md"
+                                    />
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-1 py-8 text-center text-gray-500">
+                                      <Upload className="h-8 w-8 opacity-50" />
+                                      <span className="text-xs">Sem imagem</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="border-t border-white/[0.06] bg-black/30 p-3">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={landingModalUploading}
+                                  className="w-full rounded-lg border border-gray-600 bg-gray-800 text-gray-100 hover:bg-gray-700"
+                                  onClick={() => {
+                                    const input = document.createElement("input");
+                                    input.type = "file";
+                                    input.accept = "image/*";
+                                    input.onchange = async (e) => {
+                                      const file = (e.target as HTMLInputElement).files?.[0];
+                                      if (!file) return;
+                                      if (file.size > 5 * 1024 * 1024) {
+                                        toast.error("A imagem deve ter no máximo 5MB");
+                                        return;
+                                      }
+                                      try {
+                                        setLandingModalUploading(true);
+                                        const result = await apiClient.uploadImage(file);
+                                        setLandingDraft((d) => ({ ...d, imageUrl: result.url }));
+                                        toast.success("Imagem enviada!");
+                                      } catch (err: any) {
+                                        toast.error(err.message || "Erro ao enviar imagem");
+                                      } finally {
+                                        setLandingModalUploading(false);
+                                      }
+                                    };
+                                    input.click();
+                                  }}
+                                >
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  {landingDraft.imageUrl ? "Trocar arquivo" : "Enviar arquivo"}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 rounded-xl border border-gray-700/50 bg-black/20 p-4 ring-1 ring-inset ring-white/[0.03]">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                              <div className="sm:col-span-2">
+                                <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                  Texto alternativo (alt)
+                                </Label>
+                                <Input
+                                  value={landingDraft.alt}
+                                  onChange={(e) =>
+                                    setLandingDraft((d) => ({ ...d, alt: e.target.value }))
+                                  }
+                                  placeholder="Descrição para acessibilidade"
+                                  className="mt-2 rounded-lg border-gray-600 bg-gray-950/80 text-white placeholder:text-gray-600"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                  Ordem
+                                </Label>
+                                <Input
+                                  type="number"
+                                  value={landingDraft.order}
+                                  onChange={(e) =>
+                                    setLandingDraft((d) => ({
+                                      ...d,
+                                      order: parseInt(e.target.value, 10) || 0,
+                                    }))
+                                  }
+                                  className="mt-2 rounded-lg border-gray-600 bg-gray-950/80 text-white tabular-nums"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                <ExternalLink className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                                Link ao clicar
+                              </Label>
+                              <Input
+                                value={landingDraft.link}
+                                onChange={(e) =>
+                                  setLandingDraft((d) => ({ ...d, link: e.target.value }))
+                                }
+                                placeholder="https://… ou /rota-interna"
+                                className="mt-2 rounded-lg border-gray-600 bg-gray-950/80 font-mono text-sm text-white placeholder:text-gray-600"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-2 border-t border-gray-700 bg-gray-900/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700"
+                              onClick={() => setLandingModalOpen(false)}
+                            >
+                              Cancelar
+                            </Button>
+                            {landingEditingIndex !== null && (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                className="bg-red-600/90 hover:bg-red-600"
+                                onClick={deleteLandingFromModal}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </Button>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            className="bg-blue-600 text-white hover:bg-blue-500"
+                            onClick={applyLandingModal}
+                          >
+                            Aplicar à lista
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
+              </section>
+            )}
+
             {mainView === "home-content" && import.meta.env.DEV && (
               <section className="container mx-auto px-4 py-6 sm:py-12">
                 <div className="mb-6 sm:mb-8">

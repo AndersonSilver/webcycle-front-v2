@@ -49,6 +49,13 @@ export interface HomeContent {
       iconColor: string;
     }>;
   };
+  landingBanners?: Array<{
+    id: string;
+    imageUrl: string;
+    alt: string;
+    link: string;
+    order: number;
+  }>;
 }
 
 const defaultHomeContent: HomeContent = {

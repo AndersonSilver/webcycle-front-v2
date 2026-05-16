@@ -1542,6 +1542,13 @@ class ApiClient {
             iconColor: string;
           }>;
         };
+        landingBanners?: Array<{
+          id: string;
+          imageUrl: string;
+          alt: string;
+          link: string;
+          order: number;
+        }>;
       };
     }>('/home-content/public', { requiresAuth: false });
   }
@@ -1596,6 +1603,13 @@ class ApiClient {
             iconColor: string;
           }>;
         };
+        landingBanners?: Array<{
+          id: string;
+          imageUrl: string;
+          alt: string;
+          link: string;
+          order: number;
+        }>;
       };
     }>('/home-content/admin');
   }
@@ -1648,6 +1662,13 @@ class ApiClient {
         iconColor: string;
       }>;
     };
+    landingBanners?: Array<{
+      id?: string;
+      imageUrl: string;
+      alt: string;
+      link: string;
+      order: number;
+    }>;
   }) {
     return this.request<{
       message: string;

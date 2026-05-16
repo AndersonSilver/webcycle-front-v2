@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { HomeHero } from "./components/HomeHero";
 import { CourseCatalog } from "./components/CourseCatalog";
@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { apiClient } from "../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 import { useHomeContent } from "../hooks/useHomeContent";
+import { LANDING_BANNER_DEFAULTS } from "../constants/landingBannersDefaults";
 import { useTheme } from "../hooks/useTheme";
 
 type View = "home" | "detail" | "checkout" | "my-courses" | "my-purchases" | "my-profile" | "player" | "podcast-player" | "admin" | "newsletter-unsubscribe" | "purchase-success" | "purchase-failure" | "purchase-pending" | "image-landing" | "products" | "product-detail";
@@ -106,6 +107,33 @@ export default function App() {
   const userDataLoadingRef = useRef(false); // Flag para evitar múltiplas chamadas simultâneas
   const { content: homeContent } = useHomeContent();
   useTheme(); // Carregar e aplicar tema dinâmico (aplica CSS variables automaticamente)
+
+  const landingPageImages = useMemo(() => {
+    const bundled = [mentoriaImg, desenvolvasecastImg, livroImg, manualautoconfiancaImg];
+    const apiBanners = homeContent.landingBanners
+      ? [...homeContent.landingBanners].sort((a, b) => a.order - b.order)
+      : [];
+
+    if (apiBanners.length === 0) {
+      return LANDING_BANNER_DEFAULTS.map((d, i) => ({
+        imageUrl: bundled[i],
+        alt: d.alt,
+        link: d.link,
+      }));
+    }
+
+    return apiBanners
+      .map((item, i) => {
+        const def = LANDING_BANNER_DEFAULTS[i] ?? LANDING_BANNER_DEFAULTS[LANDING_BANNER_DEFAULTS.length - 1];
+        const imageUrl = (item.imageUrl && item.imageUrl.trim()) || bundled[i] || "";
+        return {
+          imageUrl,
+          alt: item.alt || def.alt,
+          link: item.link || def.link,
+        };
+      })
+      .filter((row) => row.imageUrl);
+  }, [homeContent.landingBanners]);
 
   // Escutar atualizações do carrinho de produtos
   useEffect(() => {
@@ -1710,30 +1738,7 @@ export default function App() {
         )}
 
         {currentView === "image-landing" && (
-          <ImageLandingPage
-            images={[
-              {
-                imageUrl: mentoriaImg,
-                alt: "Mentoria",
-                link: "https://docs.google.com/forms/d/e/1FAIpQLSeSevLGG9YrdEB998dPOgCWKVBsi1AO202N7MXrBruKpyVrYw/viewform?usp=sharing&ouid=103268253360823373307",
-              },
-              {
-                imageUrl: desenvolvasecastImg,
-                alt: "Desenvolva-se Cast",
-                link: "https://www.youtube.com/@DesenvolvaseCast",
-              },
-              {
-                imageUrl: livroImg,
-                alt: "Livro",
-                link: "https://culturebuilders.webcycle.com.br/produto/e015e207-407e-460e-a564-24e7f408f27f",
-              },
-              {
-                imageUrl: manualautoconfiancaImg,
-                alt: "Manual de Autoconfiança",
-                link: "https://culturebuilders.webcycle.com.br/produto/983c2fd0-7df9-4753-89a7-e95cf85aa7ae",
-              },
-            ]}
-          />
+          <ImageLandingPage images={landingPageImages} />
         )}
 
         {currentView === "purchase-success" && (
