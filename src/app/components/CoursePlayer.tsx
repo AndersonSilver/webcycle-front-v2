@@ -17,6 +17,7 @@ import {
   X
 } from "lucide-react";
 import { apiClient } from "../../services/apiClient";
+import { API_BASE_URL } from "../../config/apiUrl";
 import { toast } from "sonner";
 import { useVideoProtection } from "../../hooks/useVideoProtection";
 
@@ -491,7 +492,7 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
         
         // Usar query parameter em vez de path parameter para URLs longas
         const encodedUrl = encodeURIComponent(azureUrl);
-        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+        const apiBaseUrl = API_BASE_URL;
         let streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
         
         // Adicionar token na URL para autenticação (necessário porque <video> não envia headers)

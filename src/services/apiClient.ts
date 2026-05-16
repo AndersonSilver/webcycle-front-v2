@@ -3,8 +3,7 @@
  * Gerencia autenticação, requisições e tratamento de erros
  */
 
-// @ts-ignore - Vite environment variables
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { API_BASE_URL } from '../config/apiUrl';
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;

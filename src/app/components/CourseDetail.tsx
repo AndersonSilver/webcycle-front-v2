@@ -24,6 +24,7 @@ import {
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useEffect, useState } from "react";
 import { apiClient } from "../../services/apiClient";
+import { API_BASE_URL } from "../../config/apiUrl";
 
 // Helper para converter URL do Azure para endpoint de streaming
 const getStreamingUrl = (azureUrl: string): string => {
@@ -40,8 +41,7 @@ const getStreamingUrl = (azureUrl: string): string => {
       
       // Usar query parameter em vez de path parameter para URLs longas
       const encodedUrl = encodeURIComponent(azureUrl);
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      let streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
+      let streamingUrl = `${API_BASE_URL}/upload/stream?url=${encodedUrl}`;
       
       // Adicionar token na URL para autenticação (necessário porque <video> não envia headers)
       if (token) {

@@ -28,6 +28,7 @@ import { Toaster } from "./components/ui/sonner";
 import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2, Package } from "lucide-react";
 import { Course } from "./data/courses";
 import { toast } from "sonner";
+import { API_ORIGIN_URL } from "../config/apiUrl";
 import { apiClient } from "../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar";
 import { useHomeContent } from "../hooks/useHomeContent";
@@ -159,17 +160,12 @@ export default function App() {
 
   // Verificar se o backend está online
   useEffect(() => {
-    // @ts-ignore - Vite environment variables
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-    // O endpoint /health está na raiz, não em /api
-    const BASE_URL = API_BASE_URL.replace('/api', '');
-
     const checkBackendHealth = async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000); // Timeout de 3 segundos
 
-        const response = await fetch(`${BASE_URL}/health`, {
+        const response = await fetch(`${API_ORIGIN_URL}/health`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

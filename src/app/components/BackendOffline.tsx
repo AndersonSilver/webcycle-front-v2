@@ -1,20 +1,16 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "./ui/button";
+import { API_ORIGIN_URL } from "../../config/apiUrl";
 
 export function BackendOffline() {
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
 
-  // @ts-ignore - Vite environment variables
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-  // O endpoint /health está na raiz, não em /api
-  const BASE_URL = API_BASE_URL.replace('/api', '');
-
   const checkBackend = async () => {
     setIsChecking(true);
     try {
-      const response = await fetch(`${BASE_URL}/health`, {
+      const response = await fetch(`${API_ORIGIN_URL}/health`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
