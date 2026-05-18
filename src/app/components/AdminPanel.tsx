@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Course, Benefit } from "../data/courses";
 import * as LucideIcons from "lucide-react";
 import { Button } from "./ui/button";
@@ -91,6 +91,8 @@ import { Loader2 } from "lucide-react";
 import { useSocket } from "../../hooks/useSocket";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { LANDING_BANNER_DEFAULTS } from "../../constants/landingBannersDefaults";
+import { normalizeLandingBannerLink } from "../../utils/landingBannerLink";
+import { serializeLandingBanners } from "../../utils/landingBannerSnapshot";
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -342,6 +344,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [landingBanners, setLandingBanners] = useState<Array<{ id?: string; imageUrl: string; alt: string; link: string; order: number }>>([]);
   const [landingBannersLoading, setLandingBannersLoading] = useState(false);
   const [landingBannersSaving, setLandingBannersSaving] = useState(false);
+  const [landingBannersPublishedSnapshot, setLandingBannersPublishedSnapshot] = useState<string | null>(null);
+  const [landingBannersLastPublishedAt, setLandingBannersLastPublishedAt] = useState<Date | null>(null);
   const [landingModalOpen, setLandingModalOpen] = useState(false);
   const [landingEditingIndex, setLandingEditingIndex] = useState<number | null>(null);
   const [landingDraft, setLandingDraft] = useState<{
@@ -876,24 +880,40 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  const applyLandingPublishedSnapshot = (
+    banners: Array<{ id?: string; imageUrl: string; alt: string; link: string; order: number }>,
+    publishedAt?: Date
+  ) => {
+    setLandingBannersPublishedSnapshot(serializeLandingBanners(banners));
+    if (publishedAt) {
+      setLandingBannersLastPublishedAt(publishedAt);
+    }
+  };
+
+  const landingBannersHasUnsavedChanges = useMemo(() => {
+    if (landingBannersPublishedSnapshot === null) return false;
+    return serializeLandingBanners(landingBanners) !== landingBannersPublishedSnapshot;
+  }, [landingBanners, landingBannersPublishedSnapshot]);
+
   const loadLandingBanners = async () => {
     try {
       setLandingBannersLoading(true);
       const response = await apiClient.getAdminHomeContent();
       const raw = response.content.landingBanners;
+      let next: Array<{ id?: string; imageUrl: string; alt: string; link: string; order: number }>;
       if (raw && raw.length > 0) {
-        setLandingBanners([...raw].sort((a, b) => a.order - b.order));
+        next = [...raw].sort((a, b) => a.order - b.order);
       } else {
-        setLandingBanners(
-          LANDING_BANNER_DEFAULTS.map((d, i) => ({
-            id: `default-slot-${i}`,
-            imageUrl: "",
-            alt: d.alt,
-            link: d.link,
-            order: d.order,
-          }))
-        );
+        next = LANDING_BANNER_DEFAULTS.map((d, i) => ({
+          id: `default-slot-${i}`,
+          imageUrl: "",
+          alt: d.alt,
+          link: d.link,
+          order: d.order,
+        }));
       }
+      setLandingBanners(next);
+      applyLandingPublishedSnapshot(next);
     } catch (error) {
       console.error("Erro ao carregar landing:", error);
       toast.error("Erro ao carregar banners da landing");
@@ -910,11 +930,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           id: b.id,
           imageUrl: (b.imageUrl || "").trim(),
           alt: b.alt || `Banner ${index + 1}`,
-          link: (b.link || "").trim() || "#",
+          link: normalizeLandingBannerLink((b.link || "").trim()) || "#",
           order: b.order ?? index,
         })),
       });
-      toast.success("Landing atualizada com sucesso!");
+      toast.success("Landing publicada com sucesso!");
+      applyLandingPublishedSnapshot(landingBanners, new Date());
       await loadLandingBanners();
     } catch (error: any) {
       console.error("Erro ao salvar landing:", error);
@@ -947,12 +968,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const applyLandingModal = () => {
+    const draft = {
+      ...landingDraft,
+      link: normalizeLandingBannerLink(landingDraft.link) || landingDraft.link.trim(),
+    };
     if (landingEditingIndex === null) {
-      setLandingBanners((prev) => [...prev, { ...landingDraft }]);
+      setLandingBanners((prev) => [...prev, draft]);
     } else {
       setLandingBanners((prev) => {
         const next = [...prev];
-        next[landingEditingIndex] = { ...landingDraft };
+        next[landingEditingIndex] = draft;
         return next;
       });
     }
@@ -7718,16 +7743,32 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               <section className="relative mx-auto max-w-6xl px-4 py-6 sm:py-10">
                 <header className="mb-8 flex flex-col gap-4 border-b border-gray-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
                   <div className="min-w-0">
-                    <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                      Banners da landing
-                    </h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                        Banners da landing
+                      </h2>
+                      {!landingBannersLoading && landingBannersPublishedSnapshot !== null && (
+                        landingBannersHasUnsavedChanges ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/40 bg-amber-500/10 text-amber-300"
+                          >
+                            Alterações pendentes
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                          >
+                            <CheckCircle2 className="mr-1 inline h-3 w-3" aria-hidden />
+                            Publicado
+                          </Badge>
+                        )
+                      )}
+                    </div>
                     <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
-                      Cartões exibidos em{" "}
-                      <code className="rounded border border-gray-800 bg-gray-900 px-1.5 py-0.5 font-mono text-xs text-gray-400">
-                        /landing
-                      </code>
-                      . Clique num item para editar; use <span className="text-gray-400">Salvar alterações</span> ao final
-                      para publicar.
+                      Clique num item para editar; use <span className="text-gray-400">Salvar alterações</span> ao final para
+                      publicar.
                     </p>
                   </div>
                   <Button
@@ -7871,32 +7912,112 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     )}
 
-                    <div className="sticky bottom-4 z-10 mt-10 flex flex-col gap-3 border-t border-gray-800 bg-gray-950/80 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-xs text-gray-500 sm:text-sm">
-                        As mudanças só entram no ar após <span className="text-gray-400">Salvar alterações</span>. Pré-visualize
-                        em{" "}
-                        <code className="rounded border border-gray-800 bg-gray-900 px-1 py-0.5 font-mono text-[11px] text-gray-400">
-                          /landing
-                        </code>
-                        .
-                      </p>
-                      <Button
-                        onClick={saveLandingBanners}
-                        disabled={landingBannersSaving}
-                        className="h-9 w-full shrink-0 bg-blue-600 px-6 text-white hover:bg-blue-600/90 sm:w-auto"
+                    <div
+                      className="sticky bottom-4 z-10 mt-10"
+                      role="region"
+                      aria-label="Publicar alterações da landing"
+                    >
+                      <div
+                        className={`overflow-hidden rounded-xl border bg-gray-900/95 shadow-[0_-8px_32px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.06] backdrop-blur-md ${
+                          landingBannersHasUnsavedChanges
+                            ? "border-amber-500/30"
+                            : "border-emerald-500/30"
+                        }`}
                       >
-                        {landingBannersSaving ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Salvando…
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Salvar alterações
-                          </>
-                        )}
-                      </Button>
+                        <div
+                          className={`h-0.5 bg-gradient-to-r from-transparent to-transparent ${
+                            landingBannersHasUnsavedChanges
+                              ? "via-amber-500/70"
+                              : "via-emerald-500/70"
+                          }`}
+                          aria-hidden
+                        />
+                        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:py-4">
+                          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ${
+                                landingBannersHasUnsavedChanges
+                                  ? "bg-amber-500/10 text-amber-400 ring-amber-500/25"
+                                  : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/25"
+                              }`}
+                              aria-hidden
+                            >
+                              {landingBannersHasUnsavedChanges ? (
+                                <AlertCircle className="h-5 w-5" />
+                              ) : (
+                                <CheckCircle2 className="h-5 w-5" />
+                              )}
+                            </div>
+                            <div className="min-w-0 space-y-0.5">
+                              {landingBannersHasUnsavedChanges ? (
+                                <>
+                                  <p className="text-sm font-medium text-gray-100">
+                                    Alterações pendentes — ainda não publicadas
+                                  </p>
+                                  <p className="text-xs leading-relaxed text-gray-400 sm:text-sm">
+                                    Use{" "}
+                                    <span className="font-medium text-gray-300">Salvar alterações</span> para publicar.
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-sm font-medium text-emerald-100">
+                                  Publicado
+                                  {landingBannersLastPublishedAt && (
+                                    <span className="mt-0.5 block text-xs font-normal text-gray-400">
+                                      {landingBannersLastPublishedAt.toLocaleString("pt-BR", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-10 w-full border-gray-600 bg-gray-800/60 text-gray-200 hover:border-gray-500 hover:bg-gray-800 hover:text-white sm:w-auto"
+                              onClick={() => window.open("/landing", "_blank", "noopener,noreferrer")}
+                            >
+                              <Eye className="mr-2 h-4 w-4 opacity-80" />
+                              Pré-visualizar
+                              <ExternalLink className="ml-1.5 h-3.5 w-3.5 opacity-50" aria-hidden />
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={saveLandingBanners}
+                              disabled={landingBannersSaving || !landingBannersHasUnsavedChanges}
+                              className={`h-10 w-full px-6 sm:w-auto ${
+                                landingBannersHasUnsavedChanges
+                                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500"
+                                  : "border border-emerald-600/50 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-950/60"
+                              } disabled:opacity-60`}
+                            >
+                              {landingBannersSaving ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Publicando…
+                                </>
+                              ) : landingBannersHasUnsavedChanges ? (
+                                <>
+                                  <Save className="mr-2 h-4 w-4" />
+                                  Salvar alterações
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                                  Tudo publicado
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <Dialog open={landingModalOpen} onOpenChange={setLandingModalOpen}>
@@ -8029,7 +8150,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 onChange={(e) =>
                                   setLandingDraft((d) => ({ ...d, link: e.target.value }))
                                 }
-                                placeholder="https://… ou /rota-interna"
+                                placeholder="https://wa.me/… ou /produto/id"
                                 className="mt-2 rounded-lg border-gray-600 bg-gray-950/80 font-mono text-sm text-white placeholder:text-gray-600"
                               />
                             </div>

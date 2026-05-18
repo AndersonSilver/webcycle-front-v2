@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { openLandingBannerLink } from "../../utils/landingBannerLink";
 
 interface ImageLink {
   imageUrl: string;
@@ -15,13 +16,7 @@ export function ImageLandingPage({ images }: ImageLandingPageProps) {
   const navigate = useNavigate();
 
   const handleImageClick = (link: string) => {
-    // Se o link começa com http, abrir em nova aba
-    if (link.startsWith("http://") || link.startsWith("https://")) {
-      window.open(link, "_blank");
-    } else {
-      // Caso contrário, navegar usando react-router
-      navigate(link);
-    }
+    openLandingBannerLink(link, navigate);
   };
 
   return (
