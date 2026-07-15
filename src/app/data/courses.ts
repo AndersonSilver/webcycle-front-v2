@@ -7,6 +7,8 @@ export interface Course {
   originalPrice?: number;
   category: string;
   image: string;
+  /** CSS object-position da capa, ex.: "50% 30%" */
+  imagePosition?: string;
   instructor: string;
   duration: string;
   lessons: number;

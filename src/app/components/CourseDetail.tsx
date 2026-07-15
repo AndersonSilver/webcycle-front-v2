@@ -299,6 +299,7 @@ export function CourseDetail({ course, onBack, onEnroll, onAddToCart, onGoToMyCo
                   src={course.image}
                   alt={course.title}
                   className="relative rounded-2xl shadow-2xl w-full h-[400px] object-cover"
+                  style={{ objectPosition: course.imagePosition || "50% 50%" }}
                 />
               </div>
             </div>

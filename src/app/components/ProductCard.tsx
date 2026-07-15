@@ -8,6 +8,8 @@ interface Product {
   price: number;
   originalPrice?: number;
   image: string;
+  /** CSS object-position da capa, ex.: "50% 30%" */
+  imagePosition?: string;
   type: 'physical' | 'digital';
   category?: string;
   stock?: number;
@@ -45,12 +47,13 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
 
   return (
     <div className="flex flex-col md:flex-row bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-all max-h-[420px] w-full">
-      {/* Imagem */}
-      <div className="md:w-1/2 relative h-40 md:h-[300px]">
+      {/* Imagem — contain para capas largas/estreitas não ficarem cortadas */}
+      <div className="md:w-1/2 relative h-40 md:h-[300px] bg-black/40 flex items-center justify-center">
         <ImageWithFallback
           src={product.image}
           alt={product.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
+          style={{ objectPosition: product.imagePosition || "50% 50%" }}
         />
         {/* Badges no topo */}
         <div className="absolute top-2 left-2 flex gap-1.5">

@@ -115,6 +115,33 @@ export default function App() {
       : iconImg;
   const showBrandName = homeContent.branding?.showBrandName !== false;
 
+  // Favicon da aba do navegador acompanha a logo do sistema
+  useEffect(() => {
+    const href = brandLogoSrc;
+    const ensureLink = (rel: string) => {
+      let link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = rel;
+        document.head.appendChild(link);
+      }
+      return link;
+    };
+
+    const iconLink = ensureLink("icon");
+    iconLink.type = "image/png";
+    iconLink.href = href;
+
+    const shortcut = document.querySelector<HTMLLinkElement>('link[rel="shortcut icon"]');
+    if (shortcut) {
+      shortcut.type = "image/png";
+      shortcut.href = href;
+    }
+
+    const apple = ensureLink("apple-touch-icon");
+    apple.href = href;
+  }, [brandLogoSrc]);
+
   const landingPageImages = useMemo(() => {
     const bundled = [mentoriaImg, desenvolvasecastImg, livroImg, manualautoconfiancaImg];
     const apiBanners = homeContent.landingBanners

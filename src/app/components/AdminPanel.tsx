@@ -96,6 +96,7 @@ import { LANDING_BANNER_DEFAULTS } from "../../constants/landingBannersDefaults"
 import { normalizeLandingBannerLink } from "../../utils/landingBannerLink";
 import { serializeLandingBanners } from "../../utils/landingBannerSnapshot";
 import { notifyHomeContentUpdated } from "../../hooks/useHomeContent";
+import { ImagePositionEditor } from "./ImagePositionEditor";
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -317,6 +318,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [heroPrimaryButtonAction, setHeroPrimaryButtonAction] = useState("explore");
   const [heroSecondaryButtonText, setHeroSecondaryButtonText] = useState("");
   const [heroSecondaryButtonAction, setHeroSecondaryButtonAction] = useState("podcasts");
+  const [heroShowStats, setHeroShowStats] = useState(true);
+  const [heroStatsMode, setHeroStatsMode] = useState<"auto" | "manual">("auto");
+  const [heroStats, setHeroStats] = useState({
+    courses: "",
+    students: "50.000+",
+    rating: "",
+    hours: "",
+  });
 
   // Carousel
   const [carouselImages, setCarouselImages] = useState<Array<{ id?: string; url: string; alt: string; order: number }>>([]);
@@ -414,6 +423,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [originalPrice, setOriginalPrice] = useState("");
   const [category, setCategory] = useState("");
   const [image, setImage] = useState("");
+  const [imagePosition, setImagePosition] = useState("50% 50%");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [_podcastImageFile, setPodcastImageFile] = useState<File | null>(null);
@@ -700,7 +710,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         throw new Error('URL da imagem não foi retornada pelo servidor');
       }
       
-      setEditingProduct({ ...editingProduct, image: result.url });
+      setEditingProduct({ ...editingProduct, image: result.url, imagePosition: "50% 50%" });
       setProductImageFile(null);
       console.log('✅ Estado image atualizado para:', result.url);
       toast.success("Imagem enviada com sucesso!");
@@ -847,6 +857,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         setHeroPrimaryButtonAction(content.hero.primaryButton?.action || "explore");
         setHeroSecondaryButtonText(content.hero.secondaryButton?.text || "");
         setHeroSecondaryButtonAction(content.hero.secondaryButton?.action || "podcasts");
+        setHeroShowStats(content.hero.showStats !== false);
+        setHeroStatsMode(content.hero.statsMode === "manual" ? "manual" : "auto");
+        setHeroStats({
+          courses: content.hero.stats?.courses || "",
+          students: content.hero.stats?.students || "50.000+",
+          rating: content.hero.stats?.rating || "",
+          hours: content.hero.stats?.hours || "",
+        });
       }
 
       if (content.carousel) {
@@ -1046,6 +1064,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             text: heroSecondaryButtonText,
             action: heroSecondaryButtonAction,
           },
+          showStats: heroShowStats,
+          statsMode: heroStatsMode,
+          stats: heroStats,
         };
       } else if (homeContentTab === "carousel") {
         updateData.carousel = carouselImages;
@@ -1502,6 +1523,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         duration,
         // Imagem (só enviar se for URL válida do Azure)
         ...(imageUrl ? { image: imageUrl } : {}),
+        imagePosition: imagePosition || "50% 50%",
         // Campos de conteúdo
         videoUrl: videoUrl && videoUrl.trim() && (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) ? videoUrl.trim() : undefined,
         aboutCourse: aboutCourse || undefined,
@@ -1848,6 +1870,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     setOriginalPrice(course.originalPrice?.toString() || "");
     setCategory(course.category);
     setImage(course.image);
+    setImagePosition((course as any).imagePosition || "50% 50%");
     setInstructor(course.instructor);
     setDuration(course.duration);
     setLessons(course.lessons.toString());
@@ -1942,6 +1965,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       }
       
       setImage(result.url);
+      setImagePosition("50% 50%");
       setImageFile(null);
       console.log('✅ Estado image atualizado para:', result.url);
       toast.success("Imagem enviada com sucesso!");
@@ -1998,6 +2022,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     setOriginalPrice("");
     setCategory("");
     setImage("");
+    setImagePosition("50% 50%");
     setImageFile(null);
     setImageUploading(false);
     setInstructor("");
@@ -3196,21 +3221,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       )}
                                     </Button>
                                   {image && image.trim() && (image.startsWith('http://') || image.startsWith('https://')) && (
-                                    <div className="mt-3">
-                                      <img 
-                                        src={image} 
-                                        alt="Preview" 
-                                        className="w-full h-40 sm:h-48 lg:h-56 object-cover rounded-lg border"
-                                        onError={(e) => {
-                                          console.error('Erro ao carregar imagem:', image);
-                                          e.currentTarget.style.display = 'none';
-                                        }}
-                                        onLoad={() => {
-                                          console.log('Imagem carregada com sucesso:', image);
-                                        }}
+                                    <div className="mt-3 space-y-2">
+                                      <ImagePositionEditor
+                                        src={image}
+                                        alt="Preview da capa do curso"
+                                        position={imagePosition}
+                                        onChange={setImagePosition}
                                       />
-                                      <p className="text-sm text-gray-400 mt-2">Imagem atual</p>
-                                      <p className="text-xs mt-1 break-all" style={{ color: 'var(--theme-primary-light)' }}>{image}</p>
+                                      <p className="text-sm text-gray-400">Arraste a imagem para mostrar o enquadramento desejado</p>
                                     </div>
                                   )}
                                   {image && image.trim() && !image.startsWith('http://') && !image.startsWith('https://') && (
@@ -4373,6 +4391,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           src={course.image}
                           alt={course.title}
                             className="w-full h-full object-cover"
+                            style={{ objectPosition: (course as any).imagePosition || "50% 50%" }}
                         />
                       </div>
                         <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
@@ -4483,6 +4502,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         src={course.image}
                                         alt={course.title}
                                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                                        style={{ objectPosition: (course as any).imagePosition || "50% 50%" }}
                                       />
                                       <div className="min-w-0">
                                         <div className="font-semibold text-white break-words">{course.title}</div>
@@ -8469,6 +8489,102 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                               <Label htmlFor="heroSubtitle" className="text-sm font-medium text-gray-300">Subtítulo</Label>
                               <Textarea id="heroSubtitle" value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} placeholder="Descubra cursos criados por especialistas..." rows={3} className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
                             </div>
+                            <label
+                              htmlFor="hero-show-stats"
+                              className="flex items-start gap-3 cursor-pointer rounded-lg p-3 -mx-1 border border-white/5 hover:bg-white/[0.03] transition-colors"
+                            >
+                              <input
+                                id="hero-show-stats"
+                                type="checkbox"
+                                checked={heroShowStats}
+                                onChange={(e) => setHeroShowStats(e.target.checked)}
+                                className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span>
+                                <span className="block text-sm text-white font-medium">
+                                  Exibir estatísticas no Hero
+                                </span>
+                                <span className="block text-xs text-gray-400 mt-0.5">
+                                  Cursos, alunos, avaliação média e horas de conteúdo
+                                </span>
+                              </span>
+                            </label>
+
+                            {heroShowStats && (
+                              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-4">
+                                <div>
+                                  <p className="text-sm font-medium text-white">Valores das estatísticas</p>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    Automático: cursos, avaliação e horas vêm do sistema. Alunos Transformados você define aqui.
+                                  </p>
+                                  <div className="flex flex-wrap gap-2 mt-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => setHeroStatsMode("auto")}
+                                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                                        heroStatsMode === "auto"
+                                          ? "bg-blue-600 text-white border-blue-600"
+                                          : "bg-transparent text-gray-300 border-white/15 hover:bg-white/5"
+                                      }`}
+                                    >
+                                      Automático
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setHeroStatsMode("manual")}
+                                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                                        heroStatsMode === "manual"
+                                          ? "bg-blue-600 text-white border-blue-600"
+                                          : "bg-transparent text-gray-300 border-white/15 hover:bg-white/5"
+                                      }`}
+                                    >
+                                      Manual
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div>
+                                    <Label className="text-xs font-medium text-gray-400">Cursos Especializados</Label>
+                                    <Input
+                                      value={heroStats.courses}
+                                      onChange={(e) => setHeroStats((s) => ({ ...s, courses: e.target.value }))}
+                                      placeholder={heroStatsMode === "auto" ? "Vem do sistema" : "Ex: 12"}
+                                      disabled={heroStatsMode === "auto"}
+                                      className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500 disabled:opacity-50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs font-medium text-gray-400">Alunos Transformados</Label>
+                                    <Input
+                                      value={heroStats.students}
+                                      onChange={(e) => setHeroStats((s) => ({ ...s, students: e.target.value }))}
+                                      placeholder="Ex: 50.000+"
+                                      className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs font-medium text-gray-400">Avaliação Média</Label>
+                                    <Input
+                                      value={heroStats.rating}
+                                      onChange={(e) => setHeroStats((s) => ({ ...s, rating: e.target.value }))}
+                                      placeholder={heroStatsMode === "auto" ? "Vem do sistema" : "Ex: 4.8/5"}
+                                      disabled={heroStatsMode === "auto"}
+                                      className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500 disabled:opacity-50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs font-medium text-gray-400">Horas de Conteúdo</Label>
+                                    <Input
+                                      value={heroStats.hours}
+                                      onChange={(e) => setHeroStats((s) => ({ ...s, hours: e.target.value }))}
+                                      placeholder={heroStatsMode === "auto" ? "Vem do sistema" : "Ex: 120h+"}
+                                      disabled={heroStatsMode === "auto"}
+                                      className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500 disabled:opacity-50"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
                             <div>
@@ -9415,6 +9531,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   src={product.image}
                                   alt={product.title}
                                   className="w-full h-48 object-cover rounded-lg border"
+                                  style={{ objectPosition: product.imagePosition || "50% 50%" }}
                                 />
                               </div>
                             )}
@@ -9447,6 +9564,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     originalPrice: product.originalPrice ? (typeof product.originalPrice === 'string' ? parseFloat(product.originalPrice) : product.originalPrice) : undefined,
                                     rating: product.rating !== undefined && product.rating !== null ? (typeof product.rating === 'string' ? parseFloat(product.rating) : product.rating) : undefined,
                                     stock: product.stock !== undefined && product.stock !== null ? (typeof product.stock === 'string' ? parseInt(product.stock) : product.stock) : undefined,
+                                    imagePosition: product.imagePosition || "50% 50%",
                                   });
                                   setIsDialogOpen(true);
                                 }}
@@ -9744,14 +9862,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           </Button>
                           {editingProduct?.image && editingProduct.image.trim() && (editingProduct.image.startsWith('http://') || editingProduct.image.startsWith('https://')) && (
                             <div className="mt-4">
-                              <img 
-                                src={editingProduct.image} 
-                                alt="Preview" 
-                                className="w-full h-48 sm:h-56 lg:h-64 object-cover rounded-lg border-2 border-gray-700 shadow-sm"
-                                onError={(e) => {
-                                  console.error('Erro ao carregar imagem:', editingProduct.image);
-                                  e.currentTarget.style.display = 'none';
-                                }}
+                              <p className="text-xs text-gray-400 mb-2">Arraste para enquadrar a capa no card da loja</p>
+                              <ImagePositionEditor
+                                src={editingProduct.image}
+                                alt={editingProduct.title || "Preview"}
+                                position={editingProduct.imagePosition || "50% 50%"}
+                                onChange={(pos) => setEditingProduct({ ...editingProduct, imagePosition: pos })}
                               />
                             </div>
                           )}
@@ -9865,6 +9981,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 toast.error("O preço é obrigatório e deve ser um número válido maior ou igual a zero.");
                                 return;
                               }
+
+                              productData.imagePosition = editingProduct?.imagePosition || "50% 50%";
 
                               if (editingProduct?.id) {
                                 await apiClient.updateProduct(editingProduct.id, productData);

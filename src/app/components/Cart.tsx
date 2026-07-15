@@ -230,6 +230,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                               src={course.image}
                               alt={course.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              style={{ objectPosition: (course as { imagePosition?: string }).imagePosition || "50% 50%" }}
                             />
                             {discount > 0 && (
                               <div className="absolute top-1 left-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">
@@ -302,6 +303,7 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
                               src={product.image}
                               alt={product.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              style={{ objectPosition: (product as { imagePosition?: string }).imagePosition || "50% 50%" }}
                             />
                             {discount > 0 && (
                               <div className="absolute top-1 left-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">

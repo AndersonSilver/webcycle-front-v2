@@ -8,6 +8,14 @@ export interface HomeContent {
     subtitle: string;
     primaryButton: { text: string; action: string };
     secondaryButton: { text: string; action: string };
+    showStats?: boolean;
+    statsMode?: 'auto' | 'manual';
+    stats?: {
+      courses: string;
+      students: string;
+      rating: string;
+      hours: string;
+    };
   };
   carousel?: Array<{
     id: string;
@@ -69,6 +77,14 @@ const defaultHomeContent: HomeContent = {
     subtitle: "Descubra cursos criados por especialistas em psicologia para te ajudar a desenvolver inteligência emocional, relacionamentos saudáveis e bem-estar mental.",
     primaryButton: { text: "Explorar Cursos", action: "explore" },
     secondaryButton: { text: "Podcasts", action: "podcast" },
+    showStats: true,
+    statsMode: "auto",
+    stats: {
+      courses: "",
+      students: "50.000+",
+      rating: "",
+      hours: "",
+    },
   },
   carousel: [],
   whyChooseUs: {

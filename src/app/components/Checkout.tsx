@@ -874,6 +874,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           src={course.image} 
                           alt={course.title}
                           className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
+                          style={{ objectPosition: (course as { imagePosition?: string }).imagePosition || "50% 50%" }}
                         />
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1 text-white">{course.title}</h4>
@@ -890,6 +891,7 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           src={product.image} 
                           alt={product.title}
                           className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
+                          style={{ objectPosition: (product as { imagePosition?: string }).imagePosition || "50% 50%" }}
                         />
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1 text-white">{product.title}</h4>

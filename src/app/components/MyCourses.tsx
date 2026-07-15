@@ -161,6 +161,7 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
                           src={course.image}
                           alt={course.title}
                           className="w-full h-full object-cover rounded-lg"
+                          style={{ objectPosition: course.imagePosition || "50% 50%" }}
                         />
                       </div>
 

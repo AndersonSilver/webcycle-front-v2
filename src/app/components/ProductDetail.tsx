@@ -14,6 +14,7 @@ interface Product {
   price: number;
   originalPrice?: number;
   image: string;
+  imagePosition?: string;
   images?: string[];
   type: 'physical' | 'digital';
   category?: string;
@@ -309,6 +310,11 @@ export function ProductDetail() {
                     src={images[selectedImage]}
                     alt={product.title}
                     className="w-full h-auto object-contain rounded"
+                    style={
+                      selectedImage === 0 || images[selectedImage] === product.image
+                        ? { objectPosition: product.imagePosition || "50% 50%" }
+                        : undefined
+                    }
                   />
                 </div>
                 {images.length > 1 && (
@@ -326,6 +332,11 @@ export function ProductDetail() {
                           src={img}
                           alt={`${product.title} ${index + 1}`}
                           className="w-full h-20 object-cover"
+                          style={
+                            img === product.image
+                              ? { objectPosition: product.imagePosition || "50% 50%" }
+                              : undefined
+                          }
                         />
                       </button>
                     ))}

@@ -31,6 +31,7 @@ export function CourseCard({ course, onViewDetails }: CourseCardProps) {
           src={course.image}
           alt={course.title}
           className="w-full h-full object-cover"
+          style={{ objectPosition: course.imagePosition || "50% 50%" }}
         />
         {/* Badges no topo */}
         <div className="absolute top-2 left-2 flex gap-1.5">

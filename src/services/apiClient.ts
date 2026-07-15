@@ -1500,6 +1500,14 @@ class ApiClient {
           subtitle: string;
           primaryButton: { text: string; action: string };
           secondaryButton: { text: string; action: string };
+          showStats?: boolean;
+          statsMode?: 'auto' | 'manual';
+          stats?: {
+            courses: string;
+            students: string;
+            rating: string;
+            hours: string;
+          };
         };
         carousel?: Array<{
           id: string;
@@ -1565,6 +1573,14 @@ class ApiClient {
           subtitle: string;
           primaryButton: { text: string; action: string };
           secondaryButton: { text: string; action: string };
+          showStats?: boolean;
+          statsMode?: 'auto' | 'manual';
+          stats?: {
+            courses: string;
+            students: string;
+            rating: string;
+            hours: string;
+          };
         };
         carousel?: Array<{
           id: string;
@@ -1628,6 +1644,14 @@ class ApiClient {
       subtitle: string;
       primaryButton: { text: string; action: string };
       secondaryButton: { text: string; action: string };
+      showStats?: boolean;
+      statsMode?: 'auto' | 'manual';
+      stats?: {
+        courses: string;
+        students: string;
+        rating: string;
+        hours: string;
+      };
     };
     carousel?: Array<{
       id?: string;
@@ -1861,6 +1885,7 @@ class ApiClient {
     price: number;
     originalPrice?: number;
     image: string;
+    imagePosition?: string;
     images?: string[];
     type: 'physical' | 'digital';
     category?: string;
@@ -1883,6 +1908,7 @@ class ApiClient {
     price?: number;
     originalPrice?: number;
     image?: string;
+    imagePosition?: string;
     images?: string[];
     type?: 'physical' | 'digital';
     category?: string;

@@ -536,6 +536,7 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                             src={pc.course.image}
                             alt={pc.course.title}
                             className="w-20 h-20 object-cover rounded"
+                            style={{ objectPosition: (pc.course as { imagePosition?: string }).imagePosition || "50% 50%" }}
                           />
                           <div className="flex-1">
                             <h4 className="font-semibold text-white">{pc.course.title}</h4>
@@ -573,6 +574,10 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
                               src={pp.product.image}
                               alt={pp.product.title}
                               className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                              style={{
+                                objectPosition:
+                                  (pp.product as { imagePosition?: string }).imagePosition || "50% 50%",
+                              }}
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
