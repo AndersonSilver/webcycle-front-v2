@@ -1861,7 +1861,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
-  const handleEdit = (course: Course) => {
+  const handleEdit = async (course: Course) => {
     setEditingCourse(course);
     setTitle(course.title);
     setSubtitle(course.subtitle);
@@ -1886,23 +1886,49 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         url: bonus.description || bonus.url || '',
       })) || []
     );
-    // Carregar benefícios
-    setBenefits(course.benefits || []);
-    setModules(course.modules?.map(m => ({
-      id: (m as any).id, // Incluir ID do módulo (se existir)
-      title: m.title,
-      duration: m.duration,
-      lessons: m.lessons.map(l => ({
-        id: (l as any).id, // Incluir ID da aula (se existir)
-        title: l.title,
-        duration: l.duration,
-        videoUrl: (l as any).videoUrl,
-        videoFile: (l as any).videoFile,
-      }))
-    })) || []);
     const courseBenefits = Array.isArray(course.benefits) ? course.benefits : (course.benefits ? [course.benefits] : []);
     setBenefits(courseBenefits);
     setIsDialogOpen(true);
+
+    // Listagem pública omite videoUrl por segurança — buscar módulos completos (admin autenticado)
+    try {
+      const modulesResponse = await apiClient.getCourseModules(course.id);
+      const fullModules = modulesResponse?.modules || [];
+      setModules(
+        fullModules.map((m: any) => ({
+          id: m.id,
+          title: m.title,
+          duration: m.duration || "",
+          lessons: (m.lessons || [])
+            .slice()
+            .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+            .map((l: any) => ({
+              id: l.id,
+              title: l.title,
+              duration: l.duration || "",
+              videoUrl: l.videoUrl || "",
+              videoFile: undefined,
+            })),
+        }))
+      );
+    } catch (error) {
+      console.error("Erro ao carregar módulos do curso:", error);
+      setModules(
+        course.modules?.map((m) => ({
+          id: (m as any).id,
+          title: m.title,
+          duration: m.duration,
+          lessons: m.lessons.map((l) => ({
+            id: (l as any).id,
+            title: l.title,
+            duration: l.duration,
+            videoUrl: (l as any).videoUrl || "",
+            videoFile: (l as any).videoFile,
+          })),
+        })) || []
+      );
+      toast.error("Não foi possível carregar os vídeos das aulas. Recarregue e tente de novo.");
+    }
   };
 
   const handleDelete = async (id: string) => {
