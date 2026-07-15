@@ -3403,10 +3403,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 </ul>
                               </div>
                               {videoUrl && (
-                                  <div className="mt-3">
-                                    <video src={videoUrl} controls className="w-full rounded-lg border max-h-64" />
-                                    <p className="text-sm text-gray-400 mt-2">Vídeo atual</p>
-                                    <p className="text-xs mt-1 break-all" style={{ color: 'var(--theme-primary-light)' }}>{videoUrl}</p>
+                                  <div className="mt-3 space-y-2">
+                                    <div className="rounded-lg border border-gray-600 bg-black overflow-hidden">
+                                      <video
+                                        src={videoUrl}
+                                        controls
+                                        playsInline
+                                        preload="metadata"
+                                        className="w-full aspect-video max-h-64 object-contain bg-black"
+                                      />
+                                    </div>
+                                    <p className="text-sm text-gray-400">Vídeo atual</p>
+                                    <p className="text-xs break-all" style={{ color: 'var(--theme-primary-light)' }}>{videoUrl}</p>
                                 </div>
                               )}
                             </div>
@@ -3706,9 +3714,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                           )}
                                                         </Button>
                                                         {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
-                                                          <div className="mt-2">
-                                                            <video src={lesson.videoUrl} controls className="w-full rounded-lg border max-h-48" />
-                                                            <p className="text-xs text-gray-400 mt-1">Vídeo atual</p>
+                                                          <div className="mt-2 rounded-lg border border-gray-600 bg-black overflow-hidden">
+                                                            <video
+                                                              src={lesson.videoUrl}
+                                                              controls
+                                                              playsInline
+                                                              preload="metadata"
+                                                              className="w-full aspect-video max-h-64 object-contain bg-black"
+                                                            />
+                                                            <p className="text-xs text-gray-400 px-2 py-1.5 bg-gray-900">Vídeo atual</p>
                                                           </div>
                                                         )}
                                                         {lesson.videoUrl === 'uploading...' && (
