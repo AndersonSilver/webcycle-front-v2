@@ -6,10 +6,11 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { CheckCircle2, Lock, ShoppingCart, X, Copy, MapPin } from "lucide-react";
+import { CheckCircle2, Lock, ShoppingCart, X, Copy, MapPin, User } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "../../services/apiClient";
 import { handleApiError } from "../../utils/errorHandler";
+import { isValidBrazilianPhone, normalizePhoneDigits } from "../../utils/phone";
 // ✅ CHECKOUT PRO: Não precisa mais do formulário de cartão
 
 interface Product {
@@ -53,6 +54,10 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
     zipCode: "",
   });
   const [addressLoaded, setAddressLoaded] = useState(false);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [buyerProfileLoaded, setBuyerProfileLoaded] = useState(false);
 
   const loadProducts = useCallback(async (productItems: Array<{ productId: string; quantity: number }>) => {
     try {
@@ -99,6 +104,23 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
   }, [navigate]);
 
 
+  const loadBuyerProfile = useCallback(async () => {
+    try {
+      const response = await apiClient.getProfile();
+      const user = response.user;
+      if (user) {
+        setBuyerName(user.name || "");
+        setBuyerEmail(user.email || "");
+        setBuyerPhone(user.phone || "");
+      }
+    } catch (error) {
+      console.error("Erro ao carregar dados do comprador:", error);
+      toast.error("Não foi possível carregar seus dados. Atualize a página.");
+    } finally {
+      setBuyerProfileLoaded(true);
+    }
+  }, []);
+
   // Carregar endereço do perfil se houver produtos físicos
   const loadShippingAddress = useCallback(async () => {
     const hasPhysicalProducts = products.some(p => p.type === 'physical');
@@ -127,6 +149,10 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
       setAddressLoaded(true);
     }
   }, [products]);
+
+  useEffect(() => {
+    loadBuyerProfile();
+  }, [loadBuyerProfile]);
 
   // Carregar produtos do location.state ou do localStorage (carrinho)
   useEffect(() => {
@@ -589,6 +615,24 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
       
       if (!hasCourses && !hasProducts) {
         toast.error("Adicione pelo menos um item ao carrinho");
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!isValidBrazilianPhone(buyerPhone)) {
+        toast.error("Informe um telefone válido com DDD (10 ou 11 dígitos)");
+        setIsProcessing(false);
+        return;
+      }
+
+      const normalizedPhone = normalizePhoneDigits(buyerPhone);
+
+      try {
+        await apiClient.updateProfile({ phone: normalizedPhone });
+        setBuyerPhone(normalizedPhone);
+      } catch (error) {
+        console.error("Erro ao salvar telefone no perfil:", error);
+        handleApiError(error, "Erro ao salvar telefone no perfil");
         setIsProcessing(false);
         return;
       }
@@ -1106,6 +1150,54 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                         <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 opacity-50"></div>
                         
                         <div className="relative space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
+                          {buyerProfileLoaded && (
+                            <Card className="bg-gray-700/90 backdrop-blur-sm border-2 border-gray-600">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-white">
+                                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                  Dados do Comprador
+                                </CardTitle>
+                                <CardDescription className="text-xs sm:text-sm text-gray-400">
+                                  Confirme seus dados para continuar
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-3 sm:space-y-4">
+                                <div>
+                                  <Label htmlFor="buyer-name" className="text-xs sm:text-sm text-white">Nome</Label>
+                                  <Input
+                                    id="buyer-name"
+                                    value={buyerName}
+                                    readOnly
+                                    disabled
+                                    className="text-xs sm:text-sm bg-gray-600 border-gray-500 text-gray-300"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="buyer-email" className="text-xs sm:text-sm text-white">E-mail</Label>
+                                  <Input
+                                    id="buyer-email"
+                                    value={buyerEmail}
+                                    readOnly
+                                    disabled
+                                    className="text-xs sm:text-sm bg-gray-600 border-gray-500 text-gray-300"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="buyer-phone" className="text-xs sm:text-sm text-white">Telefone / Contato *</Label>
+                                  <Input
+                                    id="buyer-phone"
+                                    type="tel"
+                                    inputMode="tel"
+                                    value={buyerPhone}
+                                    onChange={(e) => setBuyerPhone(e.target.value)}
+                                    placeholder="(11) 99999-9999"
+                                    className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
                           {/* Seção de Endereço de Envio (apenas para produtos físicos) */}
                           {products.some(p => p.type === 'physical') && addressLoaded && (
                             <Card className="bg-gray-700/90 backdrop-blur-sm border-2 border-gray-600">
@@ -1243,7 +1335,13 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
                           <Button
                             type="button"
                             onClick={handleCheckout}
-                            disabled={isProcessing || productsLoading || (products.length === 0 && courses.length === 0)}
+                            disabled={
+                              isProcessing ||
+                              productsLoading ||
+                              !buyerProfileLoaded ||
+                              !isValidBrazilianPhone(buyerPhone) ||
+                              (products.length === 0 && courses.length === 0)
+                            }
                             className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isProcessing ? (
