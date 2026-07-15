@@ -69,6 +69,9 @@ import {
   Images,
   ExternalLink,
   Image as ImageIcon,
+  Film,
+  Layers,
+  PlayCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import defaultLogoImg from "./laminas/icon.png";
@@ -2943,7 +2946,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
         {/* Main Content */}
         <main className="flex-1 min-w-0 w-full lg:w-auto overflow-y-auto bg-gray-900">
-          <div className="container mx-auto px-4 lg:px-8 pt-6 pb-4 sm:pt-8 sm:pb-6 lg:pt-12">
+          <div
+            className={
+              mainView === "courses"
+                ? "w-full max-w-none px-3 sm:px-4 lg:px-5 pt-4 pb-4 sm:pt-5 sm:pb-6 lg:pt-6"
+                : "container mx-auto px-4 lg:px-8 pt-6 pb-4 sm:pt-8 sm:pb-6 lg:pt-12"
+            }
+          >
             {/* Stats - Only show on Dashboard and Revenue pages */}
             {(mainView === "dashboard" || mainView === "revenue") && (
               <>
@@ -3051,746 +3060,1044 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </DialogHeader>
 
                   <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-hidden flex flex-col">
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 p-1.5 sm:p-2 bg-gray-700 rounded-lg mb-4 sm:mb-6 lg:mb-8">
-                      <button
-                        type="button"
-                        className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "info"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-gray-300 hover:bg-gray-600"
-                        }`}
-                        onClick={() => setCurrentTab("info")}
-                      >
-                        Informações Básicas
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "content"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-gray-300 hover:bg-gray-600"
-                        }`}
-                        onClick={() => setCurrentTab("content")}
-                      >
-                        Conteúdo
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-md transition-all font-medium text-sm sm:text-base ${currentTab === "modules"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-gray-300 hover:bg-gray-600"
-                        }`}
-                        onClick={() => setCurrentTab("modules")}
-                      >
-                        Módulos
-                      </button>
-                    </div>
+                    <nav
+                      aria-label="Seções do curso"
+                      className="mb-5 sm:mb-6 rounded-xl border border-white/10 bg-[#0b1220]/80 p-1"
+                    >
+                      <div className="grid grid-cols-3 gap-1">
+                        {(
+                          [
+                            { id: "info" as const, label: "Básico", full: "Informações básicas", icon: FileText },
+                            { id: "content" as const, label: "Conteúdo", full: "Conteúdo", icon: Sparkles },
+                            { id: "modules" as const, label: "Módulos", full: "Módulos e aulas", icon: Layers },
+                          ] as const
+                        ).map((tab) => {
+                          const active = currentTab === tab.id;
+                          const Icon = tab.icon;
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              title={tab.full}
+                              onClick={() => setCurrentTab(tab.id)}
+                              className={`relative flex items-center justify-center gap-2 rounded-lg px-2 sm:px-3 py-2.5 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 ${
+                                active
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]"
+                              }`}
+                            >
+                              <Icon
+                                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
+                                  active ? "text-blue-600" : "text-gray-500"
+                                }`}
+                              />
+                              <span className="truncate">{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </nav>
 
                     <div className="flex-1 overflow-y-auto px-2 sm:px-4 lg:px-6 pb-6 space-y-8 sm:space-y-10 lg:space-y-12">
                       {currentTab === "info" && (
                         <>
-                          {/* Seção: Informações Principais */}
-                          <div className="space-y-4 sm:space-y-6">
-                            <div className="border-b border-gray-700 pb-2 sm:pb-3">
-                              <h3 className="text-base sm:text-lg font-semibold text-white">Informações Principais</h3>
-                              <p className="text-xs sm:text-sm text-gray-400 mt-1">Dados básicos do curso</p>
+                          <div className="space-y-5">
+                            <div className="border-b border-white/10 pb-4">
+                              <h3 className="text-lg sm:text-xl font-semibold text-white tracking-tight">
+                                Informações básicas
+                              </h3>
+                              <p className="text-sm text-gray-400 mt-1">
+                                Título, preços, capa e dados do instrutor do curso.
+                              </p>
                             </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                              <div>
-                                <Label htmlFor="title" className="text-sm sm:text-base font-medium text-gray-300">Título *</Label>
-                                <Input
-                                  id="title"
-                                  value={title}
-                                  onChange={(e) => setTitle(e.target.value)}
-                                  placeholder="Nome do curso"
-                                  className="mt-2 h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.title && (
-                                  <p className="text-xs sm:text-sm text-red-500 mt-1">
-                                    {errors.title}
+
+                            {/* Informações principais */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <FileText className="w-4 h-4 text-blue-300" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white">Informações principais</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Nome e descrição curta exibidos no card e na página
                                   </p>
-                                )}
+                                </div>
                               </div>
-
-                              <div>
-                                <Label htmlFor="subtitle" className="text-sm sm:text-base font-medium text-gray-300">Subtítulo *</Label>
-                                <Input
-                                  id="subtitle"
-                                  value={subtitle}
-                                  onChange={(e) => setSubtitle(e.target.value)}
-                                  placeholder="Breve descrição"
-                                  className="mt-2 h-10 sm:h-11 text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.subtitle && (
-                                  <p className="text-xs sm:text-sm text-red-500 mt-1">
-                                    {errors.subtitle}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <Label htmlFor="description" className="text-sm sm:text-base font-medium text-gray-300">Descrição *</Label>
-                              <Textarea
-                                id="description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Descrição completa do curso"
-                                rows={4}
-                                className="mt-2 resize-none text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                              />
-                              {errors.description && (
-                                <p className="text-xs sm:text-sm text-red-500 mt-1">
-                                  {errors.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Seção: Preços e Categoria */}
-                          <div className="space-y-6 sm:space-y-8 bg-gray-900 p-6 sm:p-8 lg:p-10 rounded-lg border">
-                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Preços e Categoria</h3>
-                              <p className="text-sm sm:text-base text-gray-400 mt-2">Configure os valores e classificação</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                              <div className="space-y-2">
-                                <Label htmlFor="price" className="text-base sm:text-lg font-medium text-white">Preço (R$) *</Label>
-                                <Input
-                                  id="price"
-                                  type="number"
-                                  step="0.01"
-                                  value={price}
-                                  onChange={(e) => setPrice(e.target.value)}
-                                  placeholder="297.00"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.price && (
-                                  <p className="text-sm text-red-500 mt-2">
-                                    {errors.price}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="originalPrice" className="text-base sm:text-lg font-medium text-white">Preço Original (R$)</Label>
-                                <Input
-                                  id="originalPrice"
-                                  type="number"
-                                  step="0.01"
-                                  value={originalPrice}
-                                  onChange={(e) => setOriginalPrice(e.target.value)}
-                                  placeholder="497.00"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                              </div>
-
-                              <div className="sm:col-span-2 lg:col-span-1 space-y-2">
-                                <Label htmlFor="category" className="text-base sm:text-lg font-medium text-white">Categoria *</Label>
-                                <Input
-                                  id="category"
-                                  value={category}
-                                  onChange={(e) => setCategory(e.target.value)}
-                                  placeholder="Relacionamentos, Ansiedade, etc."
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.category && (
-                                  <p className="text-sm text-red-500 mt-2">
-                                    {errors.category}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Seção: Mídia e Instrutor */}
-                          <div className="space-y-6 sm:space-y-8 bg-gray-900 p-6 sm:p-8 lg:p-10 rounded-lg border">
-                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Mídia e Instrutor</h3>
-                              <p className="text-sm sm:text-base text-gray-400 mt-2">Imagem e informações do instrutor</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
-                              <div className="space-y-2">
-                                <Label htmlFor="image" className="text-base sm:text-lg font-medium text-white">Imagem do Curso *</Label>
-                                <div className="mt-2 space-y-3">
-                                  <input
-                                    type="file"
-                                    id="image"
-                                    accept="image/jpeg,image/png,image/gif,image/webp"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        setImageFile(file);
-                                        handleImageUpload(file);
-                                      }
-                                    }}
-                                    className="hidden"
+                              <div className="p-4 sm:p-5 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor="title" className="text-xs text-gray-500">
+                                      Título <span className="text-red-400">*</span>
+                                    </Label>
+                                    <Input
+                                      id="title"
+                                      value={title}
+                                      onChange={(e) => setTitle(e.target.value)}
+                                      placeholder="Nome do curso"
+                                      className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                    />
+                                    {errors.title && (
+                                      <p className="text-xs text-red-400">{errors.title}</p>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor="subtitle" className="text-xs text-gray-500">
+                                      Subtítulo <span className="text-red-400">*</span>
+                                    </Label>
+                                    <Input
+                                      id="subtitle"
+                                      value={subtitle}
+                                      onChange={(e) => setSubtitle(e.target.value)}
+                                      placeholder="Breve descrição"
+                                      className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                    />
+                                    {errors.subtitle && (
+                                      <p className="text-xs text-red-400">{errors.subtitle}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label htmlFor="description" className="text-xs text-gray-500">
+                                    Descrição <span className="text-red-400">*</span>
+                                  </Label>
+                                  <Textarea
+                                    id="description"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Descrição completa do curso"
+                                    rows={4}
+                                    className="resize-none text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
                                   />
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      onClick={() => document.getElementById('image')?.click()}
-                                      disabled={imageUploading}
-                                    className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                                    >
-                                      {imageUploading ? (
-                                        <>
-                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                          Enviando...
-                                        </>
-                                      ) : (
-                                        <>
-                                        <Upload className="w-5 h-5 mr-2" />
-                                        {imageFile ? (imageFile.name.length > 25 ? imageFile.name.substring(0, 25) + '...' : imageFile.name) : 'Selecionar Imagem'}
-                                        </>
-                                      )}
-                                    </Button>
-                                  {image && image.trim() && (image.startsWith('http://') || image.startsWith('https://')) && (
-                                    <div className="mt-3 space-y-2">
-                                      <ImagePositionEditor
-                                        src={image}
-                                        alt="Preview da capa do curso"
-                                        position={imagePosition}
-                                        onChange={setImagePosition}
-                                      />
-                                      <p className="text-sm text-gray-400">Arraste a imagem para mostrar o enquadramento desejado</p>
-                                    </div>
-                                  )}
-                                  {image && image.trim() && !image.startsWith('http://') && !image.startsWith('https://') && (
-                                    <div className="mt-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded">
-                                      <p className="text-sm text-yellow-400">Aguardando URL da imagem...</p>
-                                    </div>
+                                  {errors.description && (
+                                    <p className="text-xs text-red-400">{errors.description}</p>
                                   )}
                                 </div>
-                                {errors.image && (
-                                  <p className="text-sm text-red-500 mt-2">
-                                    {errors.image}
-                                  </p>
-                                )}
                               </div>
+                            </section>
 
-                              <div className="space-y-2">
-                                <Label htmlFor="instructor" className="text-base sm:text-lg font-medium text-white">Instrutor *</Label>
-                                <Input
-                                  id="instructor"
-                                  value={instructor}
-                                  onChange={(e) => setInstructor(e.target.value)}
-                                  placeholder="Nome do instrutor"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.instructor && (
-                                  <p className="text-sm text-red-500 mt-2">
-                                    {errors.instructor}
+                            {/* Preços e categoria */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <DollarSign className="w-4 h-4 text-blue-300" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white">Preços e categoria</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Valores de venda e classificação do curso
                                   </p>
-                                )}
-                            </div>
-                          </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
-                              <div className="space-y-2">
-                                <Label htmlFor="duration" className="text-base sm:text-lg font-medium text-white">Duração *</Label>
-                                <Input
-                                  id="duration"
-                                  value={duration}
-                                  onChange={(e) => setDuration(e.target.value)}
-                                  placeholder="Ex: 20h, 30h"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.duration && (
-                                  <p className="text-sm text-red-500 mt-2">
-                                    {errors.duration}
-                                  </p>
-                                )}
+                                </div>
                               </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="lessons" className="text-base sm:text-lg font-medium text-white">Número de Aulas *</Label>
-                                <Input
-                                  id="lessons"
-                                  type="number"
-                                  value={lessons}
-                                  onChange={(e) => setLessons(e.target.value)}
-                                  placeholder="Ex: 10, 20"
-                                  className="mt-2 h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                {errors.lessons && (
-                                  <p className="text-sm text-red-500 mt-2">
-                                    {errors.lessons}
-                                  </p>
-                                )}
+                              <div className="p-4 sm:p-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor="price" className="text-xs text-gray-500">
+                                      Preço (R$) <span className="text-red-400">*</span>
+                                    </Label>
+                                    <Input
+                                      id="price"
+                                      type="number"
+                                      step="0.01"
+                                      value={price}
+                                      onChange={(e) => setPrice(e.target.value)}
+                                      placeholder="297.00"
+                                      className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                    />
+                                    {errors.price && (
+                                      <p className="text-xs text-red-400">{errors.price}</p>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor="originalPrice" className="text-xs text-gray-500">
+                                      Preço original (R$)
+                                    </Label>
+                                    <Input
+                                      id="originalPrice"
+                                      type="number"
+                                      step="0.01"
+                                      value={originalPrice}
+                                      onChange={(e) => setOriginalPrice(e.target.value)}
+                                      placeholder="497.00"
+                                      className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-2 lg:col-span-1 space-y-1.5">
+                                    <Label htmlFor="category" className="text-xs text-gray-500">
+                                      Categoria <span className="text-red-400">*</span>
+                                    </Label>
+                                    <Input
+                                      id="category"
+                                      value={category}
+                                      onChange={(e) => setCategory(e.target.value)}
+                                      placeholder="Relacionamentos, Ansiedade, etc."
+                                      className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                    />
+                                    {errors.category && (
+                                      <p className="text-xs text-red-400">{errors.category}</p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            </section>
+
+                            {/* Mídia e instrutor */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <ImageIcon className="w-4 h-4 text-blue-300" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white">Mídia e instrutor</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Capa, instrutor, duração e quantidade de aulas
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="p-4 sm:p-5 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor="image" className="text-xs text-gray-500">
+                                      Imagem do curso <span className="text-red-400">*</span>
+                                    </Label>
+                                    <input
+                                      type="file"
+                                      id="image"
+                                      accept="image/jpeg,image/png,image/gif,image/webp"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          setImageFile(file);
+                                          handleImageUpload(file);
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={imageUploading}
+                                      onClick={() => document.getElementById("image")?.click()}
+                                      className="w-full rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-5 text-center transition-colors hover:border-blue-400/40 hover:bg-blue-500/5 disabled:opacity-60"
+                                    >
+                                      {imageUploading ? (
+                                        <span className="inline-flex items-center gap-2 text-sm text-blue-300">
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                          Enviando…
+                                        </span>
+                                      ) : (
+                                        <span className="flex flex-col items-center gap-2">
+                                          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-400/20">
+                                            <Upload className="w-5 h-5 text-blue-400" />
+                                          </span>
+                                          <span className="text-sm font-medium text-gray-200">
+                                            {imageFile
+                                              ? imageFile.name.length > 28
+                                                ? imageFile.name.substring(0, 28) + "…"
+                                                : imageFile.name
+                                              : "Selecionar imagem"}
+                                          </span>
+                                          <span className="text-xs text-gray-500">JPG, PNG, GIF ou WebP</span>
+                                        </span>
+                                      )}
+                                    </button>
+                                    {image && image.trim() && (image.startsWith("http://") || image.startsWith("https://")) && (
+                                      <div className="space-y-2 pt-1">
+                                        <ImagePositionEditor
+                                          src={image}
+                                          alt="Preview da capa do curso"
+                                          position={imagePosition}
+                                          onChange={setImagePosition}
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                          Arraste a imagem para ajustar o enquadramento
+                                        </p>
+                                      </div>
+                                    )}
+                                    {image && image.trim() && !image.startsWith("http://") && !image.startsWith("https://") && (
+                                      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                                        <p className="text-xs text-amber-300">Aguardando URL da imagem…</p>
+                                      </div>
+                                    )}
+                                    {errors.image && (
+                                      <p className="text-xs text-red-400">{errors.image}</p>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                      <Label htmlFor="instructor" className="text-xs text-gray-500">
+                                        Instrutor <span className="text-red-400">*</span>
+                                      </Label>
+                                      <Input
+                                        id="instructor"
+                                        value={instructor}
+                                        onChange={(e) => setInstructor(e.target.value)}
+                                        placeholder="Nome do instrutor"
+                                        className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                      />
+                                      {errors.instructor && (
+                                        <p className="text-xs text-red-400">{errors.instructor}</p>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div className="space-y-1.5">
+                                        <Label htmlFor="duration" className="text-xs text-gray-500">
+                                          Duração <span className="text-red-400">*</span>
+                                        </Label>
+                                        <Input
+                                          id="duration"
+                                          value={duration}
+                                          onChange={(e) => setDuration(e.target.value)}
+                                          placeholder="Ex: 20h, 30h"
+                                          className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                        />
+                                        {errors.duration && (
+                                          <p className="text-xs text-red-400">{errors.duration}</p>
+                                        )}
+                                      </div>
+                                      <div className="space-y-1.5">
+                                        <Label htmlFor="lessons" className="text-xs text-gray-500">
+                                          Nº de aulas <span className="text-red-400">*</span>
+                                        </Label>
+                                        <Input
+                                          id="lessons"
+                                          type="number"
+                                          value={lessons}
+                                          onChange={(e) => setLessons(e.target.value)}
+                                          placeholder="Ex: 10, 20"
+                                          className="h-10 text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                        />
+                                        {errors.lessons && (
+                                          <p className="text-xs text-red-400">{errors.lessons}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </section>
                           </div>
                         </>
                       )}
 
                       {currentTab === "content" && (
                         <>
-                          {/* Seção: Conteúdo do Curso */}
-                          <div className="space-y-6 sm:space-y-8">
-                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Conteúdo do Curso</h3>
-                              <p className="text-sm sm:text-base text-gray-400 mt-2">Vídeo de apresentação e informações adicionais</p>
+                          <div className="space-y-5">
+                            <div className="border-b border-white/10 pb-4">
+                              <h3 className="text-lg sm:text-xl font-semibold text-white tracking-tight">
+                                Conteúdo da página do curso
+                              </h3>
+                              <p className="text-sm text-gray-400 mt-1">
+                                Vídeo de apresentação, descrição, materiais e benefícios exibidos aos alunos.
+                              </p>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="videoUrl" className="text-base sm:text-lg font-medium text-white">Vídeo de Apresentação do Curso</Label>
-                              <div className="mt-2 space-y-3">
-                              <input
-                                type="file"
-                                id="videoUrl"
-                                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    // Verificar tamanho do arquivo
-                                    const fileSizeMB = file.size / (1024 * 1024);
-                                    if (fileSizeMB > 100) {
-                                      const shouldContinue = window.confirm(
-                                        `⚠️ ATENÇÃO: O vídeo é muito grande (${fileSizeMB.toFixed(1)} MB).\n\n` +
-                                        `Vídeos grandes demoram muito para carregar para os alunos.\n\n` +
-                                        `Recomendação: Comprima o vídeo para menos de 50 MB antes de fazer upload.\n\n` +
-                                        `Deseja continuar mesmo assim?`
-                                      );
-                                      if (!shouldContinue) {
-                                        e.target.value = '';
-                                        return;
-                                      }
-                                    }
-                                    setVideoFile(file);
-                                    handleVideoUpload(file);
-                                  }
-                                }}
-                                className="hidden"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => document.getElementById('videoUrl')?.click()}
-                                disabled={videoUploading}
-                                  className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                              >
-                                {videoUploading ? (
-                                  <>
-                                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                    Enviando vídeo...
-                                  </>
-                                ) : (
-                                  <>
-                                      <Upload className="w-5 h-5 mr-2" />
-                                      {videoFile ? (videoFile.name.length > 30 ? videoFile.name.substring(0, 30) + '...' : videoFile.name) : 'Selecionar Vídeo'}
-                                  </>
-                                )}
-                              </Button>
-                              {videoFile && !videoUploading && (
-                                  <p className="text-sm text-gray-400">
-                                  Tamanho: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
-                                  {videoFile.size > 50 * 1024 * 1024 && (
-                                    <span className="text-orange-600 ml-2">
-                                      ⚠️ Recomendado: menos de 50 MB para melhor performance
-                                    </span>
-                                  )}
-                                </p>
-                              )}
-                                <div className="rounded-lg p-3 mt-2" style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)', borderColor: 'var(--theme-primary-light)' }}>
-                                  <p className="text-sm font-semibold mb-1" style={{ color: 'var(--theme-primary-dark)' }}>💡 Dica de Performance:</p>
-                                  <ul className="text-sm space-y-1 list-disc list-inside" style={{ color: 'var(--theme-primary)' }}>
-                                  <li>Vídeos menores carregam mais rápido para os alunos</li>
-                                  <li>Recomendado: máximo 50 MB para vídeos de apresentação</li>
-                                  <li>Use ferramentas como HandBrake ou FFmpeg para comprimir</li>
-                                  <li>Resolução recomendada: 720p ou 1080p (não 4K)</li>
-                                </ul>
-                              </div>
-                              {videoUrl && (
-                                  <div className="mt-3 space-y-2">
-                                    <div className="rounded-lg border border-gray-600 bg-black overflow-hidden">
-                                      <video
-                                        src={videoUrl}
-                                        controls
-                                        playsInline
-                                        preload="metadata"
-                                        className="w-full aspect-video max-h-64 object-contain bg-black"
-                                      />
-                                    </div>
-                                    <p className="text-sm text-gray-400">Vídeo atual</p>
-                                    <p className="text-xs break-all" style={{ color: 'var(--theme-primary-light)' }}>{videoUrl}</p>
+                            {/* Vídeo de apresentação */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <Film className="w-4 h-4 text-blue-300" />
                                 </div>
-                              )}
-                            </div>
-                          </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="aboutCourse" className="text-base sm:text-lg font-medium text-white">Sobre o Curso</Label>
-                            <Textarea
-                              id="aboutCourse"
-                              value={aboutCourse}
-                              onChange={(e) => setAboutCourse(e.target.value)}
-                              placeholder="Informações detalhadas sobre o curso..."
-                                rows={8}
-                                className="mt-2 resize-none text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-
-                            {/* Seção: Materiais de Apoio */}
-                            <div className="space-y-4 sm:space-y-6 border-t border-gray-700 pt-6 sm:pt-8">
-                              <div className="border-b border-gray-700 pb-4 sm:pb-5">
-                                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Materiais de Apoio</h3>
-                                <p className="text-sm sm:text-base text-gray-400 mt-2">Adicione arquivos PDF, DOC, XLS para download pelos alunos</p>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white">Vídeo de apresentação</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Trailer opcional exibido na página do curso · recomendado até 50&nbsp;MB
+                                  </p>
+                                </div>
                               </div>
+                              <div className="p-4 sm:p-5 space-y-3">
+                                <input
+                                  type="file"
+                                  id="videoUrl"
+                                  accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const fileSizeMB = file.size / (1024 * 1024);
+                                      if (fileSizeMB > 100) {
+                                        const shouldContinue = window.confirm(
+                                          `O vídeo é grande (${fileSizeMB.toFixed(1)} MB).\n\n` +
+                                          `Arquivos pesados demoram para carregar para os alunos.\n` +
+                                          `Recomendação: comprimir para menos de 50 MB.\n\n` +
+                                          `Deseja continuar mesmo assim?`
+                                        );
+                                        if (!shouldContinue) {
+                                          e.target.value = "";
+                                          return;
+                                        }
+                                      }
+                                      setVideoFile(file);
+                                      handleVideoUpload(file);
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
 
-                              <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 sm:p-8 text-center transition-colors"
-                                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--theme-primary-light)'}
-                                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#D1D5DB'}
-                              >
-                                <Upload className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
-                                <p className="text-sm sm:text-base text-gray-400 mb-2">
-                                  Arraste e solte arquivos aqui ou
-                                </p>
-                            <input
-                              type="file"
+                                {videoUrl && videoUrl.trim() && !videoUploading ? (
+                                  <div className="overflow-hidden rounded-lg border border-white/10 bg-black">
+                                    <video
+                                      src={videoUrl}
+                                      controls
+                                      playsInline
+                                      preload="none"
+                                      className="w-full aspect-video max-h-56 object-contain bg-black"
+                                    />
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2.5 bg-[#0a1020] border-t border-white/5">
+                                      <div className="min-w-0">
+                                        <p className="text-[11px] text-gray-500">Vídeo atual</p>
+                                        {videoFile && (
+                                          <p className="text-xs text-gray-400 truncate">
+                                            {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                                            {videoFile.size > 50 * 1024 * 1024 && (
+                                              <span className="text-amber-400 ml-1.5">acima do ideal</span>
+                                            )}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => document.getElementById("videoUrl")?.click()}
+                                        className="h-8 text-xs border-white/15 bg-white/5 text-gray-200 hover:bg-white/10 shrink-0"
+                                      >
+                                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                                        Trocar vídeo
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={videoUploading}
+                                    onClick={() => document.getElementById("videoUrl")?.click()}
+                                    className="w-full rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-8 text-center transition-colors hover:border-blue-400/40 hover:bg-blue-500/5 disabled:opacity-60"
+                                  >
+                                    {videoUploading ? (
+                                      <span className="inline-flex items-center gap-2 text-sm text-blue-300">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Enviando vídeo…
+                                      </span>
+                                    ) : (
+                                      <span className="flex flex-col items-center gap-2">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-400/20">
+                                          <Film className="w-5 h-5 text-blue-400" />
+                                        </span>
+                                        <span className="text-sm font-medium text-gray-200">
+                                          {videoFile
+                                            ? videoFile.name.length > 40
+                                              ? videoFile.name.substring(0, 40) + "…"
+                                              : videoFile.name
+                                            : "Selecionar vídeo de apresentação"}
+                                        </span>
+                                        <span className="text-xs text-gray-500">MP4, WebM ou MOV · ideal até 50&nbsp;MB · 720p/1080p</span>
+                                      </span>
+                                    )}
+                                  </button>
+                                )}
+
+                                <div className="flex gap-2.5 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+                                  <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                                  <p className="text-xs text-gray-400 leading-relaxed">
+                                    Vídeos menores carregam mais rápido. Prefira 720p/1080p comprimidos (HandBrake ou FFmpeg), não 4K.
+                                  </p>
+                                </div>
+                              </div>
+                            </section>
+
+                            {/* Sobre o curso */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <FileText className="w-4 h-4 text-blue-300" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white">Sobre o curso</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Texto longo da página de detalhes
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="p-4 sm:p-5">
+                                <Textarea
+                                  id="aboutCourse"
+                                  value={aboutCourse}
+                                  onChange={(e) => setAboutCourse(e.target.value)}
+                                  placeholder="Descreva o que o aluno vai encontrar, para quem é e qual transformação espera..."
+                                  rows={6}
+                                  className="resize-none text-sm bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                />
+                              </div>
+                            </section>
+
+                            {/* Materiais */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <Download className="w-4 h-4 text-blue-300" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-white">Materiais de apoio</p>
+                                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-gray-400">
+                                      {supportMaterials.length}{" "}
+                                      {supportMaterials.length === 1 ? "arquivo" : "arquivos"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    PDF, DOC ou XLS para download · até 10&nbsp;MB cada
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="p-4 sm:p-5 space-y-3">
+                                <input
+                                  type="file"
                                   id="materialUpload"
-                              accept=".pdf,.doc,.docx,.xls,.xlsx"
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx"
                                   multiple
-                              onChange={async (e) => {
+                                  onChange={async (e) => {
                                     const files = e.target.files;
                                     if (files && files.length > 0) {
                                       for (const file of Array.from(files)) {
-                                        // Verificar tamanho (10MB)
-                                if (file.size > 10 * 1024 * 1024) {
+                                        if (file.size > 10 * 1024 * 1024) {
                                           toast.error(`${file.name} excede 10MB`);
                                           continue;
                                         }
                                         try {
                                           const url = await apiClient.uploadDocument(file);
-                                          setSupportMaterials([...supportMaterials, { name: file.name, url }]);
+                                          setSupportMaterials((prev) => [...prev, { name: file.name, url }]);
                                           toast.success(`${file.name} enviado com sucesso!`);
-                                } catch (error: any) {
+                                        } catch (error: any) {
                                           toast.error(`Erro ao enviar ${file.name}: ${error.message}`);
                                         }
                                       }
-                                      e.target.value = '';
+                                      e.target.value = "";
                                     }
                                   }}
                                   className="hidden"
                                 />
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                  onClick={() => document.getElementById('materialUpload')?.click()}
-                                  className="mt-3 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                                    >
-                                      <FileText className="w-4 h-4 mr-2" />
-                                      Selecionar Arquivos
-                                    </Button>
-                                <p className="text-xs sm:text-sm text-gray-400 mt-3">
-                                  PDF, DOC, XLS até 10MB
-                                </p>
-                            </div>
-
-                            {supportMaterials.length > 0 && (
-                              <div className="space-y-2">
-                                {supportMaterials.map((material, index) => (
-                                    <div
-                                      key={index}
-                                      className="flex items-center justify-between p-3 sm:p-4 bg-gray-900 rounded-lg border border-gray-700"
-                                    >
-                                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
-                                        <span className="text-sm sm:text-base text-white truncate">{material.name}</span>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSupportMaterials(supportMaterials.filter((_, i) => i !== index));
-                                      }}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    >
-                                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                            {/* Seção: O Que Você Vai Aprender (Benefícios) */}
-                            <div className="space-y-4 sm:space-y-6 border-t border-gray-700 pt-6 sm:pt-8">
-                              <div className="border-b border-gray-700 pb-4 sm:pb-5">
-                                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">O Que Você Vai Aprender (Benefícios)</h3>
-                                <p className="text-sm sm:text-base text-gray-400 mt-2">Adicione os principais benefícios e aprendizados do curso</p>
-                              </div>
-
-                              <div className="space-y-3 sm:space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
-                                  <div className="sm:col-span-5">
-                                <Input
-                                  placeholder="Título do benefício"
-                                  value={benefitTitle}
-                                  onChange={(e) => setBenefitTitle(e.target.value)}
-                                      className="text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                  </div>
-                                  <div className="sm:col-span-5">
-                                    <Input
-                                  placeholder="Descrição do benefício"
-                                  value={benefitDescription}
-                                  onChange={(e) => setBenefitDescription(e.target.value)}
-                                      className="text-sm sm:text-base bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                                  </div>
-                                  <div className="sm:col-span-2">
-                                  <select
-                                    value={benefitIcon}
-                                    onChange={(e) => setBenefitIcon(e.target.value)}
-                                      className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm sm:text-base"
-                                    style={{ colorScheme: 'dark' }}
-                                  >
-                                    <option value="Heart" className="bg-gray-700 text-white">Coração</option>
-                                    <option value="Brain" className="bg-gray-700 text-white">Cérebro</option>
-                                      <option value="Award" className="bg-gray-700 text-white">Troféu</option>
-                                      <option value="Target" className="bg-gray-700 text-white">Alvo</option>
-                                      <option value="Sparkles" className="bg-gray-700 text-white">Estrela</option>
-                                      <option value="CheckCircle2" className="bg-gray-700 text-white">Check</option>
-                                  </select>
-                                  </div>
-                                </div>
-                                  <Button
-                                    type="button"
-                                  variant="outline"
-                                    onClick={() => {
-                                    if (benefitTitle.trim()) {
-                                      setBenefits([...benefits, { icon: benefitIcon || 'Heart', title: benefitTitle, description: benefitDescription }]);
-                                      setBenefitTitle('');
-                                      setBenefitDescription('');
-                                      setBenefitIcon('Heart');
+                                <button
+                                  type="button"
+                                  onClick={() => document.getElementById("materialUpload")?.click()}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                  onDrop={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const files = e.dataTransfer.files;
+                                    if (!files?.length) return;
+                                    for (const file of Array.from(files)) {
+                                      if (file.size > 10 * 1024 * 1024) {
+                                        toast.error(`${file.name} excede 10MB`);
+                                        continue;
+                                      }
+                                      try {
+                                        const url = await apiClient.uploadDocument(file);
+                                        setSupportMaterials((prev) => [...prev, { name: file.name, url }]);
+                                        toast.success(`${file.name} enviado com sucesso!`);
+                                      } catch (error: any) {
+                                        toast.error(`Erro ao enviar ${file.name}: ${error.message}`);
+                                      }
                                     }
                                   }}
-                                  className="w-full sm:w-auto bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
+                                  className="w-full rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-6 text-center transition-colors hover:border-blue-400/40 hover:bg-blue-500/5"
                                 >
-                                  <Plus className="w-4 h-4 mr-2" />
-                                  Adicionar Benefício
-                                  </Button>
-                              </div>
+                                  <span className="flex flex-col items-center gap-2">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-400/20">
+                                      <Upload className="w-5 h-5 text-blue-400" />
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-200">
+                                      Arraste arquivos aqui ou selecione
+                                    </span>
+                                    <span className="text-xs text-gray-500">PDF, DOC, DOCX, XLS, XLSX · até 10&nbsp;MB</span>
+                                  </span>
+                                </button>
 
-                              {benefits.length > 0 && (
-                                <div className="space-y-2">
-                                  {benefits.map((benefit, index) => {
-                                    const IconComponent = (LucideIcons as any)[benefit.icon] || Heart;
-                                    return (
-                                      <div
+                                {supportMaterials.length > 0 && (
+                                  <ul className="space-y-2">
+                                    {supportMaterials.map((material, index) => (
+                                      <li
                                         key={index}
-                                        className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-900 rounded-lg border border-gray-700"
+                                        className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#0b1220]/80 px-3 py-2.5"
                                       >
-                                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-sm sm:text-base font-semibold text-white">{benefit.title}</p>
-                                          {benefit.description && (
-                                            <p className="text-xs sm:text-sm text-gray-400 mt-1">{benefit.description}</p>
-                                          )}
-                                        </div>
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10">
+                                          <FileText className="w-4 h-4 text-blue-300" />
+                                        </span>
+                                        <span className="flex-1 min-w-0 text-sm text-white truncate">
+                                          {material.name}
+                                        </span>
                                         <Button
                                           type="button"
                                           variant="ghost"
                                           size="sm"
                                           onClick={() => {
-                                            setBenefits(benefits.filter((_, i) => i !== index));
+                                            setSupportMaterials(supportMaterials.filter((_, i) => i !== index));
                                           }}
-                                          className="text-red-400 hover:text-red-500 hover:bg-red-900/20"
+                                          className="shrink-0 text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
                                         >
-                                          <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                          <X className="w-4 h-4" />
                                         </Button>
-                                      </div>
-                                    );
-                                  })}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </section>
+
+                            {/* Benefícios */}
+                            <section className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden">
+                              <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-400/20">
+                                  <Sparkles className="w-4 h-4 text-blue-300" />
                                 </div>
-                              )}
-                            </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-white">O que você vai aprender</p>
+                                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-gray-400">
+                                      {benefits.length}{" "}
+                                      {benefits.length === 1 ? "benefício" : "benefícios"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Cards de benefícios na página do curso
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="p-4 sm:p-5 space-y-4">
+                                <div className="rounded-lg border border-white/10 bg-[#0b1220]/60 p-3 sm:p-4 space-y-3">
+                                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div className="sm:col-span-5 space-y-1.5">
+                                      <Label className="text-xs text-gray-500">Título</Label>
+                                      <Input
+                                        placeholder="Ex.: Clareza emocional"
+                                        value={benefitTitle}
+                                        onChange={(e) => setBenefitTitle(e.target.value)}
+                                        className="h-10 text-sm bg-[#0a1020] border-white/10 text-white placeholder-gray-500"
+                                      />
+                                    </div>
+                                    <div className="sm:col-span-5 space-y-1.5">
+                                      <Label className="text-xs text-gray-500">Descrição</Label>
+                                      <Input
+                                        placeholder="Breve explicação do aprendizado"
+                                        value={benefitDescription}
+                                        onChange={(e) => setBenefitDescription(e.target.value)}
+                                        className="h-10 text-sm bg-[#0a1020] border-white/10 text-white placeholder-gray-500"
+                                      />
+                                    </div>
+                                    <div className="sm:col-span-2 space-y-1.5">
+                                      <Label className="text-xs text-gray-500">Ícone</Label>
+                                      <select
+                                        value={benefitIcon}
+                                        onChange={(e) => setBenefitIcon(e.target.value)}
+                                        className="w-full h-10 px-2 rounded-md border border-white/10 bg-[#0a1020] text-white text-sm"
+                                        style={{ colorScheme: "dark" }}
+                                      >
+                                        <option value="Heart">Coração</option>
+                                        <option value="Brain">Cérebro</option>
+                                        <option value="Award">Troféu</option>
+                                        <option value="Target">Alvo</option>
+                                        <option value="Sparkles">Estrela</option>
+                                        <option value="CheckCircle2">Check</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    onClick={() => {
+                                      if (benefitTitle.trim()) {
+                                        setBenefits([
+                                          ...benefits,
+                                          {
+                                            icon: benefitIcon || "Heart",
+                                            title: benefitTitle,
+                                            description: benefitDescription,
+                                          },
+                                        ]);
+                                        setBenefitTitle("");
+                                        setBenefitDescription("");
+                                        setBenefitIcon("Heart");
+                                      }
+                                    }}
+                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white"
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Adicionar benefício
+                                  </Button>
+                                </div>
+
+                                {benefits.length > 0 ? (
+                                  <ul className="space-y-2">
+                                    {benefits.map((benefit, index) => {
+                                      const IconComponent = (LucideIcons as any)[benefit.icon] || Heart;
+                                      return (
+                                        <li
+                                          key={index}
+                                          className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#0b1220]/80 px-3 py-3"
+                                        >
+                                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 ring-1 ring-blue-400/15">
+                                            <IconComponent className="w-4 h-4 text-blue-300" />
+                                          </span>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-white truncate">{benefit.title}</p>
+                                            {benefit.description && (
+                                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                                {benefit.description}
+                                              </p>
+                                            )}
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setBenefits(benefits.filter((_, i) => i !== index));
+                                            }}
+                                            className="shrink-0 text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </Button>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                ) : (
+                                  <p className="text-center text-xs text-gray-500 py-2">
+                                    Nenhum benefício adicionado ainda
+                                  </p>
+                                )}
+                              </div>
+                            </section>
                           </div>
                         </>
                       )}
 
                       {currentTab === "modules" && (
                         <>
-                          {/* Seção: Módulos e Aulas */}
-                          <div className="space-y-6 sm:space-y-8">
-                            <div className="border-b border-gray-700 pb-4 sm:pb-5">
-                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">Módulos e Aulas</h3>
-                              <p className="text-sm sm:text-base text-gray-400 mt-2">Organize o conteúdo em módulos e aulas</p>
+                          <div className="space-y-5">
+                            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 border-b border-white/10 pb-4">
+                              <div>
+                                <h3 className="text-lg sm:text-xl font-semibold text-white tracking-tight">
+                                  Estrutura do curso
+                                </h3>
+                                <p className="text-sm text-gray-400 mt-1">
+                                  Organize módulos e aulas. Cada aula precisa de um vídeo.
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
+                                  <Layers className="w-3.5 h-3.5 text-blue-400" />
+                                  {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
+                                  <PlayCircle className="w-3.5 h-3.5 text-blue-400" />
+                                  {modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0)}{" "}
+                                  {modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) === 1 ? "aula" : "aulas"}
+                                </span>
+                              </div>
                             </div>
 
-                            <div className="space-y-4 sm:space-y-6">
+                            {modules.length === 0 && (
+                              <div className="rounded-xl border border-dashed border-white/15 bg-[#0b1220]/70 px-6 py-12 text-center">
+                                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/20">
+                                  <BookOpen className="w-6 h-6 text-blue-400" />
+                                </div>
+                                <p className="text-white font-medium">Nenhum módulo ainda</p>
+                                <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">
+                                  Comece criando o primeiro módulo e depois adicione as aulas com vídeo.
+                                </p>
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    setModules([{ title: "", lessons: [{ title: "", duration: "", videoUrl: "" }], duration: "" }]);
+                                  }}
+                                  className="mt-5 bg-blue-600 hover:bg-blue-500 text-white"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Criar primeiro módulo
+                                </Button>
+                              </div>
+                            )}
+
+                            <div className="space-y-4">
                               {modules.map((module, moduleIndex) => (
-                                <div key={moduleIndex} className="border border-gray-700 rounded-lg p-5 sm:p-6 lg:p-8 bg-gray-900">
-                                  <div className="flex items-center justify-between mb-4 sm:mb-5">
-                                    <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-white">Módulo {moduleIndex + 1}</h4>
-                            <Button
-                              type="button"
-                                      variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                        const newModules = modules.filter((_, i) => i !== moduleIndex);
-                                        setModules(newModules);
-                              }}
-                                      className="h-10 sm:h-11 w-10 sm:w-11 p-0"
-                            >
-                                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </Button>
-                          </div>
-
-                                  <div className="space-y-4 sm:space-y-5">
-                                            <Input
-                                      placeholder="Título do módulo"
-                                              value={module.title}
-                                              onChange={(e) => {
-                                                const newModules = [...modules];
-                                                newModules[moduleIndex].title = e.target.value;
-                                                setModules(newModules);
-                                              }}
-                                      className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-
-                                    <div className="space-y-4 sm:space-y-5">
-                                          {module.lessons.map((lesson, lessonIndex) => (
-                                        <div key={lessonIndex} className="p-4 bg-gray-800 rounded-lg border border-gray-700 space-y-3">
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    <Input
-                                              placeholder="Título da aula"
-                                                      value={lesson.title}
-                                                      onChange={(e) => {
-                                                        const newModules = [...modules];
-                                                        newModules[moduleIndex].lessons[lessonIndex].title = e.target.value;
-                                                        setModules(newModules);
-                                                      }}
-                                              className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                            />
-                                                      <Input
-                                              placeholder="Duração (ex: 10min)"
-                                                        value={lesson.duration}
-                                                        onChange={(e) => {
-                                                          const newModules = [...modules];
-                                                          newModules[moduleIndex].lessons[lessonIndex].duration = e.target.value;
-                                                          setModules(newModules);
-                                                        }}
-                                              className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                                      />
-                                                    </div>
-
-                                          <div className="space-y-2">
-                                            <Label className="text-sm sm:text-base font-medium text-gray-300">Vídeo da Aula <span className="text-red-500">*</span></Label>
-                                                      <div className="space-y-2">
-                                                        <input
-                                                          type="file"
-                                                          id={`lesson-video-${moduleIndex}-${lessonIndex}`}
-                                                          accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
-                                                          onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                              handleLessonVideoUpload(file, moduleIndex, lessonIndex);
-                                                            }
-                                                          }}
-                                                          className="hidden"
-                                                        />
-                                                        <Button
-                                                          type="button"
-                                                          variant="outline"
-                                                          size="sm"
-                                                          onClick={() => document.getElementById(`lesson-video-${moduleIndex}-${lessonIndex}`)?.click()}
-                                                className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                                                          disabled={lesson.videoUrl === 'uploading...'}
-                                                        >
-                                                          {lesson.videoUrl === 'uploading...' ? (
-                                                            <>
-                                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                                              Enviando...
-                                                            </>
-                                                          ) : (
-                                                            <>
-                                                    <Upload className="w-5 h-5 mr-2" />
-                                                    {lesson.videoUrl && lesson.videoUrl !== 'uploading...' ? 'Trocar Vídeo' : 'Selecionar Vídeo'}
-                                                            </>
-                                                          )}
-                                                        </Button>
-                                                        {lesson.videoUrl && lesson.videoUrl !== 'uploading...' && (
-                                                          <div className="mt-2 rounded-lg border border-gray-600 bg-black overflow-hidden">
-                                                            <video
-                                                              src={lesson.videoUrl}
-                                                              controls
-                                                              playsInline
-                                                              preload="metadata"
-                                                              className="w-full aspect-video max-h-64 object-contain bg-black"
-                                                            />
-                                                            <p className="text-xs text-gray-400 px-2 py-1.5 bg-gray-900">Vídeo atual</p>
-                                                          </div>
-                                                        )}
-                                                        {lesson.videoUrl === 'uploading...' && (
-                                                <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)', borderColor: 'var(--theme-primary-light)' }}>
-                                                  <p className="text-sm flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                              Enviando vídeo...
-                                                            </p>
-                                                          </div>
-                                                        )}
-                                              {(!lesson.videoUrl || lesson.videoUrl.trim() === "") && lesson.videoUrl !== 'uploading...' && (
-                                                        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5">
-                                                          <span className="font-semibold">⚠️</span> Vídeo da aula é obrigatório
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  </div>
-
-                                          <div className="flex justify-end pt-2 border-t border-gray-700">
-                                                <Button
-                                                  type="button"
-                                              variant="destructive"
-                                                  size="sm"
-                                                  onClick={() => {
-                                                    const newModules = [...modules];
-                                                newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter((_, i) => i !== lessonIndex);
-                                                    setModules(newModules);
-                                                  }}
-                                              className="h-10 sm:h-11 text-sm sm:text-base bg-red-600 hover:bg-red-700 text-white"
-                                                >
-                                              <Trash2 className="w-4 h-4 mr-2" />
-                                              Remover Aula
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          ))}
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
+                                <div
+                                  key={moduleIndex}
+                                  className="rounded-xl border border-white/10 bg-gradient-to-b from-[#121a2b] to-[#0d1422] overflow-hidden shadow-sm"
+                                >
+                                  <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-sm font-semibold text-blue-300 ring-1 ring-blue-400/20">
+                                      {moduleIndex + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-1.5">
+                                      <Label className="text-[11px] uppercase tracking-wider text-gray-500">
+                                        Título do módulo
+                                      </Label>
+                                      <Input
+                                        placeholder="Ex.: Identidade, Fundamentos, Prática..."
+                                        value={module.title}
+                                        onChange={(e) => {
                                           const newModules = [...modules];
-                                          newModules[moduleIndex].lessons.push({ title: "", duration: "", videoUrl: "" });
+                                          newModules[moduleIndex].title = e.target.value;
                                           setModules(newModules);
                                         }}
-                                        className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                                      >
-                                        <Plus className="w-5 h-5 mr-2" />
-                                        Adicionar Aula
-                                      </Button>
-                                        </div>
+                                        className="h-11 bg-[#0b1220] border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                                      />
                                     </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      title="Remover módulo"
+                                      onClick={() => {
+                                        setModules(modules.filter((_, i) => i !== moduleIndex));
+                                      }}
+                                      className="shrink-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10 h-9 w-9 p-0"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+
+                                  <div className="px-4 sm:px-5 py-4 space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                                        Aulas deste módulo
+                                      </p>
+                                      <span className="text-xs text-gray-500">
+                                        {module.lessons.length}{" "}
+                                        {module.lessons.length === 1 ? "aula" : "aulas"}
+                                      </span>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                      {module.lessons.map((lesson, lessonIndex) => {
+                                        const hasVideo =
+                                          !!lesson.videoUrl &&
+                                          lesson.videoUrl !== "uploading..." &&
+                                          lesson.videoUrl.trim() !== "";
+                                        const uploading = lesson.videoUrl === "uploading...";
+
+                                        return (
+                                          <div
+                                            key={lessonIndex}
+                                            className="rounded-lg border border-white/10 bg-[#0b1220]/80 overflow-hidden"
+                                          >
+                                            <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 border-b border-white/5 bg-white/[0.015]">
+                                              <div className="flex items-center gap-2 min-w-0">
+                                                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-white/5 px-1.5 text-[11px] font-semibold text-gray-300 ring-1 ring-white/10">
+                                                  {moduleIndex + 1}.{lessonIndex + 1}
+                                                </span>
+                                                <span className="text-sm text-gray-300 truncate">
+                                                  {lesson.title?.trim() || "Nova aula"}
+                                                </span>
+                                                {hasVideo ? (
+                                                  <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/20">
+                                                    <Film className="w-3 h-3" />
+                                                    Vídeo
+                                                  </span>
+                                                ) : (
+                                                  <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400 ring-1 ring-amber-500/20">
+                                                    Sem vídeo
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                title="Remover aula"
+                                                onClick={() => {
+                                                  const newModules = [...modules];
+                                                  newModules[moduleIndex].lessons =
+                                                    newModules[moduleIndex].lessons.filter(
+                                                      (_, i) => i !== lessonIndex
+                                                    );
+                                                  setModules(newModules);
+                                                }}
+                                                className="shrink-0 text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-8 px-2"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </div>
+
+                                            <div className="p-3 sm:p-4 space-y-3">
+                                              <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-3">
+                                                <div className="space-y-1.5">
+                                                  <Label className="text-xs text-gray-500">Título da aula</Label>
+                                                  <Input
+                                                    placeholder="Ex.: Por que profissionais de sucesso se sentem vazios"
+                                                    value={lesson.title}
+                                                    onChange={(e) => {
+                                                      const newModules = [...modules];
+                                                      newModules[moduleIndex].lessons[lessonIndex].title =
+                                                        e.target.value;
+                                                      setModules(newModules);
+                                                    }}
+                                                    className="h-10 bg-[#0a1020] border-white/10 text-white placeholder-gray-500"
+                                                  />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                  <Label className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    Duração
+                                                  </Label>
+                                                  <Input
+                                                    placeholder="14:35"
+                                                    value={lesson.duration}
+                                                    onChange={(e) => {
+                                                      const newModules = [...modules];
+                                                      newModules[moduleIndex].lessons[
+                                                        lessonIndex
+                                                      ].duration = e.target.value;
+                                                      setModules(newModules);
+                                                    }}
+                                                    className="h-10 bg-[#0a1020] border-white/10 text-white placeholder-gray-500"
+                                                  />
+                                                </div>
+                                              </div>
+
+                                              <div className="space-y-2">
+                                                <Label className="text-xs text-gray-500">
+                                                  Vídeo da aula <span className="text-red-400">*</span>
+                                                </Label>
+                                                <input
+                                                  type="file"
+                                                  id={`lesson-video-${moduleIndex}-${lessonIndex}`}
+                                                  accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                                                  onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      handleLessonVideoUpload(
+                                                        file,
+                                                        moduleIndex,
+                                                        lessonIndex
+                                                      );
+                                                    }
+                                                  }}
+                                                  className="hidden"
+                                                />
+
+                                                {hasVideo ? (
+                                                  <div className="overflow-hidden rounded-lg border border-white/10 bg-black">
+                                                    <video
+                                                      src={lesson.videoUrl}
+                                                      controls
+                                                      playsInline
+                                                      preload="metadata"
+                                                      className="w-full aspect-video max-h-56 object-contain bg-black"
+                                                    />
+                                                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#0a1020] border-t border-white/5">
+                                                      <span className="text-[11px] text-gray-500 truncate">
+                                                        Preview da aula
+                                                      </span>
+                                                      <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={uploading}
+                                                        onClick={() =>
+                                                          document
+                                                            .getElementById(
+                                                              `lesson-video-${moduleIndex}-${lessonIndex}`
+                                                            )
+                                                            ?.click()
+                                                        }
+                                                        className="h-8 text-xs border-white/15 bg-white/5 text-gray-200 hover:bg-white/10"
+                                                      >
+                                                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                                                        Trocar vídeo
+                                                      </Button>
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <button
+                                                    type="button"
+                                                    disabled={uploading}
+                                                    onClick={() =>
+                                                      document
+                                                        .getElementById(
+                                                          `lesson-video-${moduleIndex}-${lessonIndex}`
+                                                        )
+                                                        ?.click()
+                                                    }
+                                                    className="w-full rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-8 text-center transition-colors hover:border-blue-400/40 hover:bg-blue-500/5 disabled:opacity-60"
+                                                  >
+                                                    {uploading ? (
+                                                      <span className="inline-flex items-center gap-2 text-sm text-blue-300">
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        Enviando vídeo…
+                                                      </span>
+                                                    ) : (
+                                                      <span className="flex flex-col items-center gap-2">
+                                                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-400/20">
+                                                          <Film className="w-5 h-5 text-blue-400" />
+                                                        </span>
+                                                        <span className="text-sm font-medium text-gray-200">
+                                                          Selecionar vídeo da aula
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">
+                                                          MP4, WebM ou MOV
+                                                        </span>
+                                                      </span>
+                                                    )}
+                                                  </button>
+                                                )}
+
+                                                {!hasVideo && !uploading && (
+                                                  <p className="flex items-center gap-1.5 text-xs text-amber-400/90">
+                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                    Vídeo obrigatório para salvar esta aula
+                                                  </p>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newModules = [...modules];
+                                        newModules[moduleIndex].lessons.push({
+                                          title: "",
+                                          duration: "",
+                                          videoUrl: "",
+                                        });
+                                        setModules(newModules);
+                                      }}
+                                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 py-2.5 text-sm text-gray-400 transition-colors hover:border-blue-400/35 hover:text-blue-300 hover:bg-blue-500/5"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                      Adicionar aula
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
 
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  setModules([...modules, { title: "", lessons: [{ title: "", duration: "", videoUrl: "" }], duration: "" }]);
-                                }}
-                                className="w-full h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                              >
-                                <Plus className="w-5 h-5 mr-2" />
-                                Adicionar Módulo
-                              </Button>
+                              {modules.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setModules([
+                                      ...modules,
+                                      {
+                                        title: "",
+                                        lessons: [{ title: "", duration: "", videoUrl: "" }],
+                                        duration: "",
+                                      },
+                                    ]);
+                                  }}
+                                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-400/30 bg-blue-500/5 py-3.5 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/10 hover:border-blue-400/50"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Adicionar módulo
+                                </button>
+                              )}
                             </div>
-                        </div>
+                          </div>
                         </>
                       )}
                     </div>
@@ -4258,355 +4565,423 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       {/* Courses View */}
       {mainView === "courses" && (
-        <section className="container mx-auto px-4 py-12">
-                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-            <h2 className="text-2xl font-bold mb-2 text-white">Gerenciar Cursos</h2>
-            <p className="text-gray-400">
-              Edite ou exclua os cursos existentes
-            </p>
-                  </div>
+        <section className="w-full max-w-none py-0">
+          <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 bg-[#0a1020] shadow-2xl shadow-black/40">
+            {/* Atmosphere */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(ellipse 80% 50% at 10% -10%, rgba(59,130,246,0.18), transparent 55%), radial-gradient(ellipse 50% 40% at 90% 0%, rgba(14,165,233,0.08), transparent 45%), linear-gradient(180deg, #121a2b 0%, #0a1020 38%, #080d18 100%)",
+              }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-[0.035]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
+                backgroundSize: "48px 48px",
+                maskImage: "linear-gradient(180deg, black 0%, transparent 70%)",
+              }}
+            />
+
+            <div className="relative">
+              {/* Header band */}
+              <div className="flex flex-col gap-5 border-b border-white/10 px-5 py-6 sm:flex-row sm:items-end sm:justify-between sm:px-8 sm:py-8">
+                <div className="min-w-0 max-w-2xl">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-blue-300/80 mb-2">
+                    Catálogo
+                  </p>
+                  <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+                    Gerenciar cursos
+                  </h2>
+                  <p className="mt-2 text-sm sm:text-[15px] text-gray-400 leading-relaxed">
+                    Catálogo da plataforma — edição, organização e visão dos cursos publicados.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:items-end gap-3 shrink-0">
+                  {courses.length > 0 && (
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-gray-300 tabular-nums">
+                        <span className="text-white font-medium">{courses.length}</span>{" "}
+                        {courses.length === 1 ? "curso" : "cursos"}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-gray-300 tabular-nums">
+                        <span className="text-white font-medium">{filteredAndSortedCourses.length}</span>{" "}
+                        na lista
+                      </span>
+                    </div>
+                  )}
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                       <Button
                         size="lg"
-                        className="text-white w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50"
                         onClick={handleNewCourse}
                       >
                         <Plus className="w-5 h-5 mr-2" />
-                        Novo Curso
+                        Novo curso
                       </Button>
                     </DialogTrigger>
                   </Dialog>
-          </div>
+                </div>
+              </div>
 
-                {/* Busca, Filtros e Ordenação */}
-                {courses.length > 0 && (
-                  <Card className="mb-6 bg-gray-800 border-gray-700">
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="space-y-4">
-                        {/* Busca */}
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                          <Input
-                            type="text"
-                            placeholder="Buscar curso por nome..."
-                            value={courseSearch}
-                            onChange={(e) => setCourseSearch(e.target.value)}
-                            className="pl-10 h-10 sm:h-11 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                          />
-                        </div>
-
-                        {/* Filtros e Ordenação */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {/* Filtro por Categoria */}
-                          <div>
-                            <Label className="text-sm font-medium mb-2 block text-white">Categoria</Label>
-                            <select
-                              value={courseCategoryFilter}
-                              onChange={(e) => setCourseCategoryFilter(e.target.value)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="all" className="bg-gray-700">Todas as categorias</option>
-                              {courseCategories.map(cat => (
-                                <option key={cat} value={cat} className="bg-gray-700">{cat}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Ordenar por */}
-                          <div>
-                            <Label className="text-sm font-medium mb-2 block text-white">Ordenar por</Label>
-                            <select
-                              value={courseSortBy}
-                              onChange={(e) => setCourseSortBy(e.target.value as any)}
-                              className="w-full h-10 sm:h-11 px-3 rounded-md border border-gray-600 bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="name" className="bg-gray-700">Nome</option>
-                              <option value="price" className="bg-gray-700">Preço</option>
-                              <option value="students" className="bg-gray-700">Alunos</option>
-                              <option value="rating" className="bg-gray-700">Avaliação</option>
-                              <option value="sales" className="bg-gray-700">Vendas</option>
-                              <option value="revenue" className="bg-gray-700">Receita</option>
-                            </select>
-                          </div>
-
-                          {/* Ordem */}
-                          <div>
-                            <Label className="text-sm font-medium mb-2 block text-white">Ordem</Label>
-                            <Button
-                              variant="outline"
-                              onClick={() => setCourseSortOrder(courseSortOrder === "asc" ? "desc" : "asc")}
-                              className="w-full h-10 sm:h-11 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
-                            >
-                              <ArrowUpDown className="w-4 h-4 mr-2" />
-                              {courseSortOrder === "asc" ? "Crescente" : "Decrescente"}
-                            </Button>
-                          </div>
-
-                          {/* Visualização */}
-                          <div>
-                            <Label className="text-sm font-medium mb-2 block text-white">Visualização</Label>
-                            <div className="flex gap-2">
-                              <Button
-                                variant={courseViewMode === "cards" ? "default" : "outline"}
-                                onClick={() => setCourseViewMode("cards")}
-                                className={`flex-1 h-10 sm:h-11 ${
-                                  courseViewMode === "cards" 
-                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
-                                }`}
-                              >
-                                <Grid3x3 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant={courseViewMode === "table" ? "default" : "outline"}
-                                onClick={() => setCourseViewMode("table")}
-                                className={`flex-1 h-10 sm:h-11 ${
-                                  courseViewMode === "table" 
-                                    ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                                    : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
-                                }`}
-                              >
-                                <List className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Contador de resultados */}
-                        <div className="text-sm text-gray-400">
-                          Mostrando {filteredAndSortedCourses.length} de {courses.length} cursos
-                        </div>
+              {/* Toolbar */}
+              {courses.length > 0 && (
+                <div className="border-b border-white/10 bg-black/20 px-5 py-4 sm:px-8">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <div className="relative flex-1 min-w-0">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                      <Input
+                        type="text"
+                        placeholder="Buscar por nome..."
+                        value={courseSearch}
+                        onChange={(e) => setCourseSearch(e.target.value)}
+                        className="pl-10 h-10 text-sm bg-[#0b1220]/80 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500/40"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={courseCategoryFilter}
+                        onChange={(e) => setCourseCategoryFilter(e.target.value)}
+                        aria-label="Categoria"
+                        className="h-10 min-w-[150px] px-3 rounded-lg border border-white/10 bg-[#0b1220]/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        style={{ colorScheme: "dark" }}
+                      >
+                        <option value="all">Todas categorias</option>
+                        {courseCategories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={courseSortBy}
+                        onChange={(e) => setCourseSortBy(e.target.value as any)}
+                        aria-label="Ordenar por"
+                        className="h-10 min-w-[130px] px-3 rounded-lg border border-white/10 bg-[#0b1220]/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        style={{ colorScheme: "dark" }}
+                      >
+                        <option value="name">Nome</option>
+                        <option value="price">Preço</option>
+                        <option value="students">Alunos</option>
+                        <option value="rating">Avaliação</option>
+                        <option value="sales">Vendas</option>
+                        <option value="revenue">Receita</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setCourseSortOrder(courseSortOrder === "asc" ? "desc" : "asc")}
+                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-[#0b1220]/80 px-3 text-sm text-gray-200 hover:bg-white/5 transition-colors"
+                      >
+                        <ArrowUpDown className="w-3.5 h-3.5 text-blue-400" />
+                        {courseSortOrder === "asc" ? "A–Z" : "Z–A"}
+                      </button>
+                      <div className="flex h-10 rounded-lg border border-white/10 bg-[#0b1220]/80 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setCourseViewMode("cards")}
+                          className={`flex w-10 items-center justify-center rounded-md transition-colors ${
+                            courseViewMode === "cards"
+                              ? "bg-white text-[#0b1220]"
+                              : "text-gray-400 hover:text-white"
+                          }`}
+                          aria-label="Ver em cards"
+                        >
+                          <Grid3x3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCourseViewMode("table")}
+                          className={`flex w-10 items-center justify-center rounded-md transition-colors ${
+                            courseViewMode === "table"
+                              ? "bg-white text-[#0b1220]"
+                              : "text-gray-400 hover:text-white"
+                          }`}
+                          aria-label="Ver em lista"
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {courses.length === 0 ? (
-            <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="py-20 text-center">
-                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2 text-white">Nenhum curso cadastrado</h3>
-                <p className="text-gray-400 mb-6">
-                  Crie seu primeiro curso para começar
-                </p>
-                      <Button onClick={handleNewCourse} style={{ backgroundColor: 'var(--theme-primary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-dark)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
-                      >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Criar Primeiro Curso
-                </Button>
-              </CardContent>
-            </Card>
+              {/* Body */}
+              <div className="px-5 py-6 sm:px-8 sm:py-8">
+                {courses.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-20 text-center">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-400/20">
+                      <BookOpen className="w-8 h-8 text-blue-300" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white mb-2">Catálogo vazio</h3>
+                    <p className="text-sm text-gray-400 mb-7 max-w-md mx-auto leading-relaxed">
+                      Quando houver cursos, eles aparecem aqui em lista editorial — com capa, preço e ações em um só painel.
+                    </p>
+                    <Button onClick={handleNewCourse} className="bg-blue-600 hover:bg-blue-500 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Criar primeiro curso
+                    </Button>
+                  </div>
                 ) : filteredAndSortedCourses.length === 0 ? (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardContent className="py-20 text-center">
-                      <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2 text-white">Nenhum curso encontrado</h3>
-                      <p className="text-gray-400 mb-6">
-                        Tente ajustar os filtros de busca
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setCourseSearch("");
-                          setCourseCategoryFilter("all");
-                        }}
-                        className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                      >
-                        Limpar Filtros
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.02] px-6 py-16 text-center">
+                    <Search className="w-8 h-8 text-gray-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-1">Nada corresponde à busca</h3>
+                    <p className="text-sm text-gray-400 mb-6">Ajuste o nome ou a categoria e tente de novo.</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setCourseSearch("");
+                        setCourseCategoryFilter("all");
+                      }}
+                      className="border-white/15 bg-white/5 text-gray-200 hover:bg-white/10"
+                    >
+                      Limpar filtros
+                    </Button>
+                  </div>
                 ) : courseViewMode === "cards" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
                     {filteredAndSortedCourses.map((course) => {
                       const stats = getCourseStats(course.id);
+                      const priceValue =
+                        typeof course.price === "string" ? parseFloat(course.price) : course.price;
+                      const original =
+                        course.originalPrice != null
+                          ? typeof course.originalPrice === "string"
+                            ? parseFloat(course.originalPrice as any)
+                            : course.originalPrice
+                          : null;
+                      const modulesCount = Array.isArray(course.modules) ? course.modules.length : 0;
+
                       return (
-                        <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-gray-800 border-gray-700">
-                        <div className="w-full h-48 overflow-hidden">
-                        <img
-                          src={course.image}
-                          alt={course.title}
-                            className="w-full h-full object-cover"
-                            style={{ objectPosition: (course as any).imagePosition || "50% 50%" }}
-                        />
-                      </div>
-                        <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-semibold px-2 py-1 rounded inline-block mb-2 bg-blue-600/20 text-blue-300 border border-blue-500/30">
+                        <article
+                          key={course.id}
+                          className="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0d1422]/70 transition-all duration-300 hover:border-blue-400/30 hover:bg-[#111a2e]/90 hover:shadow-xl hover:shadow-blue-950/30"
+                        >
+                          <div className="relative aspect-[16/10] overflow-hidden bg-[#060a14]">
+                            <img
+                              src={course.image}
+                              alt={course.title}
+                              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                              style={{ objectPosition: (course as any).imagePosition || "50% 50%" }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0d1422] via-[#0d1422]/25 to-transparent" />
+                            <span className="absolute left-3 top-3 max-w-[75%] truncate rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
                               {course.category}
                             </span>
-                              <h3 className="text-lg font-bold mt-2 break-words text-white">{course.title}</h3>
-                              <p className="text-sm text-gray-400 mt-1 break-words line-clamp-2">{course.subtitle}</p>
+                            <div className="absolute right-3 bottom-3 text-right">
+                              <p className="text-base font-semibold text-emerald-300 tabular-nums drop-shadow">
+                                R$ {priceValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </p>
+                              {original != null && !Number.isNaN(original) && original > priceValue && (
+                                <p className="text-[11px] text-gray-300/80 line-through tabular-nums">
+                                  R$ {original.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                </p>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-300 mt-auto">
-                            <div className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                              <span className="font-bold text-green-400">R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                              <span className="text-gray-300">{course.duration}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                              <span className="text-gray-300">{course.lessons} aulas</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                              <span className="text-gray-300">{course.students}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-yellow-400">★</span>
-                              <span className="text-gray-300">{course.rating}</span>
-                            </div>
-                          </div>
+                          <div className="flex flex-1 flex-col p-4 sm:p-5">
+                            <h3 className="text-lg font-semibold text-white tracking-tight leading-snug line-clamp-2">
+                              {course.title}
+                            </h3>
+                            <p className="mt-1 text-sm text-gray-400 leading-relaxed line-clamp-2">
+                              {course.subtitle}
+                            </p>
 
-                          {/* Estatísticas do Curso */}
-                          {(stats.sales > 0 || stats.revenue > 0) && (
-                            <div className="mt-3 pt-3 border-t border-gray-700">
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <span className="text-gray-400">Vendas:</span>
-                                  <span className="font-semibold text-white ml-1">{stats.sales}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-400">Receita:</span>
-                                  <span className="font-semibold text-green-400 ml-1">R$ {stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                </div>
+                            <div className="mt-4 grid grid-cols-2 gap-px rounded-xl overflow-hidden border border-white/10 bg-white/10">
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Duração</p>
+                                <p className="mt-0.5 text-sm font-medium text-white">{course.duration}</p>
+                              </div>
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Aulas</p>
+                                <p className="mt-0.5 text-sm font-medium text-white tabular-nums">{course.lessons}</p>
+                              </div>
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Alunos</p>
+                                <p className="mt-0.5 text-sm font-medium text-white tabular-nums">{course.students}</p>
+                              </div>
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Nota</p>
+                                <p className="mt-0.5 text-sm font-medium text-amber-300 tabular-nums inline-flex items-center gap-1">
+                                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                  {course.rating}
+                                </p>
                               </div>
                             </div>
-                          )}
 
-                          <div className="mt-4 pt-4 border-t border-gray-700">
-                            <p className="text-xs text-gray-300 mb-3">
-                              <span className="font-semibold text-white">Instrutor:</span>{" "}
-                              {course.instructor}
-                            </p>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(course)}
-                              className="flex-1 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDelete(course.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="mt-3 mb-1 space-y-1.5 text-xs text-gray-500">
+                              <p className="truncate">
+                                <span className="text-gray-400">Instrutor</span> · {course.instructor}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-1">
+                                {modulesCount > 0 && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Layers className="w-3 h-3 text-blue-400/80" />
+                                    {modulesCount} {modulesCount === 1 ? "módulo" : "módulos"}
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-1">
+                                  <TrendingUp className="w-3 h-3 text-gray-600" />
+                                  {stats.sales} vendas · R${" "}
+                                  {stats.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="mt-auto flex gap-2 pt-5 border-t border-white/10 mt-5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleEdit(course)}
+                                className="flex-1 h-9 bg-blue-600 hover:bg-blue-500 text-white"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Editar
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(course.id)}
+                                className="h-9 w-9 p-0 border-red-500/25 bg-red-500/[0.08] text-red-300 hover:bg-red-500/20"
+                                aria-label={`Excluir ${course.title}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        </CardContent>
-                      </Card>
+                        </article>
                       );
                     })}
-                          </div>
+                  </div>
                 ) : (
-                  /* Visualização em Tabela */
-                  <Card>
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-gray-900 border-b border-gray-700">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Curso</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Categoria</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Preço</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Alunos</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Avaliação</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Vendas</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Receita</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-gray-800 divide-y divide-gray-700">
-                            {filteredAndSortedCourses.map((course) => {
-                              const stats = getCourseStats(course.id);
-                              return (
-                                <tr key={course.id} className="hover:bg-gray-900 transition-colors">
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center gap-3">
+                  <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0d1422]/60">
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[860px]">
+                        <thead>
+                          <tr className="border-b border-white/10 bg-white/[0.03]">
+                            <th className="px-5 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Curso
+                            </th>
+                            <th className="px-4 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Categoria
+                            </th>
+                            <th className="px-4 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Preço
+                            </th>
+                            <th className="px-4 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Alunos
+                            </th>
+                            <th className="px-4 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Nota
+                            </th>
+                            <th className="px-4 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Vendas
+                            </th>
+                            <th className="px-4 py-3.5 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Receita
+                            </th>
+                            <th className="px-5 py-3.5 text-right text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
+                              Ações
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {filteredAndSortedCourses.map((course) => {
+                            const stats = getCourseStats(course.id);
+                            const priceValue =
+                              typeof course.price === "string" ? parseFloat(course.price) : course.price;
+                            return (
+                              <tr key={course.id} className="transition-colors hover:bg-white/[0.03]">
+                                <td className="px-5 py-4">
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
                                       <img
                                         src={course.image}
                                         alt={course.title}
-                                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                                        style={{ objectPosition: (course as any).imagePosition || "50% 50%" }}
+                                        className="h-full w-full object-cover"
+                                        style={{
+                                          objectPosition: (course as any).imagePosition || "50% 50%",
+                                        }}
                                       />
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-white break-words">{course.title}</div>
-                                        <div className="text-sm text-gray-400 truncate">{course.subtitle}</div>
-                          </div>
-                          </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                      {course.category}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <span className="font-semibold text-green-600">
-                                      R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center gap-1">
-                                      <Users className="w-4 h-4 text-gray-400" />
-                                      <span>{course.students}</span>
-                          </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center gap-1">
-                                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                            <span>{course.rating}</span>
-                          </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <span className="font-semibold text-white">{stats.sales}</span>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <span className="font-semibold text-green-600">
-                                      R$ {stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleEdit(course)}
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </Button>
-                                      <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => handleDelete(course.id)}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                        </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-medium text-white truncate max-w-[240px]">
+                                        {course.title}
+                                      </div>
+                                      <div className="text-xs text-gray-500 truncate max-w-[240px] mt-0.5">
+                                        {course.instructor}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-300">
+                                    {course.category}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <span className="text-sm font-medium text-emerald-300 tabular-nums">
+                                    R$ {priceValue.toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 text-sm text-gray-300 tabular-nums">
+                                  {course.students}
+                                </td>
+                                <td className="px-4 py-4">
+                                  <span className="inline-flex items-center gap-1 text-sm text-amber-300 tabular-nums">
+                                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                    {course.rating}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 text-sm text-white tabular-nums">{stats.sales}</td>
+                                <td className="px-4 py-4 text-sm font-medium text-emerald-300 tabular-nums">
+                                  R${" "}
+                                  {stats.revenue.toLocaleString("pt-BR", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </td>
+                                <td className="px-5 py-4 text-right">
+                                  <div className="inline-flex items-center gap-1.5">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleEdit(course)}
+                                      className="h-8 bg-blue-600 hover:bg-blue-500 text-white px-3"
+                                    >
+                                      <Edit className="w-3.5 h-3.5 mr-1.5" />
+                                      Editar
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDelete(course.id)}
+                                      className="h-8 w-8 p-0 border-red-500/25 bg-red-500/[0.08] text-red-300 hover:bg-red-500/20"
+                                      aria-label={`Excluir ${course.title}`}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  </CardContent>
-                </Card>
-          )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
