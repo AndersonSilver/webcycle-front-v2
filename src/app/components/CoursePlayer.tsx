@@ -481,6 +481,9 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
   const getStreamingUrl = (azureUrl: string, lessonId?: string | null): string => {
     // Se já for uma URL do Azure Blob Storage, converter para endpoint de streaming
     if (azureUrl && azureUrl.includes('blob.core.windows.net')) {
+      if (!lessonId) {
+        throw new Error('lessonId obrigatório para streaming protegido');
+      }
       try {
         // Obter token de autenticação
         const sessionData = localStorage.getItem('SESSION');
@@ -493,19 +496,13 @@ export function CoursePlayer({ course, onBack, progress = 0 }: CoursePlayerProps
         // Usar query parameter em vez de path parameter para URLs longas
         const encodedUrl = encodeURIComponent(azureUrl);
         const apiBaseUrl = API_BASE_URL;
-        let streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}`;
+        let streamingUrl = `${apiBaseUrl}/upload/stream?url=${encodedUrl}&lessonId=${encodeURIComponent(lessonId)}`;
         
-        // Adicionar token na URL para autenticação (necessário porque <video> não envia headers)
+        // Token na query (limitação do <video>); mitigações: short JWT + entitlement no backend
         if (token) {
           streamingUrl += `&token=${encodeURIComponent(token)}`;
         }
         
-        // Adicionar lessonId para verificação de acesso
-        if (lessonId) {
-          streamingUrl += `&lessonId=${lessonId}`;
-        }
-        
-        console.log('🔄 Convertendo para streaming URL (com autenticação)');
         return streamingUrl;
       } catch (error) {
         console.error('❌ Erro ao converter URL para streaming:', error);

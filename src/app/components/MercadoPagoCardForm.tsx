@@ -100,7 +100,6 @@ export function MercadoPagoCardForm({
       
       if (tokenMatch && tokenMatch[1]) {
         token = tokenMatch[1];
-        console.log("✅ [MP] Token encontrado via regex:", token);
       } else {
         if (onSubmit) {
           // Passar o objeto completo mesmo sem token para que o handler possa tentar extrair
@@ -111,10 +110,7 @@ export function MercadoPagoCardForm({
     }
     
     if (token.length !== 32) {
-      console.warn("⚠️ [MP] Token não tem 32 caracteres! Tamanho:", token.length);
-      console.warn("⚠️ [MP] Token completo:", token);
-    } else {
-      console.log("✅ [MP] Token válido (32 caracteres)");
+      console.warn("⚠️ [MP] Token de cartão com formato inesperado");
     }
     
     // Criar objeto com token garantido
@@ -122,11 +118,6 @@ export function MercadoPagoCardForm({
       ...param,
       token: token, // Garantir que o token está na propriedade correta
     };
-    
-    console.log("📤 [MP] Enviando dados para processamento:", {
-      ...paymentData,
-      token: paymentData.token ? (paymentData.token.substring(0, 10) + "****" + paymentData.token.substring(paymentData.token.length - 4)) : "NÃO ENCONTRADO",
-    });
     
     if (onSubmit) {
       onSubmit(paymentData);

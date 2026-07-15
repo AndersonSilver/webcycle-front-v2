@@ -1765,7 +1765,24 @@ export default function App() {
         )}
 
         {currentView === "admin" && (
-          <AdminPanel onBack={handleBackToHome} />
+          user?.role === "admin" ? (
+            <AdminPanel onBack={handleBackToHome} />
+          ) : (
+            <div className="min-h-screen flex items-center justify-center px-4">
+              <div className="text-center space-y-4">
+                <h2 className="text-xl font-semibold text-white">Acesso restrito</h2>
+                <p className="text-gray-400 text-sm">Faça login com uma conta administrador.</p>
+                <Button
+                  onClick={() => {
+                    if (!user) setShowLogin(true);
+                    else navigate("/");
+                  }}
+                >
+                  {!user ? "Entrar" : "Voltar ao início"}
+                </Button>
+              </div>
+            </div>
+          )
         )}
 
         {currentView === "image-landing" && (
