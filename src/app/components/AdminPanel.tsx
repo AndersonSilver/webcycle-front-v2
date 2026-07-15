@@ -68,8 +68,10 @@ import {
   Package,
   Images,
   ExternalLink,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import defaultLogoImg from "./laminas/icon.png";
 import {
   LineChart,
   Line,
@@ -93,6 +95,7 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { LANDING_BANNER_DEFAULTS } from "../../constants/landingBannersDefaults";
 import { normalizeLandingBannerLink } from "../../utils/landingBannerLink";
 import { serializeLandingBanners } from "../../utils/landingBannerSnapshot";
+import { notifyHomeContentUpdated } from "../../hooks/useHomeContent";
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -297,9 +300,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [couponToDelete, setCouponToDelete] = useState<Coupon | null>(null);
 
   // Home Content Management
-  const [homeContentTab, setHomeContentTab] = useState<"hero" | "carousel" | "whyChooseUs" | "testimonials" | "newsletter" | "cta">("hero");
+  const [homeContentTab, setHomeContentTab] = useState<"logos" | "hero" | "carousel" | "whyChooseUs" | "testimonials" | "newsletter" | "cta">("logos");
   const [homeContentLoading, setHomeContentLoading] = useState(false);
   const [homeContentSaving, setHomeContentSaving] = useState(false);
+
+  // Branding (logo)
+  const [brandingLogoUrl, setBrandingLogoUrl] = useState("");
+  const [brandingShowBrandName, setBrandingShowBrandName] = useState(true);
+  const [brandingLogoUploading, setBrandingLogoUploading] = useState(false);
 
   // Hero Section
   const [heroBadge, setHeroBadge] = useState("");
@@ -657,13 +665,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
 
     if (mainView === "home-content") {
-      // Apenas carregar conteúdo da home em desenvolvimento
-      if (import.meta.env.DEV) {
       loadHomeContent();
-      } else {
-        // Em produção, redirecionar para dashboard
-        setMainView("dashboard");
-      }
     }
     if (mainView === "products") {
       loadProducts();
@@ -829,6 +831,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       const content = response.content;
 
       // Preencher formulários com dados existentes
+      if (content.branding) {
+        setBrandingLogoUrl(content.branding.logoUrl || "");
+        setBrandingShowBrandName(content.branding.showBrandName !== false);
+      } else {
+        setBrandingLogoUrl("");
+        setBrandingShowBrandName(true);
+      }
+
       if (content.hero) {
         setHeroBadge(content.hero.badge || "");
         setHeroTitle(content.hero.title || "");
@@ -1018,7 +1028,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       const updateData: any = {};
 
-      if (homeContentTab === "hero") {
+      if (homeContentTab === "logos") {
+        updateData.branding = {
+          logoUrl: brandingLogoUrl || "",
+          showBrandName: brandingShowBrandName,
+        };
+      } else if (homeContentTab === "hero") {
         updateData.hero = {
           badge: heroBadge,
           title: heroTitle,
@@ -1073,6 +1088,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       await apiClient.updateHomeContent(updateData);
       toast.success("Conteúdo atualizado com sucesso!");
       await loadHomeContent();
+      notifyHomeContentUpdated();
     } catch (error: any) {
       console.error("Erro ao salvar conteúdo:", error);
       toast.error(error.message || "Erro ao salvar conteúdo");
@@ -2800,7 +2816,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 { id: "newsletter", label: "Newsletter", icon: Mail },
                 { id: "support", label: "Suporte", icon: MessageCircle },
                 { id: "landing", label: "Landing", icon: Images },
-                ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
+                { id: "home-content", label: "Conteúdo", icon: Sparkles },
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = mainView === item.id;
@@ -2852,7 +2868,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               { id: "sale-email", label: "Email de Vendas", icon: Mail },
               { id: "support", label: "Suporte", icon: MessageCircle },
               { id: "landing", label: "Landing", icon: Images },
-              ...(import.meta.env.DEV ? [{ id: "home-content", label: "Conteúdo", icon: Sparkles }] : []),
+              { id: "home-content", label: "Conteúdo", icon: Sparkles },
               { id: "theme", label: "Tema", icon: Palette },
             ].map((item) => {
               const Icon = item.icon;
@@ -8194,25 +8210,28 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </section>
             )}
 
-            {mainView === "home-content" && import.meta.env.DEV && (
-              <section className="container mx-auto px-4 py-6 sm:py-12">
-                <div className="mb-6 sm:mb-8">
-                  <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Conteúdo da Home</h2>
-                  <p className="text-sm sm:text-base text-gray-400">
-                    Edite o conteúdo da página inicial da plataforma
-                  </p>
-    </div>
+            {mainView === "home-content" && (
+              <section className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+                <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Conteúdo da Home</h2>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Personalize a página inicial · alterações por aba
+                    </p>
+                  </div>
+                </div>
 
                 {homeContentLoading ? (
-                  <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+                  <div className="flex items-center justify-center py-24 rounded-2xl border border-white/5 bg-gradient-to-b from-gray-800/80 to-gray-900/80">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
                   </div>
                 ) : (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardContent className="p-4 sm:p-6">
+                  <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-gray-800 to-gray-850 overflow-hidden shadow-2xl shadow-black/40" style={{ background: 'linear-gradient(180deg, #1f2937 0%, #111827 100%)' }}>
                       {/* Tabs */}
-                      <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
+                      <div className="px-2 sm:px-3 pt-2 bg-black/25 border-b border-white/10">
+                        <div className="flex gap-0.5 overflow-x-auto">
                         {[
+                          { id: "logos", label: "Logos", icon: ImageIcon },
                           { id: "hero", label: "Hero", icon: Sparkles },
                           { id: "carousel", label: "Carrossel", icon: Upload },
                           { id: "whyChooseUs", label: "Por Que Escolher", icon: Brain },
@@ -8221,97 +8240,258 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           { id: "cta", label: "CTA Final", icon: ArrowRight },
                         ].map((tab) => {
                           const IconComponent = tab.icon;
+                          const active = homeContentTab === tab.id;
                           return (
                             <button
                               key={tab.id}
+                              type="button"
                               onClick={() => setHomeContentTab(tab.id as any)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
-                                homeContentTab === tab.id
-                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                  : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                              className={`relative flex items-center gap-2 px-3 sm:px-3.5 py-2.5 whitespace-nowrap text-sm font-medium transition-all ${
+                                active
+                                  ? 'text-white'
+                                  : 'text-gray-500 hover:text-gray-300'
                               }`}
                             >
-                              <IconComponent className="w-4 h-4" />
+                              <IconComponent className={`w-3.5 h-3.5 ${active ? 'text-blue-400' : ''}`} />
                               {tab.label}
+                              <span
+                                className={`absolute left-2 right-2 bottom-0 h-[2px] rounded-full transition-opacity ${
+                                  active ? 'bg-blue-500 opacity-100' : 'opacity-0'
+                                }`}
+                              />
                             </button>
                           );
                         })}
+                        </div>
                       </div>
+
+                      <div className="p-5 sm:p-7 min-h-[380px]">
+                      {/* Logos / Branding */}
+                      {homeContentTab === "logos" && (
+                        <div className="space-y-5">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                            <div>
+                              <h3 className="text-base sm:text-lg font-semibold text-white">Identidade visual</h3>
+                              <p className="text-sm text-gray-400 mt-0.5">
+                                Logo única no header e no rodapé do site público.
+                              </p>
+                            </div>
+                            <span
+                              className={`inline-flex self-start items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                                brandingLogoUrl
+                                  ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                                  : 'bg-white/5 text-gray-400 border-white/10'
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${brandingLogoUrl ? 'bg-blue-400' : 'bg-gray-500'}`} />
+                              {brandingLogoUrl ? 'Logo personalizada' : 'Ícone padrão'}
+                            </span>
+                          </div>
+
+                          {/* Browser-style live mock */}
+                          <div className="rounded-xl border border-white/10 overflow-hidden bg-[#0b1220] shadow-inner">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-black/40 border-b border-white/5">
+                              <div className="flex gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+                              </div>
+                              <div className="flex-1 mx-2">
+                                <div className="h-6 rounded-md bg-white/5 border border-white/5 flex items-center px-3">
+                                  <span className="text-[11px] text-gray-500 truncate">culturebuilders.com</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Header mock */}
+                            <div className="px-4 sm:px-6 py-4 border-b border-white/5 bg-slate-900/90 flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {brandingLogoUploading ? (
+                                  <div className="w-11 h-11 flex items-center justify-center shrink-0">
+                                    <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={brandingLogoUrl || defaultLogoImg}
+                                    alt="Preview da logo"
+                                    className="w-11 h-11 object-contain shrink-0"
+                                  />
+                                )}
+                                {brandingShowBrandName && (
+                                  <span className="font-bold text-base sm:text-lg text-white truncate">
+                                    Culture Builders
+                                  </span>
+                                )}
+                              </div>
+                              <div className="hidden sm:flex items-center gap-2 opacity-40">
+                                <div className="w-8 h-8 rounded-full bg-white/10" />
+                                <div className="w-20 h-3 rounded bg-white/10" />
+                              </div>
+                            </div>
+
+                            {/* Page body placeholder */}
+                            <div className="px-4 sm:px-6 py-6 space-y-3 bg-gradient-to-b from-slate-900 to-slate-950">
+                              <div className="h-3 w-2/5 rounded-full bg-white/10" />
+                              <div className="h-3 w-3/5 rounded-full bg-white/[0.06]" />
+                              <div className="h-3 w-1/2 rounded-full bg-white/[0.06]" />
+                              <div className="grid grid-cols-3 gap-3 pt-2">
+                                <div className="h-16 rounded-lg bg-white/[0.04] border border-white/5" />
+                                <div className="h-16 rounded-lg bg-white/[0.04] border border-white/5" />
+                                <div className="h-16 rounded-lg bg-white/[0.04] border border-white/5" />
+                              </div>
+                            </div>
+
+                            {/* Footer mock */}
+                            <div className="px-4 sm:px-6 py-5 border-t border-white/5 bg-slate-950">
+                              <div className="flex items-center gap-2.5">
+                                <img
+                                  src={brandingLogoUrl || defaultLogoImg}
+                                  alt=""
+                                  className="w-9 h-9 object-contain"
+                                />
+                                {brandingShowBrandName && (
+                                  <span className="text-sm font-semibold text-gray-200">Culture Builders</span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-600 mt-3">© Culture Builders · rodapé do site</p>
+                            </div>
+                          </div>
+
+                          {/* Controls row */}
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+                            <input
+                              id="branding-logo-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast.error("A imagem deve ter no máximo 5MB");
+                                  e.target.value = "";
+                                  return;
+                                }
+                                try {
+                                  setBrandingLogoUploading(true);
+                                  const result = await apiClient.uploadImage(file);
+                                  setBrandingLogoUrl(result.url);
+                                  toast.success("Logo enviada com sucesso");
+                                } catch (error: any) {
+                                  console.error("Erro no upload da logo:", error);
+                                  toast.error(error.message || "Erro ao fazer upload da logo");
+                                } finally {
+                                  setBrandingLogoUploading(false);
+                                  e.target.value = "";
+                                }
+                              }}
+                            />
+
+                            <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white">Arquivo da logo</p>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  PNG, JPG ou WebP · até 5MB · alterações aparecem no preview acima
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2 shrink-0">
+                                <Button
+                                  type="button"
+                                  disabled={brandingLogoUploading}
+                                  className="bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/20"
+                                  onClick={() => document.getElementById("branding-logo-upload")?.click()}
+                                >
+                                  {brandingLogoUploading ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4 mr-2" />
+                                  )}
+                                  {brandingLogoUploading
+                                    ? "Enviando..."
+                                    : brandingLogoUrl
+                                      ? "Trocar imagem"
+                                      : "Fazer upload"}
+                                </Button>
+                                {brandingLogoUrl && (
+                                  <Button
+                                    type="button"
+                                    disabled={brandingLogoUploading}
+                                    className="bg-transparent hover:bg-red-500/10 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50"
+                                    onClick={() => setBrandingLogoUrl("")}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Usar padrão
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                              <label
+                                htmlFor="branding-show-name"
+                                className="flex items-center gap-3 cursor-pointer group"
+                              >
+                                <input
+                                  id="branding-show-name"
+                                  type="checkbox"
+                                  checked={brandingShowBrandName}
+                                  onChange={(e) => setBrandingShowBrandName(e.target.checked)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                                />
+                                <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                                  Exibir nome <span className="text-white font-medium">Culture Builders</span> ao lado da logo
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Hero Section */}
                       {homeContentTab === "hero" && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                           <div>
-                            <Label htmlFor="heroBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
-                            <Input
-                              id="heroBadge"
-                              value={heroBadge}
-                              onChange={(e) => setHeroBadge(e.target.value)}
-                              placeholder="🧠 Plataforma de Cursos de Psicologia"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                            <h3 className="text-base sm:text-lg font-semibold text-white">Seção Hero</h3>
+                            <p className="text-sm text-gray-400 mt-0.5">
+                              Título principal e CTAs da primeira dobra da home.
+                            </p>
                           </div>
-                          <div>
-                            <Label htmlFor="heroTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
-                            <Input
-                              id="heroTitle"
-                              value={heroTitle}
-                              onChange={(e) => setHeroTitle(e.target.value)}
-                              placeholder="Transforme Sua Vida com Psicologia Aplicada"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="heroSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
-                            <Textarea
-                              id="heroSubtitle"
-                              value={heroSubtitle}
-                              onChange={(e) => setHeroSubtitle(e.target.value)}
-                              placeholder="Descubra cursos criados por especialistas..."
-                              rows={3}
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
                             <div>
-                              <Label htmlFor="heroPrimaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Texto</Label>
-                              <Input
-                                id="heroPrimaryText"
-                                value={heroPrimaryButtonText}
-                                onChange={(e) => setHeroPrimaryButtonText(e.target.value)}
-                                placeholder="Explorar Cursos"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                              />
+                              <Label htmlFor="heroBadge" className="text-sm font-medium text-gray-300">Badge</Label>
+                              <Input id="heroBadge" value={heroBadge} onChange={(e) => setHeroBadge(e.target.value)} placeholder="🧠 Plataforma de Cursos de Psicologia" className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
                             </div>
                             <div>
-                              <Label htmlFor="heroPrimaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Ação</Label>
-                              <Input
-                                id="heroPrimaryAction"
-                                value={heroPrimaryButtonAction}
-                                onChange={(e) => setHeroPrimaryButtonAction(e.target.value)}
-                                placeholder="explore"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                              />
+                              <Label htmlFor="heroTitle" className="text-sm font-medium text-gray-300">Título</Label>
+                              <Input id="heroTitle" value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} placeholder="Transforme Sua Vida com Psicologia Aplicada" className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
                             </div>
                             <div>
-                              <Label htmlFor="heroSecondaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Texto</Label>
-                              <Input
-                                id="heroSecondaryText"
-                                value={heroSecondaryButtonText}
-                                onChange={(e) => setHeroSecondaryButtonText(e.target.value)}
-                                placeholder="Podcasts"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                              />
+                              <Label htmlFor="heroSubtitle" className="text-sm font-medium text-gray-300">Subtítulo</Label>
+                              <Textarea id="heroSubtitle" value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} placeholder="Descubra cursos criados por especialistas..." rows={3} className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
                             </div>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
                             <div>
-                              <Label htmlFor="heroSecondaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Ação</Label>
-                              <Input
-                                id="heroSecondaryAction"
-                                value={heroSecondaryButtonAction}
-                                onChange={(e) => setHeroSecondaryButtonAction(e.target.value)}
-                                placeholder="podcasts"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                              />
+                              <p className="text-sm font-medium text-white">Botões de ação</p>
+                              <p className="text-xs text-gray-400 mt-0.5">Texto exibido e ação interna (ex.: explore, podcasts)</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="heroPrimaryText" className="text-sm font-medium text-gray-300">Botão primário — texto</Label>
+                                <Input id="heroPrimaryText" value={heroPrimaryButtonText} onChange={(e) => setHeroPrimaryButtonText(e.target.value)} placeholder="Explorar Cursos" className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
+                              </div>
+                              <div>
+                                <Label htmlFor="heroPrimaryAction" className="text-sm font-medium text-gray-300">Botão primário — ação</Label>
+                                <Input id="heroPrimaryAction" value={heroPrimaryButtonAction} onChange={(e) => setHeroPrimaryButtonAction(e.target.value)} placeholder="explore" className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
+                              </div>
+                              <div>
+                                <Label htmlFor="heroSecondaryText" className="text-sm font-medium text-gray-300">Botão secundário — texto</Label>
+                                <Input id="heroSecondaryText" value={heroSecondaryButtonText} onChange={(e) => setHeroSecondaryButtonText(e.target.value)} placeholder="Podcasts" className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
+                              </div>
+                              <div>
+                                <Label htmlFor="heroSecondaryAction" className="text-sm font-medium text-gray-300">Botão secundário — ação</Label>
+                                <Input id="heroSecondaryAction" value={heroSecondaryButtonAction} onChange={(e) => setHeroSecondaryButtonAction(e.target.value)} placeholder="podcasts" className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500" />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -8319,48 +8499,115 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {/* Carousel Section */}
                       {homeContentTab === "carousel" && (
-                        <div className="space-y-6">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-white">Imagens do Carrossel</h3>
+                        <div className="space-y-5">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                            <div>
+                              <h3 className="text-base sm:text-lg font-semibold text-white">Imagens do Carrossel</h3>
+                              <p className="text-sm text-gray-400 mt-0.5">
+                                Fotos exibidas no carrossel da home. PNG, JPG ou WebP até 5MB.
+                              </p>
+                            </div>
                             <Button
                               onClick={() => {
                                 setCarouselImages([...carouselImages, { url: "", alt: "", order: carouselImages.length }]);
                               }}
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 self-start"
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Adicionar Imagem
                             </Button>
                           </div>
-                          <div className="space-y-4">
-                            {carouselImages.map((img, index) => (
-                              <Card key={index} className="p-4 bg-gray-700 border-gray-600">
-                                <div className="space-y-4">
-                                  {/* Upload de Imagem */}
-                                  <div>
-                                    <Label className="text-sm font-medium mb-2 block text-white">Imagem do Carrossel</Label>
-                                    <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors bg-gray-800">
-                                      {carouselImageUploading[index] ? (
-                                        <div className="flex flex-col items-center justify-center">
-                                          <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-2" />
-                                          <p className="text-sm text-gray-300">Enviando imagem...</p>
-                                        </div>
-                                      ) : img.url ? (
-                                        <div className="space-y-3">
-                                          <img src={img.url} alt={img.alt || "Preview"} className="w-full h-48 object-cover rounded-lg mx-auto" />
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              const input = document.createElement('input');
-                                              input.type = 'file';
-                                              input.accept = 'image/*';
-                                              input.onchange = async (e) => {
-                                                const file = (e.target as HTMLInputElement).files?.[0];
+
+                          {carouselImages.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+                              <Images className="w-10 h-10 mx-auto text-gray-500 mb-3" />
+                              <p className="text-sm text-gray-400">Nenhuma imagem no carrossel.</p>
+                              <p className="text-xs text-gray-500 mt-1">Clique em &quot;Adicionar Imagem&quot; para começar.</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {carouselImages.map((img, index) => (
+                                <div key={index} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                                  <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between bg-black/20">
+                                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">#{index + 1}</span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => {
+                                        setCarouselImages(carouselImages.filter((_, i) => i !== index));
+                                        const newUploading = { ...carouselImageUploading };
+                                        delete newUploading[index];
+                                        setCarouselImageUploading(newUploading);
+                                      }}
+                                      className="h-8 bg-transparent hover:bg-red-500/10 text-red-400 border border-red-500/30"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                      Remover
+                                    </Button>
+                                  </div>
+                                  <div className="p-4 sm:p-5 space-y-4">
+                                    <div>
+                                      <Label className="text-sm font-medium text-gray-300">Imagem</Label>
+                                      <div className="mt-1.5 rounded-lg border border-dashed border-white/15 bg-[#0b1220] p-6 text-center hover:border-blue-500/50 transition-colors">
+                                        {carouselImageUploading[index] ? (
+                                          <div className="flex flex-col items-center justify-center">
+                                            <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-2" />
+                                            <p className="text-sm text-gray-400">Enviando imagem...</p>
+                                          </div>
+                                        ) : img.url ? (
+                                          <div className="space-y-3">
+                                            <img src={img.url} alt={img.alt || "Preview"} className="w-full h-48 object-cover rounded-lg mx-auto" />
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              onClick={() => {
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.accept = 'image/*';
+                                                input.onchange = async (e) => {
+                                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                                  if (file) {
+                                                    if (file.size > 5 * 1024 * 1024) {
+                                                      toast.error('A imagem deve ter no máximo 5MB');
+                                                      return;
+                                                    }
+                                                    try {
+                                                      setCarouselImageUploading({ ...carouselImageUploading, [index]: true });
+                                                      const result = await apiClient.uploadImage(file);
+                                                      const newImages = [...carouselImages];
+                                                      newImages[index].url = result.url;
+                                                      setCarouselImages(newImages);
+                                                      toast.success('Imagem enviada com sucesso!');
+                                                    } catch (error: any) {
+                                                      toast.error(error.message || 'Erro ao enviar imagem');
+                                                    } finally {
+                                                      setCarouselImageUploading({ ...carouselImageUploading, [index]: false });
+                                                    }
+                                                  }
+                                                };
+                                                input.click();
+                                              }}
+                                              className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
+                                            >
+                                              <Upload className="w-4 h-4 mr-2" />
+                                              Trocar Imagem
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-3">
+                                            <Upload className="w-10 h-10 mx-auto text-gray-500" />
+                                            <p className="text-sm text-gray-400">
+                                              Clique no botão abaixo para fazer upload da imagem
+                                            </p>
+                                            <input
+                                              type="file"
+                                              id={`carousel-image-${index}`}
+                                              accept="image/*"
+                                              className="hidden"
+                                              onChange={async (e) => {
+                                                const file = e.target.files?.[0];
                                                 if (file) {
-                                                  // Verificar tamanho (máximo 5MB)
                                                   if (file.size > 5 * 1024 * 1024) {
                                                     toast.error('A imagem deve ter no máximo 5MB');
                                                     return;
@@ -8378,86 +8625,42 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                     setCarouselImageUploading({ ...carouselImageUploading, [index]: false });
                                                   }
                                                 }
-                                              };
-                                              input.click();
-                                            }}
-                                            className="w-full sm:w-auto bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                                          >
-                                            <Upload className="w-4 h-4 mr-2" />
-                                            Trocar Imagem
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-3">
-                                          <Upload className="w-12 h-12 mx-auto text-gray-400" />
-                                          <p className="text-sm text-gray-300 mb-2">
-                                            Clique no botão abaixo para fazer upload da imagem
-                                          </p>
-                                          <input
-                                            type="file"
-                                            id={`carousel-image-${index}`}
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={async (e) => {
-                                              const file = e.target.files?.[0];
-                                              if (file) {
-                                                // Verificar tamanho (máximo 5MB)
-                                                if (file.size > 5 * 1024 * 1024) {
-                                                  toast.error('A imagem deve ter no máximo 5MB');
-                                                  return;
-                                                }
-                                                try {
-                                                  setCarouselImageUploading({ ...carouselImageUploading, [index]: true });
-                                                  const result = await apiClient.uploadImage(file);
-                                                  const newImages = [...carouselImages];
-                                                  newImages[index].url = result.url;
-                                                  setCarouselImages(newImages);
-                                                  toast.success('Imagem enviada com sucesso!');
-                                                } catch (error: any) {
-                                                  toast.error(error.message || 'Erro ao enviar imagem');
-                                                } finally {
-                                                  setCarouselImageUploading({ ...carouselImageUploading, [index]: false });
-                                                }
-                                              }
-                                            }}
-                                          />
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => {
-                                              document.getElementById(`carousel-image-${index}`)?.click();
-                                            }}
-                                            className="w-full sm:w-auto bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-                                          >
-                                            <Upload className="w-4 h-4 mr-2" />
-                                            Selecionar Imagem
-                                          </Button>
-                                          <p className="text-xs text-gray-400 mt-2">
-                                            PNG, JPG, WEBP até 5MB
-                                          </p>
-                                        </div>
-                                      )}
+                                              }}
+                                            />
+                                            <Button
+                                              type="button"
+                                              onClick={() => {
+                                                document.getElementById(`carousel-image-${index}`)?.click();
+                                              }}
+                                              className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
+                                            >
+                                              <Upload className="w-4 h-4 mr-2" />
+                                              Selecionar Imagem
+                                            </Button>
+                                            <p className="text-xs text-gray-500">
+                                              PNG, JPG, WEBP até 5MB
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
 
-                                  {/* Campos de Texto Alternativo e Ordem */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label className="text-sm font-medium text-white mb-2 block">Texto Alternativo</Label>
-                                      <Input
-                                        value={img.alt}
-                                        onChange={(e) => {
-                                          const newImages = [...carouselImages];
-                                          newImages[index].alt = e.target.value;
-                                          setCarouselImages(newImages);
-                                        }}
-                                        placeholder="Descrição da imagem"
-                                        className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
-                                      />
-                                    </div>
-                                    <div className="flex items-end gap-2">
-                                      <div className="flex-1">
-                                        <Label className="text-sm font-medium text-white mb-2 block">Ordem</Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="text-sm font-medium text-gray-300">Texto Alternativo</Label>
+                                        <Input
+                                          value={img.alt}
+                                          onChange={(e) => {
+                                            const newImages = [...carouselImages];
+                                            newImages[index].alt = e.target.value;
+                                            setCarouselImages(newImages);
+                                          }}
+                                          placeholder="Descrição da imagem"
+                                          className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium text-gray-300">Ordem</Label>
                                         <Input
                                           type="number"
                                           value={img.order}
@@ -8466,74 +8669,72 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             newImages[index].order = parseInt(e.target.value) || 0;
                                             setCarouselImages(newImages);
                                           }}
-                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                                          className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                         />
                                       </div>
-                                      <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => {
-                                          setCarouselImages(carouselImages.filter((_, i) => i !== index));
-                                          const newUploading = { ...carouselImageUploading };
-                                          delete newUploading[index];
-                                          setCarouselImageUploading(newUploading);
-                                        }}
-                                        className="bg-red-600 hover:bg-red-700 text-white"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
                                     </div>
                                   </div>
                                 </div>
-                              </Card>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
                       {/* Why Choose Us Section */}
                       {homeContentTab === "whyChooseUs" && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                           <div>
-                            <Label htmlFor="whyBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
-                            <Input
-                              id="whyBadge"
-                              value={whyChooseUsBadge}
-                              onChange={(e) => setWhyChooseUsBadge(e.target.value)}
-                              placeholder="Por Que Escolher Nós?"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                            <h3 className="text-base sm:text-lg font-semibold text-white">Por Que Escolher Nós</h3>
+                            <p className="text-sm text-gray-400 mt-0.5">
+                              Textos e cards da seção de diferenciais da home.
+                            </p>
                           </div>
-                          <div>
-                            <Label htmlFor="whyTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
-                            <Input
-                              id="whyTitle"
-                              value={whyChooseUsTitle}
-                              onChange={(e) => setWhyChooseUsTitle(e.target.value)}
-                              placeholder="Transforme Sua Vida com Conhecimento"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
+                            <div>
+                              <Label htmlFor="whyBadge" className="text-sm font-medium text-gray-300">Badge</Label>
+                              <Input
+                                id="whyBadge"
+                                value={whyChooseUsBadge}
+                                onChange={(e) => setWhyChooseUsBadge(e.target.value)}
+                                placeholder="Por Que Escolher Nós?"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="whyTitle" className="text-sm font-medium text-gray-300">Título</Label>
+                              <Input
+                                id="whyTitle"
+                                value={whyChooseUsTitle}
+                                onChange={(e) => setWhyChooseUsTitle(e.target.value)}
+                                placeholder="Transforme Sua Vida com Conhecimento"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="whySubtitle" className="text-sm font-medium text-gray-300">Subtítulo</Label>
+                              <Textarea
+                                id="whySubtitle"
+                                value={whyChooseUsSubtitle}
+                                onChange={(e) => setWhyChooseUsSubtitle(e.target.value)}
+                                placeholder="Somos uma plataforma dedicada..."
+                                rows={3}
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <Label htmlFor="whySubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
-                            <Textarea
-                              id="whySubtitle"
-                              value={whyChooseUsSubtitle}
-                              onChange={(e) => setWhyChooseUsSubtitle(e.target.value)}
-                              placeholder="Somos uma plataforma dedicada..."
-                              rows={3}
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                          <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-white">Cards</h3>
+                          <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-white">Cards</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Ícone, título, descrição e gradiente de cada card</p>
+                              </div>
                               <Button
                                 onClick={() => {
                                   setWhyChooseUsCards([...whyChooseUsCards, { icon: "Brain", title: "", description: "", gradientColors: { from: "blue-500", to: "blue-600" } }]);
                                 }}
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 self-start"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Adicionar Card
@@ -8541,11 +8742,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             </div>
                             <div className="space-y-4">
                               {whyChooseUsCards.map((card, index) => (
-                                <Card key={index} className="p-4 bg-gray-700 border-gray-600">
-                                  <div className="space-y-4">
+                                <div key={index} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                                  <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between bg-black/20">
+                                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Card #{index + 1}</span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => {
+                                        setWhyChooseUsCards(whyChooseUsCards.filter((_, i) => i !== index));
+                                      }}
+                                      className="h-8 bg-transparent hover:bg-red-500/10 text-red-400 border border-red-500/30"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                      Remover
+                                    </Button>
+                                  </div>
+                                  <div className="p-4 sm:p-5 space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                       <div>
-                                        <Label className="text-sm font-medium text-white mb-2 block">Ícone (nome do ícone do lucide-react)</Label>
+                                        <Label className="text-sm font-medium text-gray-300">Ícone (lucide-react)</Label>
                                         <Input
                                           value={card.icon}
                                           onChange={(e) => {
@@ -8554,11 +8769,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="Brain, Award, TrendingUp"
-                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                                          className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-sm font-medium text-white mb-2 block">Título</Label>
+                                        <Label className="text-sm font-medium text-gray-300">Título</Label>
                                         <Input
                                           value={card.title}
                                           onChange={(e) => {
@@ -8567,12 +8782,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="Baseado em Ciência"
-                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                                          className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                         />
                                       </div>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium text-white mb-2 block">Descrição</Label>
+                                      <Label className="text-sm font-medium text-gray-300">Descrição</Label>
                                       <Textarea
                                         value={card.description}
                                         onChange={(e) => {
@@ -8582,12 +8797,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                         }}
                                         placeholder="Todo conteúdo é validado..."
                                         rows={2}
-                                        className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                                        className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                       />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                       <div>
-                                        <Label className="text-sm font-medium text-white mb-2 block">Cor Gradiente (de)</Label>
+                                        <Label className="text-sm font-medium text-gray-300">Gradiente (de)</Label>
                                         <Input
                                           value={card.gradientColors.from}
                                           onChange={(e) => {
@@ -8596,11 +8811,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="blue-500"
-                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                                          className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-sm font-medium text-white mb-2 block">Cor Gradiente (para)</Label>
+                                        <Label className="text-sm font-medium text-gray-300">Gradiente (para)</Label>
                                         <Input
                                           value={card.gradientColors.to}
                                           onChange={(e) => {
@@ -8609,23 +8824,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                             setWhyChooseUsCards(newCards);
                                           }}
                                           placeholder="blue-600"
-                                          className="mt-2 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                                          className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                         />
                                       </div>
                                     </div>
-                                    <Button
-                                      variant="destructive"
-                                      size="sm"
-                                      onClick={() => {
-                                        setWhyChooseUsCards(whyChooseUsCards.filter((_, i) => i !== index));
-                                      }}
-                                      className="bg-red-600 hover:bg-red-700 text-white"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Remover Card
-                                    </Button>
                                   </div>
-                                </Card>
+                                </div>
                               ))}
                             </div>
                           </div>
@@ -8634,74 +8838,93 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {/* Testimonials Section */}
                       {homeContentTab === "testimonials" && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                           <div>
-                            <Label htmlFor="testimonialsBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
-                            <Input
-                              id="testimonialsBadge"
-                              value={testimonialsBadge}
-                              onChange={(e) => setTestimonialsBadge(e.target.value)}
-                              placeholder="Depoimentos"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                            <h3 className="text-base sm:text-lg font-semibold text-white">Depoimentos</h3>
+                            <p className="text-sm text-gray-400 mt-0.5">
+                              Badge, título e subtítulo da seção de depoimentos.
+                            </p>
                           </div>
-                          <div>
-                            <Label htmlFor="testimonialsTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
-                            <Input
-                              id="testimonialsTitle"
-                              value={testimonialsTitle}
-                              onChange={(e) => setTestimonialsTitle(e.target.value)}
-                              placeholder="O Que Nossos Alunos Dizem"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="testimonialsSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
-                            <Textarea
-                              id="testimonialsSubtitle"
-                              value={testimonialsSubtitle}
-                              onChange={(e) => setTestimonialsSubtitle(e.target.value)}
-                              placeholder="Histórias reais de transformação..."
-                              rows={3}
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
+                            <div>
+                              <Label htmlFor="testimonialsBadge" className="text-sm font-medium text-gray-300">Badge</Label>
+                              <Input
+                                id="testimonialsBadge"
+                                value={testimonialsBadge}
+                                onChange={(e) => setTestimonialsBadge(e.target.value)}
+                                placeholder="Depoimentos"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="testimonialsTitle" className="text-sm font-medium text-gray-300">Título</Label>
+                              <Input
+                                id="testimonialsTitle"
+                                value={testimonialsTitle}
+                                onChange={(e) => setTestimonialsTitle(e.target.value)}
+                                placeholder="O Que Nossos Alunos Dizem"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="testimonialsSubtitle" className="text-sm font-medium text-gray-300">Subtítulo</Label>
+                              <Textarea
+                                id="testimonialsSubtitle"
+                                value={testimonialsSubtitle}
+                                onChange={(e) => setTestimonialsSubtitle(e.target.value)}
+                                placeholder="Histórias reais de transformação..."
+                                rows={3}
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
                           </div>
                         </div>
                       )}
 
                       {/* Newsletter Section */}
                       {homeContentTab === "newsletter" && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                           <div>
-                            <Label htmlFor="newsletterTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
-                            <Input
-                              id="newsletterTitle"
-                              value={newsletterTitle}
-                              onChange={(e) => setNewsletterTitle(e.target.value)}
-                              placeholder="Receba Conteúdos Exclusivos"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                            <h3 className="text-base sm:text-lg font-semibold text-white">Newsletter</h3>
+                            <p className="text-sm text-gray-400 mt-0.5">
+                              Textos e bullets de benefícios do formulário de captura.
+                            </p>
                           </div>
-                          <div>
-                            <Label htmlFor="newsletterSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
-                            <Textarea
-                              id="newsletterSubtitle"
-                              value={newsletterSubtitle}
-                              onChange={(e) => setNewsletterSubtitle(e.target.value)}
-                              placeholder="Cadastre-se e receba dicas..."
-                              rows={3}
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
+                            <div>
+                              <Label htmlFor="newsletterTitle" className="text-sm font-medium text-gray-300">Título</Label>
+                              <Input
+                                id="newsletterTitle"
+                                value={newsletterTitle}
+                                onChange={(e) => setNewsletterTitle(e.target.value)}
+                                placeholder="Receba Conteúdos Exclusivos"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="newsletterSubtitle" className="text-sm font-medium text-gray-300">Subtítulo</Label>
+                              <Textarea
+                                id="newsletterSubtitle"
+                                value={newsletterSubtitle}
+                                onChange={(e) => setNewsletterSubtitle(e.target.value)}
+                                placeholder="Cadastre-se e receba dicas..."
+                                rows={3}
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-white">Features</h3>
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-white">Features</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Itens de benefício exibidos ao lado do formulário</p>
+                              </div>
                               <Button
                                 onClick={() => {
                                   setNewsletterFeatures([...newsletterFeatures, { text: "" }]);
                                 }}
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 self-start"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Adicionar Feature
@@ -8718,15 +8941,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                       setNewsletterFeatures(newFeatures);
                                     }}
                                     placeholder="Sem spam"
-                                    className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                    className="flex-1 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                                   />
                                   <Button
-                                    variant="destructive"
+                                    type="button"
                                     size="sm"
                                     onClick={() => {
                                       setNewsletterFeatures(newsletterFeatures.filter((_, i) => i !== index));
                                     }}
-                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                    className="bg-transparent hover:bg-red-500/10 text-red-400 border border-red-500/30 shrink-0"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
@@ -8739,101 +8962,116 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {/* CTA Section */}
                       {homeContentTab === "cta" && (
-                        
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                           <div>
-                            <Label htmlFor="ctaBadge" className="text-sm sm:text-base font-medium text-white mb-2 block">Badge</Label>
-                            <Input
-                              id="ctaBadge"
-                              value={ctaBadge}
-                              onChange={(e) => setCtaBadge(e.target.value)}
-                              placeholder="🚀 Comece Agora"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
+                            <h3 className="text-base sm:text-lg font-semibold text-white">CTA Final</h3>
+                            <p className="text-sm text-gray-400 mt-0.5">
+                              Textos, botões e cards de benefícios do bloco final da home.
+                            </p>
                           </div>
-                          <div>
-                            <Label htmlFor="ctaTitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Título</Label>
-                            <Input
-                              id="ctaTitle"
-                              value={ctaTitle}
-                              onChange={(e) => setCtaTitle(e.target.value)}
-                              placeholder="Pronto Para Transformar Sua Vida?"
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="ctaSubtitle" className="text-sm sm:text-base font-medium text-white mb-2 block">Subtítulo</Label>
-                            <Textarea
-                              id="ctaSubtitle"
-                              value={ctaSubtitle}
-                              onChange={(e) => setCtaSubtitle(e.target.value)}
-                              placeholder="Escolha o curso ideal..."
-                              rows={3}
-                              className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
                             <div>
-                              <Label htmlFor="ctaPrimaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Texto</Label>
+                              <Label htmlFor="ctaBadge" className="text-sm font-medium text-gray-300">Badge</Label>
                               <Input
-                                id="ctaPrimaryText"
-                                value={ctaPrimaryButtonText}
-                                onChange={(e) => setCtaPrimaryButtonText(e.target.value)}
-                                placeholder="Explorar Todos os Cursos"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                id="ctaBadge"
+                                value={ctaBadge}
+                                onChange={(e) => setCtaBadge(e.target.value)}
+                                placeholder="🚀 Comece Agora"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="ctaPrimaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Primário - Ação</Label>
+                              <Label htmlFor="ctaTitle" className="text-sm font-medium text-gray-300">Título</Label>
                               <Input
-                                id="ctaPrimaryAction"
-                                value={ctaPrimaryButtonAction}
-                                onChange={(e) => setCtaPrimaryButtonAction(e.target.value)}
-                                placeholder="explore"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                id="ctaTitle"
+                                value={ctaTitle}
+                                onChange={(e) => setCtaTitle(e.target.value)}
+                                placeholder="Pronto Para Transformar Sua Vida?"
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="ctaSecondaryText" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Texto</Label>
-                              <Input
-                                id="ctaSecondaryText"
-                                value={ctaSecondaryButtonText}
-                                onChange={(e) => setCtaSecondaryButtonText(e.target.value)}
-                                placeholder="Ver Aula Grátis"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="ctaSecondaryAction" className="text-sm sm:text-base font-medium text-white mb-2 block">Botão Secundário - Ação</Label>
-                              <Input
-                                id="ctaSecondaryAction"
-                                value={ctaSecondaryButtonAction}
-                                onChange={(e) => setCtaSecondaryButtonAction(e.target.value)}
-                                placeholder="free-class"
-                                className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                              <Label htmlFor="ctaSubtitle" className="text-sm font-medium text-gray-300">Subtítulo</Label>
+                              <Textarea
+                                id="ctaSubtitle"
+                                value={ctaSubtitle}
+                                onChange={(e) => setCtaSubtitle(e.target.value)}
+                                placeholder="Escolha o curso ideal..."
+                                rows={3}
+                                className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
                               />
                             </div>
                           </div>
-                          <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-white">Cards de Benefícios</h3>
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4">
+                            <div>
+                              <p className="text-sm font-medium text-white">Botões de ação</p>
+                              <p className="text-xs text-gray-400 mt-0.5">Texto exibido e ação interna</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="ctaPrimaryText" className="text-sm font-medium text-gray-300">Botão Primário — texto</Label>
+                                <Input
+                                  id="ctaPrimaryText"
+                                  value={ctaPrimaryButtonText}
+                                  onChange={(e) => setCtaPrimaryButtonText(e.target.value)}
+                                  placeholder="Explorar Todos os Cursos"
+                                  className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="ctaPrimaryAction" className="text-sm font-medium text-gray-300">Botão Primário — ação</Label>
+                                <Input
+                                  id="ctaPrimaryAction"
+                                  value={ctaPrimaryButtonAction}
+                                  onChange={(e) => setCtaPrimaryButtonAction(e.target.value)}
+                                  placeholder="explore"
+                                  className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="ctaSecondaryText" className="text-sm font-medium text-gray-300">Botão Secundário — texto</Label>
+                                <Input
+                                  id="ctaSecondaryText"
+                                  value={ctaSecondaryButtonText}
+                                  onChange={(e) => setCtaSecondaryButtonText(e.target.value)}
+                                  placeholder="Ver Aula Grátis"
+                                  className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="ctaSecondaryAction" className="text-sm font-medium text-gray-300">Botão Secundário — ação</Label>
+                                <Input
+                                  id="ctaSecondaryAction"
+                                  value={ctaSecondaryButtonAction}
+                                  onChange={(e) => setCtaSecondaryButtonAction(e.target.value)}
+                                  placeholder="free-class"
+                                  className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-white">Cards de Benefícios</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Ícone, cor, título e subtítulo de cada card</p>
+                              </div>
                               <Button
                                 onClick={() => {
                                   setCtaBenefitCards([...ctaBenefitCards, { icon: "Heart", title: "", subtitle: "", iconColor: "red-400" }]);
                                 }}
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 self-start"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Adicionar Card
                               </Button>
                             </div>
-                            <div className="space-y-6">
+                            <div className="space-y-4">
                               {ctaBenefitCards.map((card, index) => {
                                 const IconComponent = (LucideIcons as any)[card.icon] || LucideIcons.Heart;
                                 const iconColorClass = card.iconColor || "red-400";
                                 
-                                // Helper para obter cor RGB baseada na classe Tailwind
                                 const getColorValue = (colorClass: string) => {
                                   const colorMap: { [key: string]: string } = {
                                     'red-400': '#f87171',
@@ -8849,14 +9087,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                                 const iconColor = getColorValue(iconColorClass);
                                 
-                                // Helper para converter hex para Tailwind aproximado (melhorado)
                                 const convertHexToTailwind = (hex: string): string => {
-                                  // Se já for uma classe Tailwind, retornar como está
                                   if (!hex.startsWith('#')) {
                                     return hex;
                                   }
                                   
-                                  // Mapeamento de cores conhecidas
                                   const colorMap: { [key: string]: string } = {
                                     '#f87171': 'red-400',
                                     '#4ade80': 'green-400',
@@ -8868,17 +9103,14 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     '#2dd4bf': 'teal-400',
                                   };
                                   
-                                  // Se estiver no mapa, retornar
                                   if (colorMap[hex.toLowerCase()]) {
                                     return colorMap[hex.toLowerCase()];
                                   }
                                   
-                                  // Converter RGB para aproximar Tailwind
                                   const r = parseInt(hex.slice(1, 3), 16);
                                   const g = parseInt(hex.slice(3, 5), 16);
                                   const b = parseInt(hex.slice(5, 7), 16);
                                   
-                                  // Encontrar a cor Tailwind mais próxima baseada em RGB
                                   const colors = [
                                     { name: 'red-400', r: 248, g: 113, b: 113 },
                                     { name: 'green-400', r: 74, g: 222, b: 128 },
@@ -8918,49 +9150,76 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   'teal': '#ccfbf1',
                                 };
                                 const lightColor = lightColorMap[baseColor] || '#fee2e2';
+
+                                const iconOptions = [
+                                  { value: "Heart", label: "Heart (Coração)", Icon: LucideIcons.Heart },
+                                  { value: "Shield", label: "Shield (Escudo)", Icon: LucideIcons.Shield },
+                                  { value: "Award", label: "Award (Troféu)", Icon: LucideIcons.Award },
+                                  { value: "Star", label: "Star (Estrela)", Icon: LucideIcons.Star },
+                                  { value: "CheckCircle", label: "CheckCircle (Check)", Icon: LucideIcons.CheckCircle },
+                                  { value: "Zap", label: "Zap (Raio)", Icon: LucideIcons.Zap },
+                                  { value: "Lock", label: "Lock (Cadeado)", Icon: LucideIcons.Lock },
+                                  { value: "Clock", label: "Clock (Relógio)", Icon: LucideIcons.Clock },
+                                  { value: "Users", label: "Users (Usuários)", Icon: LucideIcons.Users },
+                                  { value: "Brain", label: "Brain (Cérebro)", Icon: LucideIcons.Brain },
+                                  { value: "Target", label: "Target (Alvo)", Icon: LucideIcons.Target },
+                                  { value: "Rocket", label: "Rocket (Foguete)", Icon: LucideIcons.Rocket },
+                                  { value: "Sparkles", label: "Sparkles (Brilho)", Icon: LucideIcons.Sparkles },
+                                  { value: "Gift", label: "Gift (Presente)", Icon: LucideIcons.Gift },
+                                  { value: "TrendingUp", label: "TrendingUp (Crescimento)", Icon: LucideIcons.TrendingUp },
+                                ];
                                 
                                 return (
-                                  <Card key={index} className="overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-all shadow-lg hover:shadow-xl bg-gray-800">
-                                    <div className="bg-gray-800 p-6">
-                                      {/* Preview do Card */}
-                                      <div className="mb-6 p-6 bg-gray-900 rounded-xl border-2 border-dashed border-gray-700 shadow-inner">
+                                  <div key={index} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                                    <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between bg-black/20">
+                                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Benefício #{index + 1}</span>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => {
+                                          setCtaBenefitCards(ctaBenefitCards.filter((_, i) => i !== index));
+                                        }}
+                                        className="h-8 bg-transparent hover:bg-red-500/10 text-red-400 border border-red-500/30"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                        Remover
+                                      </Button>
+                                    </div>
+                                    <div className="p-4 sm:p-5 space-y-4">
+                                      <div className="rounded-lg border border-dashed border-white/15 bg-[#0b1220] p-4">
                                         <div className="flex items-center gap-4">
                                           <div 
-                                            className="w-16 h-16 rounded-xl flex items-center justify-center shadow-md border-2"
+                                            className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border"
                                             style={{ 
                                               backgroundColor: lightColor,
                                               borderColor: iconColor
                                             }}
                                           >
-                                            <IconComponent className="w-8 h-8" style={{ color: iconColor }} />
+                                            <IconComponent className="w-7 h-7" style={{ color: iconColor }} />
                                           </div>
-                                          <div className="flex-1">
-                                            <h4 className="text-lg font-bold text-white mb-1">
+                                          <div className="flex-1 min-w-0">
+                                            <h4 className="text-base font-semibold text-white truncate">
                                               {card.title || "Título do Card"}
                                             </h4>
-                                            <p className="text-sm text-gray-400">
+                                            <p className="text-sm text-gray-400 truncate">
                                               {card.subtitle || "Subtítulo do card"}
                                             </p>
                                           </div>
                                         </div>
                                       </div>
 
-                                      {/* Campos de Edição */}
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                            Ícone
-                                          </Label>
+                                        <div>
+                                          <Label className="text-sm font-medium text-gray-300">Ícone</Label>
                                           <Select
-                                        value={card.icon}
+                                            value={card.icon}
                                             onValueChange={(value) => {
-                                          const newCards = [...ctaBenefitCards];
+                                              const newCards = [...ctaBenefitCards];
                                               newCards[index].icon = value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
+                                              setCtaBenefitCards(newCards);
+                                            }}
                                           >
-                                            <SelectTrigger className="border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white">
+                                            <SelectTrigger className="mt-1.5 bg-[#0b1220] border-white/10 text-white">
                                               <div className="flex items-center gap-2">
                                                 {card.icon && (() => {
                                                   const PreviewIcon = (LucideIcons as any)[card.icon] || LucideIcons.Heart;
@@ -8969,186 +9228,79 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                                 <SelectValue placeholder="Selecione um ícone">
                                                   {card.icon || "Selecione um ícone"}
                                                 </SelectValue>
-                                    </div>
+                                              </div>
                                             </SelectTrigger>
-                                            <SelectContent className="bg-gray-800 border-gray-700">
-                                              <SelectItem value="Heart" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Heart className="w-4 h-4" />
-                                                  <span>Heart (Coração)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Shield" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Shield className="w-4 h-4" />
-                                                  <span>Shield (Escudo)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Award" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Award className="w-4 h-4" />
-                                                  <span>Award (Troféu)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Star" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Star className="w-4 h-4" />
-                                                  <span>Star (Estrela)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="CheckCircle" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.CheckCircle className="w-4 h-4" />
-                                                  <span>CheckCircle (Check)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Zap" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Zap className="w-4 h-4" />
-                                                  <span>Zap (Raio)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Lock" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Lock className="w-4 h-4" />
-                                                  <span>Lock (Cadeado)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Clock" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Clock className="w-4 h-4" />
-                                                  <span>Clock (Relógio)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Users" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Users className="w-4 h-4" />
-                                                  <span>Users (Usuários)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Brain" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Brain className="w-4 h-4" />
-                                                  <span>Brain (Cérebro)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Target" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Target className="w-4 h-4" />
-                                                  <span>Target (Alvo)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Rocket" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Rocket className="w-4 h-4" />
-                                                  <span>Rocket (Foguete)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Sparkles" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Sparkles className="w-4 h-4" />
-                                                  <span>Sparkles (Brilho)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="Gift" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.Gift className="w-4 h-4" />
-                                                  <span>Gift (Presente)</span>
-                                                </div>
-                                              </SelectItem>
-                                              <SelectItem value="TrendingUp" className="text-white hover:bg-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                  <LucideIcons.TrendingUp className="w-4 h-4" />
-                                                  <span>TrendingUp (Crescimento)</span>
-                                                </div>
-                                              </SelectItem>
+                                            <SelectContent className="bg-[#0b1220] border-white/10">
+                                              {iconOptions.map(({ value, label, Icon }) => (
+                                                <SelectItem key={value} value={value} className="text-white hover:bg-white/5">
+                                                  <div className="flex items-center gap-2">
+                                                    <Icon className="w-4 h-4" />
+                                                    <span>{label}</span>
+                                                  </div>
+                                                </SelectItem>
+                                              ))}
                                             </SelectContent>
                                           </Select>
-                                          <p className="text-xs text-gray-400">Escolha um ícone da lista</p>
+                                          <p className="text-xs text-gray-500 mt-1">Escolha um ícone da lista</p>
                                         </div>
-                                        <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                            Cor do Ícone
-                                          </Label>
-                                          <div className="flex gap-2">
+                                        <div>
+                                          <Label className="text-sm font-medium text-gray-300">Cor do Ícone</Label>
+                                          <div className="flex gap-2 mt-1.5">
                                             <Input
                                               type="color"
                                               value={iconColor}
                                               onChange={(e) => {
                                                 const hexColor = e.target.value;
-                                                // Converter hex para Tailwind aproximado
                                                 const tailwindColor = convertHexToTailwind(hexColor);
                                                 const newCards = [...ctaBenefitCards];
                                                 newCards[index].iconColor = tailwindColor;
-                                                setCtaBenefitCards([...newCards]); // Criar novo array para forçar re-render
+                                                setCtaBenefitCards([...newCards]);
                                               }}
-                                              className="h-10 w-20 cursor-pointer border-gray-600 rounded-md"
+                                              className="h-10 w-20 cursor-pointer border-white/10 rounded-md bg-[#0b1220]"
                                               title="Escolha uma cor"
                                             />
-                                      <Input
-                                        value={card.iconColor}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].iconColor = e.target.value;
-                                                setCtaBenefitCards([...newCards]); // Criar novo array para forçar re-render
-                                        }}
-                                        placeholder="red-400"
-                                              className="flex-1 border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"
-                                      />
-                                    </div>
-                                          <p className="text-xs text-gray-400">Use o seletor de cor ou digite uma cor Tailwind</p>
+                                            <Input
+                                              value={card.iconColor}
+                                              onChange={(e) => {
+                                                const newCards = [...ctaBenefitCards];
+                                                newCards[index].iconColor = e.target.value;
+                                                setCtaBenefitCards([...newCards]);
+                                              }}
+                                              placeholder="red-400"
+                                              className="flex-1 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                            />
+                                          </div>
+                                          <p className="text-xs text-gray-500 mt-1">Seletor de cor ou classe Tailwind</p>
                                         </div>
-                                        <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                            Título
-                                          </Label>
-                                      <Input
-                                        value={card.title}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].title = e.target.value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
-                                        placeholder="Acesso Imediato"
-                                            className="border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"
-                                      />
-                                    </div>
-                                        <div className="space-y-2">
-                                          <Label className="text-sm font-semibold text-white flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                            Subtítulo
-                                          </Label>
-                                      <Input
-                                        value={card.subtitle}
-                                        onChange={(e) => {
-                                          const newCards = [...ctaBenefitCards];
-                                          newCards[index].subtitle = e.target.value;
-                                          setCtaBenefitCards(newCards);
-                                        }}
+                                        <div>
+                                          <Label className="text-sm font-medium text-gray-300">Título</Label>
+                                          <Input
+                                            value={card.title}
+                                            onChange={(e) => {
+                                              const newCards = [...ctaBenefitCards];
+                                              newCards[index].title = e.target.value;
+                                              setCtaBenefitCards(newCards);
+                                            }}
+                                            placeholder="Acesso Imediato"
+                                            className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-sm font-medium text-gray-300">Subtítulo</Label>
+                                          <Input
+                                            value={card.subtitle}
+                                            onChange={(e) => {
+                                              const newCards = [...ctaBenefitCards];
+                                              newCards[index].subtitle = e.target.value;
+                                              setCtaBenefitCards(newCards);
+                                            }}
                                             placeholder="Comece agora mesmo"
-                                            className="border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"
-                                      />
-                                    </div>
-                                  </div>
-
-                                      {/* Botão Remover */}
-                                      <div className="mt-6 pt-4 border-t border-gray-700">
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => {
-                                      setCtaBenefitCards(ctaBenefitCards.filter((_, i) => i !== index));
-                                    }}
-                                          className="w-full sm:w-auto hover:scale-105 transition-transform shadow-md bg-red-600 hover:bg-red-700 text-white"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Remover Card
-                                  </Button>
+                                            className="mt-1.5 bg-[#0b1220] border-white/10 text-white placeholder-gray-500"
+                                          />
+                                        </div>
                                       </div>
                                     </div>
-                                </Card>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -9157,11 +9309,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       )}
 
                       {/* Save Button */}
-                      <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-700">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-7 pt-5 border-t border-white/10">
+                        <p className="text-xs text-gray-500 order-2 sm:order-1">
+                          Salva apenas a aba <span className="text-gray-300 font-medium">{
+                            ({ logos: "Logos", hero: "Hero", carousel: "Carrossel", whyChooseUs: "Por Que Escolher", testimonials: "Depoimentos", newsletter: "Newsletter", cta: "CTA Final" } as const)[homeContentTab]
+                          }</span>
+                        </p>
                         <Button
                           onClick={saveHomeContent}
                           disabled={homeContentSaving}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          className="order-1 sm:order-2 bg-blue-600 hover:bg-blue-500 text-white self-end sm:self-auto shadow-lg shadow-blue-600/25"
                         >
                           {homeContentSaving ? (
                             <>
@@ -9176,8 +9333,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           )}
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                      </div>
+                  </div>
                 )}
               </section>
             )}

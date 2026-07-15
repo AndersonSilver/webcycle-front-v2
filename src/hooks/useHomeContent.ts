@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../services/apiClient';
 
 export interface HomeContent {
@@ -56,6 +56,10 @@ export interface HomeContent {
     link: string;
     order: number;
   }>;
+  branding?: {
+    logoUrl: string;
+    showBrandName: boolean;
+  };
 }
 
 const defaultHomeContent: HomeContent = {
@@ -103,34 +107,68 @@ const defaultHomeContent: HomeContent = {
       { icon: "MessageCircle", title: "Suporte Especializado", subtitle: "Sempre que precisar", iconColor: "text-blue-400" },
     ],
   },
+  branding: {
+    logoUrl: "",
+    showBrandName: true,
+  },
 };
+
+export const HOME_CONTENT_UPDATED_EVENT = 'home-content-updated';
+
+/** Notifica consumidores de useHomeContent para recarregar (ex.: após save no admin). */
+export function notifyHomeContentUpdated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(HOME_CONTENT_UPDATED_EVENT));
+  }
+}
 
 export function useHomeContent() {
   const [content, setContent] = useState<HomeContent>(defaultHomeContent);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const refetch = useCallback(() => {
+    setReloadToken((token) => token + 1);
+  }, []);
 
   useEffect(() => {
+    const onUpdated = () => refetch();
+    window.addEventListener(HOME_CONTENT_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(HOME_CONTENT_UPDATED_EVENT, onUpdated);
+  }, [refetch]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadContent = async () => {
       try {
         setLoading(true);
         const response = await apiClient.getHomeContent();
-        // Mesclar resposta com valores padrão para garantir que todas as seções existam
-        setContent({ ...defaultHomeContent, ...response.content });
+        if (cancelled) return;
+        setContent({
+          ...defaultHomeContent,
+          ...response.content,
+          branding: response.content.branding ?? defaultHomeContent.branding,
+        });
         setError(null);
       } catch (err: any) {
+        if (cancelled) return;
         console.error('Erro ao carregar conteúdo da home:', err);
         setError(err.message || 'Erro ao carregar conteúdo');
-        // Em caso de erro, usar valores padrão
         setContent(defaultHomeContent);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadContent();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadToken]);
 
-  return { content, loading, error };
+  return { content, loading, error, refetch };
 }
-

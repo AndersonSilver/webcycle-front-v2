@@ -109,6 +109,12 @@ export default function App() {
   const { content: homeContent } = useHomeContent();
   useTheme(); // Carregar e aplicar tema dinâmico (aplica CSS variables automaticamente)
 
+  const brandLogoSrc =
+    homeContent.branding?.logoUrl && homeContent.branding.logoUrl.trim()
+      ? homeContent.branding.logoUrl
+      : iconImg;
+  const showBrandName = homeContent.branding?.showBrandName !== false;
+
   const landingPageImages = useMemo(() => {
     const bundled = [mentoriaImg, desenvolvasecastImg, livroImg, manualautoconfiancaImg];
     const apiBanners = homeContent.landingBanners
@@ -920,9 +926,10 @@ export default function App() {
                 className="flex items-center gap-3 transition-all duration-300 hover:scale-105 group"
               >
                 <div className="relative">
-                  <img src={iconImg} alt="Icon" width={50} height={50} className="object-contain transition-transform duration-300 group-hover:rotate-6" />
+                  <img src={brandLogoSrc} alt="Culture Builders" width={50} height={50} className="object-contain transition-transform duration-300 group-hover:rotate-6" />
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
+                {showBrandName && (
                 <span
                   className="font-bold text-2xl bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent transition-all duration-300"
                   style={{
@@ -939,6 +946,7 @@ export default function App() {
                 >
                   Culture Builders
                 </span>
+                )}
               </button>
 
               {/* User Menu */}
@@ -1876,8 +1884,8 @@ export default function App() {
             <div className="grid md:grid-cols-4 gap-8">
               <div>
                 <div className="font-bold text-xl text-white mb-4 flex items-center gap-2">
-                  <img src={iconImg} alt="Icon" width={50} height={50} className="object-contain" />
-                  <span>Culture Builders</span>
+                  <img src={brandLogoSrc} alt="Culture Builders" width={50} height={50} className="object-contain" />
+                  {showBrandName && <span>Culture Builders</span>}
                 </div>
                 <p className="text-sm">
                   Transformando vidas através do conhecimento em psicologia aplicada.

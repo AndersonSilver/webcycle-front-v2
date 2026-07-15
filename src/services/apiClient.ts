@@ -1548,6 +1548,10 @@ class ApiClient {
           link: string;
           order: number;
         }>;
+        branding?: {
+          logoUrl: string;
+          showBrandName: boolean;
+        };
       };
     }>('/home-content/public', { requiresAuth: false });
   }
@@ -1609,6 +1613,10 @@ class ApiClient {
           link: string;
           order: number;
         }>;
+        branding?: {
+          logoUrl: string;
+          showBrandName: boolean;
+        };
       };
     }>('/home-content/admin');
   }
@@ -1668,6 +1676,10 @@ class ApiClient {
       link: string;
       order: number;
     }>;
+    branding?: {
+      logoUrl: string;
+      showBrandName: boolean;
+    };
   }) {
     return this.request<{
       message: string;
