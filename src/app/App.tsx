@@ -1314,13 +1314,17 @@ export default function App() {
 
       {/* Main Content */}
       <main style={{ paddingTop: (currentView !== "admin" && currentView !== "image-landing") ? '45px' : '0' }}>
-        {currentView === "home" && (
+        {(currentView === "home" || currentView === "checkout") && (
           <div
             className="relative"
             style={{
               background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-              minHeight: '100vh'
+              minHeight: '100vh',
+              ...(currentView === "checkout"
+                ? { pointerEvents: "none" as const, userSelect: "none" as const }
+                : {}),
             }}
+            aria-hidden={currentView === "checkout"}
           >
             <HomeHero onExplore={handleExplore} onGoToPodcasts={handleGoToPodcasts} />
             <div ref={catalogRef}>
@@ -1921,8 +1925,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      {currentView !== "image-landing" && (
+      {/* Footer — oculto no checkout (modal fixed deixaría o rodapé subir no topo) */}
+      {currentView !== "image-landing" && currentView !== "checkout" && (
         <footer id="contato" className="bg-slate-900 text-gray-300 py-12">
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-4 gap-8">

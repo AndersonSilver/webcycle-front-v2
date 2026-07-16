@@ -1,12 +1,10 @@
 import { Course } from "../data/courses";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Separator } from "./ui/separator";
-import { CheckCircle2, Lock, ShoppingCart, X, Copy, MapPin, User } from "lucide-react";
+import { CheckCircle2, Lock, ShoppingCart, X, Copy, MapPin, User, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "../../services/apiClient";
 import { handleApiError } from "../../utils/errorHandler";
@@ -153,6 +151,15 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
   useEffect(() => {
     loadBuyerProfile();
   }, [loadBuyerProfile]);
+
+  // Trava o scroll do body enquanto o modal estiver aberto
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   // Carregar produtos do location.state ou do localStorage (carrinho)
   useEffect(() => {
@@ -860,533 +867,387 @@ export function Checkout({ courses, onBack }: CheckoutProps) {
         </div>
       )}
 
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-      <Card className="w-full max-w-6xl my-2 sm:my-4 md:my-8 relative max-h-[95vh] overflow-y-auto bg-gray-800 border-gray-700">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-2 sm:right-3 md:right-4 top-2 sm:top-3 md:top-4 z-10 h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10"
-          onClick={onBack}
-        >
-          <X className="w-4 h-4 sm:w-5 sm:h-5" />
-        </Button>
-
-        <CardHeader className="pb-2 sm:pb-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div className="flex-1">
-              <CardTitle className="text-xl sm:text-2xl mb-1 sm:mb-2 text-white">Finalizar Compra</CardTitle>
-              <CardDescription className="text-xs sm:text-sm text-gray-400">
-                Revise seu pedido e finalize o pagamento
-              </CardDescription>
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-3 sm:p-6">
+        <div className="relative my-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#151a22] shadow-2xl shadow-black/40">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7 sm:py-5">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                Finalizar compra
+              </h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Confirme seus dados e revise o pedido
+              </p>
             </div>
-            {/* Logo Mercado Pago */}
-            <div className="hidden md:block">
-              <div className="flex items-center gap-2 bg-blue-600/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-blue-600/30">
-                <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
-                <span className="text-xs sm:text-sm font-semibold text-blue-400">Pagamento via Mercado Pago</span>
-              </div>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full text-gray-400 hover:bg-white/10 hover:text-white"
+              onClick={onBack}
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-        </CardHeader>
 
-        <CardContent className="p-3 sm:p-6">
-          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            {/* Resumo do Pedido - 1 coluna - Primeiro no mobile */}
-            <div className="order-1 lg:order-2 space-y-3 sm:space-y-4">
-              <Card className="bg-gray-800 border-2 border-gray-700 lg:sticky lg:top-2 sm:top-4">
-                <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-white">
-                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                    Resumo do Pedido
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm text-gray-400">
-                    {courses.length > 0 && products.length > 0 
-                      ? `${courses.length} ${courses.length === 1 ? 'curso' : 'cursos'} e ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`
-                      : courses.length > 0
-                      ? `${courses.length} ${courses.length === 1 ? 'curso' : 'cursos'}`
-                      : products.length > 0
-                      ? `${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`
-                      : '0 cursos'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
-                  {/* Lista de Cursos e Produtos */}
-                  <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
-                    {courses.map((course) => (
-                      <div key={course.id} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-gray-700 last:border-b-0">
-                        <img 
-                          src={course.image} 
-                          alt={course.title}
-                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
-                          style={{ objectPosition: (course as { imagePosition?: string }).imagePosition || "50% 50%" }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1 text-white">{course.title}</h4>
-                          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 sm:mb-2">{course.instructor}</p>
-                          <p className="text-xs sm:text-sm font-bold text-green-400">
-                            R$ {(typeof course.price === 'string' ? parseFloat(course.price) : course.price).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    {products.map((product, index) => (
-                      <div key={`${product.id}-${index}`} className="flex items-start gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-gray-700 last:border-b-0">
-                        <img 
-                          src={product.image} 
-                          alt={product.title}
-                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-cover rounded-lg flex-shrink-0"
-                          style={{ objectPosition: (product as { imagePosition?: string }).imagePosition || "50% 50%" }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-0.5 sm:mb-1 text-white">{product.title}</h4>
-                          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 sm:mb-2">{product.type === 'physical' ? 'Produto Físico' : 'Produto Digital'}</p>
-                          <p className="text-xs sm:text-sm font-bold text-green-400">
-                            R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    {productsLoading && (
-                      <div className="text-xs text-gray-400 text-center py-2">Carregando produtos...</div>
-                    )}
+          <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-white/10">
+            {/* Coluna pagamento */}
+            <div className="order-2 flex flex-col gap-5 p-5 sm:p-7 lg:order-1">
+              {pixCode ? (
+                <div className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-white">Escaneie o QR Code</h3>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Abra o app do seu banco e escaneie o código para pagar
+                    </p>
                   </div>
-
-                  <Separator />
-
-                  {/* Campo de Cupom */}
-                  <div className="space-y-1.5 sm:space-y-2">
-                    {!couponApplied ? (
-                      <div className="flex gap-1.5 sm:gap-2">
-                        <Input
-                          placeholder="Código do cupom"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          className="flex-1 text-xs sm:text-sm h-8 sm:h-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleApplyCoupon}
-                          variant="outline"
-                          className="whitespace-nowrap text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-4 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                        >
-                          Aplicar
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="bg-green-900/20 border border-green-700 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                          <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-400 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm font-semibold text-green-400 truncate">
-                            Cupom: {couponCode}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setCouponApplied(false);
-                            setCouponCode("");
-                            setDiscountAmount(0);
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs flex-shrink-0 text-gray-300 hover:bg-gray-700"
-                        >
-                          Remover
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  {/* Totais */}
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="text-gray-400">Subtotal:</span>
-                      <span className={totalSavings > 0 ? "line-through text-gray-500" : "font-semibold text-white"}>
-                        R$ {totalOriginal.toFixed(2)}
-                      </span>
-                    </div>
-                    {discount > 0 && (
-                      <div className="flex justify-between text-xs sm:text-sm">
-                        <span className="text-green-400 font-semibold">Desconto:</span>
-                        <span className="text-green-400 font-semibold">-R$ {discount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {couponDiscount > 0 && (
-                      <div className="flex justify-between text-xs sm:text-sm">
-                        <span className="text-green-400 font-semibold">Desconto do Cupom:</span>
-                        <span className="text-green-400 font-semibold">-R$ {couponDiscount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <Separator className="bg-gray-700" />
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-sm sm:text-base md:text-lg text-white">Total</span>
-                      <span className="font-bold text-lg sm:text-xl md:text-2xl text-blue-400">R$ {totalWithDiscount.toFixed(2)}</span>
+                  <div className="flex justify-center">
+                    <div className="rounded-xl bg-white p-3">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixCode)}`}
+                        alt="QR Code PIX"
+                        className="h-56 w-56"
+                      />
                     </div>
                   </div>
-
-                  {totalSavings > 0 && (
-                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-2 sm:p-3 rounded-lg">
-                      <p className="text-xs sm:text-sm font-bold mb-0.5 sm:mb-1">
-                        🎉 Você está economizando R$ {totalSavings.toFixed(2)}!
-                      </p>
-                      <p className="text-[10px] sm:text-xs opacity-90">
-                        {discount > 0 && couponDiscount > 0 
-                          ? `R$ ${discount.toFixed(2)} de desconto + R$ ${couponDiscount.toFixed(2)} de desconto do cupom`
-                          : discount > 0 
-                            ? `Desconto aplicado`
-                            : `Desconto do cupom aplicado`
-                        }
-                      </p>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-white">Código PIX</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={pixCode}
+                        readOnly
+                        className="border-white/10 bg-black/30 font-mono text-xs text-white"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(pixCode);
+                          toast.success("Código PIX copiado!");
+                        }}
+                        variant="outline"
+                        size="icon"
+                        className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
                     </div>
+                  </div>
+                  <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    O pagamento será confirmado automaticamente. Você receberá um e-mail quando for aprovado.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={onBack}
+                    variant="outline"
+                    className="w-full border-white/10 bg-white/5 text-gray-200 hover:bg-white/10"
+                  >
+                    Voltar
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {buyerProfileLoaded && (
+                    <section>
+                      <h3 className="mb-3 text-sm font-medium text-white">Dados do comprador</h3>
+                      <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+                        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+                          <User className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                          <div className="min-w-0">
+                            <p className="text-xs text-gray-500">Nome</p>
+                            <p className="truncate text-sm text-gray-100">{buyerName || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+                          <Mail className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                          <div className="min-w-0">
+                            <p className="text-xs text-gray-500">E-mail</p>
+                            <p className="truncate text-sm text-gray-100">{buyerEmail || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="px-4 py-3">
+                          <Label htmlFor="buyer-phone" className="mb-1.5 flex items-center gap-2 text-xs text-gray-400">
+                            <Phone className="h-3.5 w-3.5" aria-hidden />
+                            Telefone / Contato
+                            <span className="text-violet-300">*</span>
+                          </Label>
+                          <Input
+                            id="buyer-phone"
+                            type="tel"
+                            inputMode="tel"
+                            value={buyerPhone}
+                            onChange={(e) => setBuyerPhone(e.target.value)}
+                            placeholder="(11) 99999-9999"
+                            className="h-10 border-white/15 bg-black/25 text-sm text-white placeholder:text-gray-500 focus-visible:border-violet-400/60 focus-visible:ring-violet-500/20"
+                          />
+                          {!isValidBrazilianPhone(buyerPhone) && (
+                            <p className="mt-1.5 text-xs text-gray-500">
+                              Informe um telefone com DDD (10 ou 11 dígitos)
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </section>
                   )}
 
-                  <div className="bg-gray-700 p-2 sm:p-3 md:p-4 rounded-lg border border-gray-600">
-                    <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2 text-white">
-                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
-                      Incluso no seu pedido:
-                    </h4>
-                    <div className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs text-gray-300">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
-                        <span>Acesso vitalício</span>
+                  {products.some((p) => p.type === "physical") && addressLoaded && (
+                    <section className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <h3 className="text-sm font-medium text-white">Endereço de envio</h3>
                       </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
-                        <span>Materiais digitais</span>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="sm:col-span-2">
+                          <Label htmlFor="shipping-street" className="text-xs text-gray-400">Rua *</Label>
+                          <Input
+                            id="shipping-street"
+                            value={shippingAddress.street}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
+                            placeholder="Nome da rua"
+                            className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="shipping-number" className="text-xs text-gray-400">Número *</Label>
+                          <Input
+                            id="shipping-number"
+                            value={shippingAddress.number}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, number: e.target.value })}
+                            placeholder="123"
+                            className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
-                        <span>Material complementar</span>
+                      <div>
+                        <Label htmlFor="shipping-complement" className="text-xs text-gray-400">Complemento</Label>
+                        <Input
+                          id="shipping-complement"
+                          value={shippingAddress.complement}
+                          onChange={(e) => setShippingAddress({ ...shippingAddress, complement: e.target.value })}
+                          placeholder="Apto, bloco..."
+                          className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                        />
                       </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
-                        <span>Suporte com instrutores</span>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label htmlFor="shipping-neighborhood" className="text-xs text-gray-400">Bairro *</Label>
+                          <Input
+                            id="shipping-neighborhood"
+                            value={shippingAddress.neighborhood}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, neighborhood: e.target.value })}
+                            className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="shipping-zipcode" className="text-xs text-gray-400">CEP *</Label>
+                          <Input
+                            id="shipping-zipcode"
+                            value={shippingAddress.zipCode}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })}
+                            placeholder="00000-000"
+                            className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="shipping-city" className="text-xs text-gray-400">Cidade *</Label>
+                          <Input
+                            id="shipping-city"
+                            value={shippingAddress.city}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
+                            className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="shipping-state" className="text-xs text-gray-400">UF *</Label>
+                          <Input
+                            id="shipping-state"
+                            value={shippingAddress.state}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value.toUpperCase() })}
+                            maxLength={2}
+                            className="mt-1 border-white/10 bg-black/25 text-sm text-white"
+                          />
+                        </div>
                       </div>
+                    </section>
+                  )}
+
+                  <div className="mt-auto space-y-3 pt-1">
+                    <Button
+                      type="button"
+                      onClick={handleCheckout}
+                      disabled={
+                        isProcessing ||
+                        productsLoading ||
+                        !buyerProfileLoaded ||
+                        !isValidBrazilianPhone(buyerPhone) ||
+                        (products.length === 0 && courses.length === 0)
+                      }
+                      className="h-12 w-full rounded-xl bg-violet-600 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isProcessing ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Processando...
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          Continuar para pagamento
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </span>
+                      )}
+                    </Button>
+                    <p className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+                      <Lock className="h-3 w-3" />
+                      Pagamento seguro via Mercado Pago
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Coluna resumo */}
+            <aside className="order-1 bg-black/20 p-5 sm:p-7 lg:order-2">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-medium text-white">
+                  <ShoppingCart className="h-4 w-4 text-gray-400" />
+                  Resumo do pedido
+                </h3>
+                <span className="text-xs text-gray-500">
+                  {courses.length + products.length}{" "}
+                  {courses.length + products.length === 1 ? "item" : "itens"}
+                </span>
+              </div>
+
+              <div className="max-h-52 space-y-3 overflow-y-auto pr-1">
+                {courses.map((course) => (
+                  <div key={course.id} className="flex gap-3">
+                    <img
+                      src={course.image}
+                      alt={course.title}
+                      className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                      style={{ objectPosition: (course as { imagePosition?: string }).imagePosition || "50% 50%" }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-medium text-white">{course.title}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{course.instructor}</p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-400">
+                        R$ {(typeof course.price === "string" ? parseFloat(course.price) : course.price).toFixed(2)}
+                      </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Formulário - 2 colunas - Segundo no mobile */}
-            <div className="order-2 lg:order-1 lg:col-span-2">
-              <div className="space-y-3 sm:space-y-4 md:space-y-6">
-                {/* Métodos de Pagamento */}
-                <Card className="border-2 border-gray-700 bg-gray-800">
-                  <CardHeader className="p-3 sm:p-6">
-                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-white">
-                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
-                      Finalizar Pagamento
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 sm:p-6 pt-0">
-
-                    {/* Se PIX foi gerado, mostrar QR code */}
-                    {pixCode ? (
-                      <div className="space-y-4 bg-green-900/20 p-6 rounded-lg border-2 border-green-700">
-                        <div className="text-center">
-                          <h3 className="text-lg font-bold text-white mb-2">Escaneie o QR Code</h3>
-                          <p className="text-sm text-gray-400 mb-4">
-                            Abra o app do seu banco e escaneie o código para pagar
-                          </p>
-                        </div>
-                        
-                        {/* QR Code usando API pública */}
-                        <div className="flex justify-center">
-                          <div className="bg-white p-4 rounded-lg">
-                            <img 
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixCode)}`}
-                              alt="QR Code PIX"
-                              className="w-64 h-64"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Código PIX para copiar */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold text-white">Código PIX (Copiar e Colar)</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              value={pixCode}
-                              readOnly
-                              className="font-mono text-xs bg-gray-700 border-gray-600 text-white"
-                            />
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(pixCode);
-                                toast.success("Código PIX copiado!");
-                              }}
-                              variant="outline"
-                              size="icon"
-                              className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
-                          <p className="text-xs text-yellow-300">
-                            ⏱️ O pagamento será confirmado automaticamente após a confirmação do PIX.
-                            Você receberá um email quando o pagamento for aprovado.
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          onClick={onBack}
-                          className="w-full bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                          variant="outline"
-                        >
-                          Voltar
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="relative overflow-hidden">
-                        {/* Background decorativo */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 opacity-50"></div>
-                        
-                        <div className="relative space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
-                          {buyerProfileLoaded && (
-                            <Card className="bg-gray-700/90 backdrop-blur-sm border-2 border-gray-600">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-white">
-                                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                                  Dados do Comprador
-                                </CardTitle>
-                                <CardDescription className="text-xs sm:text-sm text-gray-400">
-                                  Confirme seus dados para continuar
-                                </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-3 sm:space-y-4">
-                                <div>
-                                  <Label htmlFor="buyer-name" className="text-xs sm:text-sm text-white">Nome</Label>
-                                  <Input
-                                    id="buyer-name"
-                                    value={buyerName}
-                                    readOnly
-                                    disabled
-                                    className="text-xs sm:text-sm bg-gray-600 border-gray-500 text-gray-300"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="buyer-email" className="text-xs sm:text-sm text-white">E-mail</Label>
-                                  <Input
-                                    id="buyer-email"
-                                    value={buyerEmail}
-                                    readOnly
-                                    disabled
-                                    className="text-xs sm:text-sm bg-gray-600 border-gray-500 text-gray-300"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="buyer-phone" className="text-xs sm:text-sm text-white">Telefone / Contato *</Label>
-                                  <Input
-                                    id="buyer-phone"
-                                    type="tel"
-                                    inputMode="tel"
-                                    value={buyerPhone}
-                                    onChange={(e) => setBuyerPhone(e.target.value)}
-                                    placeholder="(11) 99999-9999"
-                                    className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                  />
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Seção de Endereço de Envio (apenas para produtos físicos) */}
-                          {products.some(p => p.type === 'physical') && addressLoaded && (
-                            <Card className="bg-gray-700/90 backdrop-blur-sm border-2 border-gray-600">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-white">
-                                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                                  Endereço de Envio
-                                </CardTitle>
-                                <CardDescription className="text-xs sm:text-sm text-gray-400">
-                                  Confirme o endereço para entrega dos produtos físicos
-                                </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-3 sm:space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                                  <div className="md:col-span-2">
-                                    <Label htmlFor="shipping-street" className="text-xs sm:text-sm text-white">Rua *</Label>
-                                    <Input
-                                      id="shipping-street"
-                                      value={shippingAddress.street}
-                                      onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
-                                      placeholder="Nome da rua"
-                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="shipping-number" className="text-xs sm:text-sm text-white">Número *</Label>
-                                    <Input
-                                      id="shipping-number"
-                                      value={shippingAddress.number}
-                                      onChange={(e) => setShippingAddress({ ...shippingAddress, number: e.target.value })}
-                                      placeholder="123"
-                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                </div>
-                                <div>
-                                  <Label htmlFor="shipping-complement" className="text-xs sm:text-sm text-white">Complemento</Label>
-                                  <Input
-                                    id="shipping-complement"
-                                    value={shippingAddress.complement}
-                                    onChange={(e) => setShippingAddress({ ...shippingAddress, complement: e.target.value })}
-                                    placeholder="Apto, Bloco, etc."
-                                    className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                  />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                  <div>
-                                    <Label htmlFor="shipping-neighborhood" className="text-xs sm:text-sm text-white">Bairro *</Label>
-                                    <Input
-                                      id="shipping-neighborhood"
-                                      value={shippingAddress.neighborhood}
-                                      onChange={(e) => setShippingAddress({ ...shippingAddress, neighborhood: e.target.value })}
-                                      placeholder="Nome do bairro"
-                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="shipping-zipcode" className="text-xs sm:text-sm text-white">CEP *</Label>
-                                    <Input
-                                      id="shipping-zipcode"
-                                      value={shippingAddress.zipCode}
-                                      onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })}
-                                      placeholder="00000-000"
-                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                  <div>
-                                    <Label htmlFor="shipping-city" className="text-xs sm:text-sm text-white">Cidade *</Label>
-                                    <Input
-                                      id="shipping-city"
-                                      value={shippingAddress.city}
-                                      onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                                      placeholder="Nome da cidade"
-                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="shipping-state" className="text-xs sm:text-sm text-white">Estado *</Label>
-                                    <Input
-                                      id="shipping-state"
-                                      value={shippingAddress.state}
-                                      onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value.toUpperCase() })}
-                                      placeholder="UF"
-                                      maxLength={2}
-                                      className="text-xs sm:text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Ícone central */}
-                          <div className="flex justify-center">
-                            <div className="relative">
-                              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-xl opacity-30"></div>
-                              <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-4 sm:p-5 md:p-6 rounded-full shadow-lg">
-                                <Lock className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Título */}
-                          <div className="text-center space-y-1 sm:space-y-2">
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                              Finalizar Pagamento
-                            </h3>
-                            <p className="text-gray-400 text-xs sm:text-sm">
-                              Você será redirecionado para uma página segura de pagamento
-                            </p>
-                          </div>
-
-                          {/* Informações de segurança */}
-                          <div className="bg-gray-700/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-5 border border-gray-600 shadow-sm">
-                            <div className="flex items-start gap-2 sm:gap-3">
-                              <div className="flex-shrink-0 mt-0.5">
-                                <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-green-600/20 rounded-full flex items-center justify-center">
-                                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-green-400" />
-                                </div>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-xs sm:text-sm font-semibold text-white mb-0.5 sm:mb-1">
-                                  Pagamento 100% Seguro
-                                </p>
-                                <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed">
-                                  Seus dados são protegidos e processados de forma segura pelo Mercado Pago.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Botão de ação */}
-                          <Button
-                            type="button"
-                            onClick={handleCheckout}
-                            disabled={
-                              isProcessing ||
-                              productsLoading ||
-                              !buyerProfileLoaded ||
-                              !isValidBrazilianPhone(buyerPhone) ||
-                              (products.length === 0 && courses.length === 0)
-                            }
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isProcessing ? (
-                              <div className="flex items-center justify-center gap-3">
-                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                                <span>Processando...</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center gap-3">
-                                <span>Continuar para Pagamento</span>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                </svg>
-                              </div>
-                            )}
-                          </Button>
-
-                          {/* Badge de segurança */}
-                          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-                            <Lock className="w-3 h-3" />
-                            <span>Criptografado e seguro</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-
-                <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    <span>Pagamento 100% seguro</span>
+                ))}
+                {products.map((product, index) => (
+                  <div key={`${product.id}-${index}`} className="flex gap-3">
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                      style={{ objectPosition: (product as { imagePosition?: string }).imagePosition || "50% 50%" }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-medium text-white">{product.title}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {product.type === "physical" ? "Produto físico" : "Produto digital"}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-400">
+                        R$ {(typeof product.price === "string" ? parseFloat(product.price) : product.price).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-px h-4 bg-gray-600"></div>
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Criptografado</span>
+                ))}
+                {productsLoading && (
+                  <p className="py-2 text-center text-xs text-gray-500">Carregando produtos...</p>
+                )}
+              </div>
+
+              <div className="my-5 h-px bg-white/10" />
+
+              {!couponApplied ? (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Cupom de desconto"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    className="h-10 flex-1 border-white/10 bg-black/30 text-sm text-white placeholder:text-gray-500"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    variant="outline"
+                    className="h-10 border-white/10 bg-white/5 px-4 text-sm text-gray-200 hover:bg-white/10"
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5">
+                  <span className="flex min-w-0 items-center gap-2 text-sm text-emerald-300">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Cupom {couponCode}</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 shrink-0 text-xs text-gray-400 hover:text-white"
+                    onClick={() => {
+                      setCouponApplied(false);
+                      setCouponCode("");
+                      setDiscountAmount(0);
+                    }}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              )}
+
+              <div className="mt-5 space-y-2 text-sm">
+                <div className="flex justify-between text-gray-400">
+                  <span>Subtotal</span>
+                  <span className={totalSavings > 0 ? "line-through text-gray-500" : "text-gray-200"}>
+                    R$ {totalOriginal.toFixed(2)}
+                  </span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-emerald-400">
+                    <span>Desconto</span>
+                    <span>-R$ {discount.toFixed(2)}</span>
                   </div>
+                )}
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-400">
+                    <span>Cupom</span>
+                    <span>-R$ {couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex items-baseline justify-between border-t border-white/10 pt-3">
+                  <span className="font-medium text-white">Total</span>
+                  <span className="text-2xl font-semibold tracking-tight text-white">
+                    R$ {totalWithDiscount.toFixed(2)}
+                  </span>
                 </div>
               </div>
-            </div>
+
+              {totalSavings > 0 && (
+                <p className="mt-3 text-xs text-emerald-400/90">
+                  Você economiza R$ {totalSavings.toFixed(2)} neste pedido
+                </p>
+              )}
+
+              <ul className="mt-6 space-y-2 text-xs text-gray-400">
+                {["Acesso vitalício", "Materiais digitais", "Material complementar", "Suporte com instrutores"].map(
+                  (item) => (
+                    <li key={item} className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />
+                      {item}
+                    </li>
+                  )
+                )}
+              </ul>
+            </aside>
           </div>
-        </CardContent>
-      </Card>
+        </div>
       </div>
     </>
   );

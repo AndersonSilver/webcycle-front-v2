@@ -98,6 +98,14 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { LANDING_BANNER_DEFAULTS } from "../../constants/landingBannersDefaults";
 import { normalizeLandingBannerLink } from "../../utils/landingBannerLink";
 import { serializeLandingBanners } from "../../utils/landingBannerSnapshot";
+import {
+  AdminPageShell,
+  adminFieldClass,
+  adminOutlineBtn,
+  adminSelectClass,
+  adminSurfaceCard,
+  adminSurfaceCardHover,
+} from "./AdminPageShell";
 import { notifyHomeContentUpdated } from "../../hooks/useHomeContent";
 import { ImagePositionEditor } from "./ImagePositionEditor";
 
@@ -2822,6 +2830,62 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
   const courseColors = ['#3b82f6', '#14b8a6', '#2563eb', '#f59e0b', '#ef4444', '#10b981'];
 
+  const periodOptions: { id: "7d" | "30d" | "90d" | "month" | "year"; label: string }[] = [
+    { id: "7d", label: "7 Dias" },
+    { id: "30d", label: "30 Dias" },
+    { id: "90d", label: "90 Dias" },
+    { id: "month", label: "Mês Atual" },
+    { id: "year", label: "Ano Atual" },
+  ];
+
+  const periodToolbar = (
+    <div className="flex flex-wrap gap-2">
+      {periodOptions.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => setSelectedPeriod(opt.id)}
+          className={`h-9 rounded-lg px-3 text-sm transition-colors ${
+            selectedPeriod === opt.id
+              ? "bg-white text-[#0b1220] font-medium shadow-sm"
+              : "border border-white/10 bg-[#0b1220]/80 text-gray-300 hover:bg-white/5 hover:text-white"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const kpiStrip = (
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+      {[
+        {
+          label: "Faturamento Total",
+          value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        },
+        { label: "Total de Vendas", value: String(totalSales) },
+        { label: "Alunos Cadastrados", value: String(totalStudents) },
+        { label: "Cursos Ativos", value: String(totalCourses) },
+        {
+          label: "Ticket Médio",
+          value: `R$ ${periodAverageTicket.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        },
+        { label: "Taxa de Conversão", value: `${conversionRate.toFixed(1)}%` },
+      ].map((kpi) => (
+        <div
+          key={kpi.label}
+          className="rounded-xl border border-white/10 bg-[#0d1422]/70 px-4 py-4"
+        >
+          <p className="text-[10px] uppercase tracking-wider text-gray-500">{kpi.label}</p>
+          <p className="mt-1.5 text-lg sm:text-xl font-semibold text-white tabular-nums break-words">
+            {kpi.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -2895,11 +2959,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       <div className="flex min-h-[calc(100vh-4rem)] lg:mt-16">
         {/* Sidebar Navigation - Desktop */}
-        <aside className="hidden lg:flex flex-col w-64 bg-gray-800 border-r border-gray-700 shadow-sm min-h-[calc(120vh-4rem)] sticky top-16 self-start">
-          <div className="p-6 border-b border-gray-700 flex-shrink-0 bg-gray-800">
+        <aside className="hidden lg:flex flex-col w-64 bg-[#0a1020] border-r border-white/10 shadow-sm min-h-[calc(120vh-4rem)] sticky top-16 self-start">
+          <div className="p-6 border-b border-white/10 flex-shrink-0 bg-[#0a1020]">
                   <Button
               variant="ghost"
-              className="text-gray-300 hover:bg-gray-700 -ml-2 w-full justify-start"
+              className="text-gray-300 hover:bg-white/5 hover:text-white -ml-2 w-full justify-start"
               onClick={onBack}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -2907,7 +2971,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   </Button>
           </div>
           
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1 min-h-0">
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1 min-h-0 bg-[#0a1020]">
             {[
               { id: "dashboard", label: "Dashboard", icon: BarChart3 },
               { id: "courses", label: "Cursos", icon: BookOpen },
@@ -2932,11 +2996,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                   key={item.id}
                   onClick={() => setMainView(item.id as any)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive
-                      ? "bg-blue-600 text-white border-l-4 border-blue-400 font-semibold"
-                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      ? "bg-blue-600 text-white border-l-4 border-blue-400 font-semibold shadow-lg shadow-blue-950/40"
+                      : "text-gray-300 hover:bg-white/5 hover:text-white"
                     }`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
+                  <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -2945,107 +3009,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0 w-full lg:w-auto overflow-y-auto bg-gray-900">
-          <div
-            className={
-              mainView === "courses"
-                ? "w-full max-w-none px-3 sm:px-4 lg:px-5 pt-4 pb-4 sm:pt-5 sm:pb-6 lg:pt-6"
-                : "container mx-auto px-4 lg:px-8 pt-6 pb-4 sm:pt-8 sm:pb-6 lg:pt-12"
-            }
-          >
-            {/* Stats - Only show on Dashboard and Revenue pages */}
-            {(mainView === "dashboard" || mainView === "revenue") && (
-              <>
-                {/* Filtro de Período */}
-                <div className="mb-6 flex flex-wrap gap-2">
-                  <Button
-                    variant={selectedPeriod === "7d" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedPeriod("7d")}
-                    className={selectedPeriod === "7d" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
-                  >
-                    7 Dias
-                  </Button>
-                  <Button
-                    variant={selectedPeriod === "30d" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedPeriod("30d")}
-                    className={selectedPeriod === "30d" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
-                  >
-                    30 Dias
-                  </Button>
-                  <Button
-                    variant={selectedPeriod === "90d" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedPeriod("90d")}
-                    className={selectedPeriod === "90d" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
-                  >
-                    90 Dias
-                  </Button>
-                  <Button
-                    variant={selectedPeriod === "month" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedPeriod("month")}
-                    className={selectedPeriod === "month" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
-                  >
-                    Mês Atual
-                  </Button>
-                  <Button
-                    variant={selectedPeriod === "year" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedPeriod("year")}
-                    className={selectedPeriod === "year" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"}
-                  >
-                    Ano Atual
-                  </Button>
-                </div>
-
-                {/* Cards de Métricas */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white break-words">
-                      R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="text-xs sm:text-sm text-gray-400">Faturamento Total</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">{totalSales}</div>
-                    <div className="text-xs sm:text-sm text-gray-400">Total de Vendas</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">{totalStudents}</div>
-                    <div className="text-xs sm:text-sm text-gray-400">Alunos Cadastrados</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">{totalCourses}</div>
-                    <div className="text-xs sm:text-sm text-gray-400">Cursos Ativos</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">
-                      R$ {periodAverageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="text-xs sm:text-sm text-gray-400">Ticket Médio</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="font-bold text-xl sm:text-2xl lg:text-3xl mb-1 text-white">
-                      {conversionRate.toFixed(1)}%
-                    </div>
-                    <div className="text-xs sm:text-sm text-gray-400">Taxa de Conversão</div>
-                  </div>
-                </div>
-              </>
-            )}
-
+        <main className="flex-1 min-w-0 w-full lg:w-auto overflow-y-auto bg-[#080d18]">
+          <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 pt-6 sm:pt-8 lg:pt-10 pb-6 sm:pb-8 lg:pb-10">
             {/* Course Dialog - Outside header section */}
             {mainView === "courses" && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -4383,39 +4348,40 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
       {/* Dashboard View */}
       {mainView === "dashboard" && (
-        <section className="container mx-auto px-4 py-12">
-
-                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold mb-2 text-white">Dashboard de Vendas</h2>
-              <p className="text-gray-400">Análise visual do desempenho da plataforma</p>
-            </div>
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <Button 
-                      variant="outline" 
-                      onClick={exportPurchases} 
-                      className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
-                    >
+        <AdminPageShell
+          eyebrow="Visão geral"
+          title="Dashboard de vendas"
+          description="Análise visual do desempenho da plataforma no período selecionado."
+          toolbar={periodToolbar}
+          actions={
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={exportPurchases}
+                className={`w-full sm:w-auto ${adminOutlineBtn}`}
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Exportar Vendas
+                Exportar vendas
               </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={exportCourses} 
-                      className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
-                    >
+              <Button
+                variant="outline"
+                onClick={exportCourses}
+                className={`w-full sm:w-auto ${adminOutlineBtn}`}
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Exportar Cursos
+                Exportar cursos
               </Button>
             </div>
-          </div>
+          }
+        >
+          {kpiStrip}
 
           {/* Charts */}
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
             {/* Line Chart - Vendas por Dia */}
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className={adminSurfaceCard}>
               <CardHeader>
-                      <CardTitle className="text-white">Vendas no Período Selecionado</CardTitle>
+                      <CardTitle className="text-white">Vendas no período selecionado</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -4432,9 +4398,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </Card>
 
             {/* Bar Chart - Receita por Dia */}
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className={adminSurfaceCard}>
               <CardHeader>
-                      <CardTitle className="text-white">Receita no Período Selecionado</CardTitle>
+                      <CardTitle className="text-white">Receita no período selecionado</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -4452,9 +4418,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
 
                 {/* Gráfico de Crescimento de Alunos */}
-                <Card className="mb-8 bg-gray-800 border-gray-700">
+                <Card className={`mb-8 ${adminSurfaceCard}`}>
                   <CardHeader>
-                    <CardTitle className="text-white">Crescimento de Alunos ao Longo do Tempo</CardTitle>
+                    <CardTitle className="text-white">Crescimento de alunos ao longo do tempo</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
@@ -4471,9 +4437,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 </Card>
 
           {/* Pie Chart - Vendas por Curso */}
-                <Card className="mb-8 bg-gray-800 border-gray-700">
+                <Card className={`mb-8 ${adminSurfaceCard}`}>
             <CardHeader>
-              <CardTitle className="text-white">Distribuição de Vendas por Curso</CardTitle>
+              <CardTitle className="text-white">Distribuição de vendas por curso</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -4499,9 +4465,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </Card>
 
                 {/* Lista de Últimas Vendas */}
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className={adminSurfaceCard}>
                   <CardHeader>
-                    <CardTitle className="text-white">Últimas Vendas</CardTitle>
+                    <CardTitle className="text-white">Últimas vendas</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {latestPurchases.length === 0 ? (
@@ -4560,79 +4526,46 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     )}
                   </CardContent>
                 </Card>
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Courses View */}
       {mainView === "courses" && (
-        <section className="w-full max-w-none py-0">
-          <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 bg-[#0a1020] shadow-2xl shadow-black/40">
-            {/* Atmosphere */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(ellipse 80% 50% at 10% -10%, rgba(59,130,246,0.18), transparent 55%), radial-gradient(ellipse 50% 40% at 90% 0%, rgba(14,165,233,0.08), transparent 45%), linear-gradient(180deg, #121a2b 0%, #0a1020 38%, #080d18 100%)",
-              }}
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 opacity-[0.035]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
-                backgroundSize: "48px 48px",
-                maskImage: "linear-gradient(180deg, black 0%, transparent 70%)",
-              }}
-            />
-
-            <div className="relative">
-              {/* Header band */}
-              <div className="flex flex-col gap-5 border-b border-white/10 px-5 py-6 sm:flex-row sm:items-end sm:justify-between sm:px-8 sm:py-8">
-                <div className="min-w-0 max-w-2xl">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-blue-300/80 mb-2">
-                    Catálogo
-                  </p>
-                  <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
-                    Gerenciar cursos
-                  </h2>
-                  <p className="mt-2 text-sm sm:text-[15px] text-gray-400 leading-relaxed">
-                    Catálogo da plataforma — edição, organização e visão dos cursos publicados.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:items-end gap-3 shrink-0">
-                  {courses.length > 0 && (
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-gray-300 tabular-nums">
-                        <span className="text-white font-medium">{courses.length}</span>{" "}
-                        {courses.length === 1 ? "curso" : "cursos"}
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-gray-300 tabular-nums">
-                        <span className="text-white font-medium">{filteredAndSortedCourses.length}</span>{" "}
-                        na lista
-                      </span>
-                    </div>
-                  )}
-                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        size="lg"
-                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50"
-                        onClick={handleNewCourse}
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Novo curso
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                </div>
-              </div>
-
-              {/* Toolbar */}
+        <AdminPageShell
+          eyebrow="Catálogo"
+          title="Gerenciar cursos"
+          description="Catálogo da plataforma — edição, organização e visão dos cursos publicados."
+          actions={
+            <>
               {courses.length > 0 && (
-                <div className="border-b border-white/10 bg-black/20 px-5 py-4 sm:px-8">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-gray-300 tabular-nums">
+                    <span className="text-white font-medium">{courses.length}</span>{" "}
+                    {courses.length === 1 ? "curso" : "cursos"}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-gray-300 tabular-nums">
+                    <span className="text-white font-medium">{filteredAndSortedCourses.length}</span>{" "}
+                    na lista
+                  </span>
+                </div>
+              )}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50"
+                    onClick={handleNewCourse}
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Novo curso
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            </>
+          }
+          toolbar={
+            courses.length > 0 ? (
+<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                     <div className="relative flex-1 min-w-0">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
                       <Input
@@ -4708,11 +4641,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+            ) : undefined
+          }
+        >
 
-              {/* Body */}
-              <div className="px-5 py-6 sm:px-8 sm:py-8">
                 {courses.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-20 text-center">
                     <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-400/20">
@@ -4979,31 +4911,25 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Students View */}
       {mainView === "students" && (
-              <section className="container mx-auto px-4 py-6 sm:py-12">
-                <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Alunos</h2>
-                    <p className="text-sm sm:text-base text-gray-400">
-                Visualize todos os alunos e seu progresso nos cursos
-              </p>
-            </div>
-                  <Button variant="outline" onClick={exportStudents} className="w-full sm:w-auto bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white">
+        <AdminPageShell
+          eyebrow="Comunidade"
+          title="Gerenciar alunos"
+          description="Visualize todos os alunos e o progresso nos cursos."
+          actions={
+            <Button variant="outline" onClick={exportStudents} className={`w-full sm:w-auto ${adminOutlineBtn}`}>
               <Download className="w-4 h-4 mr-2" />
-              Exportar Alunos
+              Exportar alunos
             </Button>
-          </div>
-
+          }
+        >
                 {/* Busca, Filtros e Ordenação */}
                 {users.length > 0 && (
-                  <Card className="mb-6 bg-gray-800 border-gray-700">
+                  <Card className={`mb-6 ${adminSurfaceCard}`}>
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -5496,21 +5422,21 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     )}
                   </DialogContent>
                 </Dialog>
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Revenue View */}
       {mainView === "revenue" && (
-        <section className="container mx-auto px-4 py-12">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2 text-white">Análise de Faturamento</h2>
-            <p className="text-gray-400">
-              Acompanhe as vendas e o desempenho financeiro da plataforma
-            </p>
-          </div>
+        <AdminPageShell
+          eyebrow="Financeiro"
+          title="Análise de faturamento"
+          description="Acompanhe as vendas e o desempenho financeiro da plataforma."
+          toolbar={periodToolbar}
+        >
+          {kpiStrip}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className={adminSurfaceCard}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -5526,7 +5452,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className={adminSurfaceCard}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -5540,7 +5466,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className={adminSurfaceCard}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -5557,9 +5483,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </Card>
           </div>
 
-          <Card className="bg-gray-800 border-gray-700">
+          <Card className={adminSurfaceCard}>
             <CardHeader>
-              <CardTitle className="text-white">Faturamento por Curso</CardTitle>
+              <CardTitle className="text-white">Faturamento por curso</CardTitle>
             </CardHeader>
             <CardContent>
               {revenuePerCourse.length === 0 || totalSales === 0 ? (
@@ -5596,9 +5522,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </Card>
 
           {purchases.length > 0 && (
-            <Card className="mt-8 bg-gray-800 border-gray-700">
+            <Card className={`mt-8 ${adminSurfaceCard}`}>
               <CardHeader>
-                <CardTitle className="text-white">Últimas Transações</CardTitle>
+                <CardTitle className="text-white">Últimas transações</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -5631,40 +5557,36 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </CardContent>
             </Card>
           )}
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Coupons View */}
       {mainView === "coupons" && (
-              <section className="container mx-auto px-4 py-6 sm:py-12">
-
-                <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Cupons de Desconto</h2>
-                    <p className="text-sm sm:text-base text-gray-400">
-              Crie e gerencie cupons promocionais
-            </p>
-                  </div>
-                  <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        size="lg"
-                        className="text-white shadow-md hover:shadow-lg transition-all w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
-                        onClick={() => {
-                          resetCouponForm();
-                          setIsCouponDialogOpen(true);
-                        }}
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Novo Cupom
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-          </div>
-
+        <AdminPageShell
+          eyebrow="Comercial"
+          title="Cupons de desconto"
+          description="Crie e gerencie cupons promocionais da plataforma."
+          actions={
+            <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="lg"
+                  className="text-white shadow-lg shadow-blue-950/50 w-full sm:w-auto bg-blue-600 hover:bg-blue-500"
+                  onClick={() => {
+                    resetCouponForm();
+                    setIsCouponDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Novo cupom
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+          }
+        >
                 {/* Busca, Filtros e Ordenação */}
                 {coupons.length > 0 && (
-                  <Card className="mb-6 bg-gray-800 border-gray-700">
+                  <Card className={`mb-6 ${adminSurfaceCard}`}>
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -6067,19 +5989,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </CardContent>
                   </Card>
           )}
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Reviews View */}
       {mainView === "reviews" && (
-              <section className="container mx-auto px-4 py-6 sm:py-12">
-                <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Avaliações dos Cursos</h2>
-                    <p className="text-sm sm:text-base text-gray-400">
-                Gerencie as avaliações e comentários dos alunos
-              </p>
-            </div>
+        <AdminPageShell
+          eyebrow="Feedback"
+          title="Avaliações dos cursos"
+          description="Gerencie as avaliações e comentários dos alunos."
+          actions={
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 variant={reviews.filter(r => !r.approved).length > 0 ? "default" : "outline"}
@@ -6140,11 +6059,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 Ver Todas
               </Button>
             </div>
-          </div>
+          }
+        >
 
                 {/* Busca, Filtros e Ordenação */}
                 {reviews.length > 0 && (
-                  <Card className="mb-6 bg-gray-800 border-gray-700">
+                  <Card className={`mb-6 ${adminSurfaceCard}`}>
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -6455,18 +6375,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </CardContent>
                   </Card>
           )}
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Podcasts View */}
       {mainView === "podcasts" && (
-        <section className="container mx-auto px-4 py-12">
-
-                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold mb-2 text-white">Gerenciar Podcasts</h2>
-              <p className="text-gray-400">Cadastre e gerencie podcasts gratuitos</p>
-            </div>
+        <AdminPageShell
+          eyebrow="Conteúdo"
+          title="Gerenciar podcasts"
+          description="Cadastre e gerencie podcasts gratuitos da plataforma."
+        >
+            <div className="mb-6 flex justify-end">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                       <Button
@@ -6692,11 +6611,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
+            </div>
 
                 {/* Busca, Filtros e Ordenação */}
                 {podcasts.length > 0 && (
-                  <Card className="mb-6 bg-gray-800 border-gray-700">
+                  <Card className={`mb-6 ${adminSurfaceCard}`}>
                     <CardContent className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {/* Busca */}
@@ -6999,18 +6918,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </CardContent>
                   </Card>
           )}
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Newsletter View */}
       {mainView === "newsletter" && (
-        <section className="container mx-auto px-4 py-12">
-
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2 text-white">Gerenciar Newsletter</h2>
-            <p className="text-gray-400">Envie atualizações para todos os inscritos na newsletter</p>
-          </div>
-
+        <AdminPageShell
+          eyebrow="Marketing"
+          title="Gerenciar newsletter"
+          description="Envie atualizações para todos os inscritos na newsletter."
+        >
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <Card className="bg-gray-800 border-gray-700">
@@ -7651,24 +7568,18 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               </div>
             </DialogContent>
           </Dialog>
-        </section>
+        </AdminPageShell>
       )}
 
       {/* Support View */}
       {mainView === "support" && (
-              <section className="container mx-auto px-2 sm:px-4 py-1 sm:py-2 lg:py-6 flex flex-col lg:h-auto" style={{ height: 'calc(100vh - 6rem)', minHeight: 'calc(100vh - 6rem)' }}>
-                {/* Header melhorado - Ultra compacto no mobile */}
-                <div className="mb-1 sm:mb-2 lg:mb-4 flex-shrink-0">
-                  <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 mb-1 lg:mb-2">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-16 lg:h-16 rounded-md lg:rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center shadow-sm lg:shadow-lg flex-shrink-0">
-                      <Headphones className="w-3 h-3 sm:w-4 sm:h-4 lg:w-8 lg:h-8 text-white" />
-              </div>
-                    <div className="min-w-0 flex-1">
-                      <h2 className="text-sm sm:text-lg lg:text-3xl font-bold text-white leading-tight">Central de Atendimento</h2>
-                      <p className="text-gray-400 text-[10px] sm:text-xs lg:text-base hidden sm:block">Gerencie e responda aos tickets de suporte</p>
-              </div>
-            </div>
-
+        <AdminPageShell
+          eyebrow="Suporte"
+          title="Central de atendimento"
+          description="Gerencie e responda aos tickets de suporte."
+          bodyClassName="px-3 py-4 sm:px-5 sm:py-6 lg:px-8"
+        >
+                  <div className="mb-4 flex-shrink-0">
                   {/* Estatísticas rápidas - Ultra compactas no mobile */}
                   <div className="grid grid-cols-4 gap-1 sm:gap-1.5 lg:gap-4 mb-1 lg:mb-2">
                     <Card className="border-l-2 border-l-green-500 bg-gray-800 border-gray-700">
@@ -8186,53 +8097,41 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               )}
             </div>
           </div>
-        </section>
+        </AdminPageShell>
       )}
 
             {/* Editor da landing (/landing) */}
             {mainView === "landing" && (
-              <section className="relative mx-auto max-w-6xl px-4 py-6 sm:py-10">
-                <header className="mb-8 flex flex-col gap-4 border-b border-gray-800 pb-8 sm:flex-row sm:items-end sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                        Banners da landing
-                      </h2>
-                      {!landingBannersLoading && landingBannersPublishedSnapshot !== null && (
-                        landingBannersHasUnsavedChanges ? (
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500/40 bg-amber-500/10 text-amber-300"
-                          >
-                            Alterações pendentes
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                          >
-                            <CheckCircle2 className="mr-1 inline h-3 w-3" aria-hidden />
-                            Publicado
-                          </Badge>
-                        )
-                      )}
-                    </div>
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
-                      Clique num item para editar; use <span className="text-gray-400">Salvar alterações</span> ao final para
-                      publicar.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={openLandingCreateModal}
-                    className="h-9 shrink-0 bg-blue-600 px-4 text-white hover:bg-blue-600/90"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo banner
-                  </Button>
-                </header>
-
+        <AdminPageShell
+          eyebrow="Landing"
+          title="Banners da landing"
+          description="Clique num item para editar; use Salvar alterações ao final para publicar."
+          actions={
+            <>
+              {!landingBannersLoading && landingBannersPublishedSnapshot !== null && (
+                landingBannersHasUnsavedChanges ? (
+                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-300">
+                    Alterações pendentes
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
+                    <CheckCircle2 className="mr-1 inline h-3 w-3" aria-hidden />
+                    Publicado
+                  </Badge>
+                )
+              )}
+              <Button
+                type="button"
+                size="sm"
+                onClick={openLandingCreateModal}
+                className="h-9 shrink-0 bg-blue-600 px-4 text-white hover:bg-blue-500"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo banner
+              </Button>
+            </>
+          }
+        >
                 {landingBannersLoading ? (
                   <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-gray-800 bg-gray-950/40 py-24">
                     <Loader2 className="h-9 w-9 animate-spin text-blue-500" />
@@ -8642,20 +8541,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </Dialog>
                   </>
                 )}
-              </section>
+              </AdminPageShell>
             )}
 
             {mainView === "home-content" && (
-              <section className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
-                <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Conteúdo da Home</h2>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Personalize a página inicial · alterações por aba
-                    </p>
-                  </div>
-                </div>
-
+        <AdminPageShell
+          eyebrow="Site"
+          title="Conteúdo da home"
+          description="Personalize a página inicial — alterações por aba."
+        >
                 {homeContentLoading ? (
                   <div className="flex items-center justify-center py-24 rounded-2xl border border-white/5 bg-gradient-to-b from-gray-800/80 to-gray-900/80">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
@@ -9867,65 +9761,63 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                   </div>
                 )}
-              </section>
+              </AdminPageShell>
             )}
 
             {/* Theme Management Section */}
             {/* Products View */}
             {mainView === "products" && (
-              <section className="container mx-auto px-4 py-6 sm:py-12">
-                <div className="mb-6 sm:mb-8 flex justify-between items-center">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Produtos</h2>
-                    <p className="text-sm sm:text-base text-gray-400">
-                      Adicione, edite e remova produtos físicos e digitais
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      setEditingProduct(null);
-                      setIsDialogOpen(true);
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo Produto
-                  </Button>
-                </div>
-
-                {/* Filters */}
-                <div className="mb-6 space-y-4">
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex-1 min-w-[200px]">
-                      <Input
-                        placeholder="Buscar produtos..."
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                      />
-                    </div>
-                    <select
-                      value={productTypeFilter}
-                      onChange={(e) => setProductTypeFilter(e.target.value as any)}
-                      className="px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all" className="bg-gray-700">Todos os Tipos</option>
-                      <option value="physical" className="bg-gray-700">Físicos</option>
-                      <option value="digital" className="bg-gray-700">Digitais</option>
-                    </select>
-                  </div>
-                </div>
-
+        <AdminPageShell
+          eyebrow="Catálogo"
+          title="Gerenciar produtos"
+          description="Adicione, edite e remova produtos físicos e digitais."
+          actions={
+            <Button
+              onClick={() => {
+                setEditingProduct(null);
+                setIsDialogOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo produto
+            </Button>
+          }
+          toolbar={
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                <Input
+                  placeholder="Buscar produtos..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className={`pl-10 h-10 w-full ${adminFieldClass}`}
+                />
+              </div>
+              <select
+                value={productTypeFilter}
+                onChange={(e) => setProductTypeFilter(e.target.value as any)}
+                aria-label="Tipo de produto"
+                className={`${adminSelectClass} min-w-[150px]`}
+                style={{ colorScheme: "dark" }}
+              >
+                <option value="all">Todos os tipos</option>
+                <option value="physical">Físicos</option>
+                <option value="digital">Digitais</option>
+              </select>
+            </div>
+          }
+        >
                 {/* Products List */}
                 {products.length === 0 ? (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardContent className="p-12 text-center">
-                      <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <p className="text-gray-400">Nenhum produto cadastrado ainda.</p>
-                    </CardContent>
-                  </Card>
+                  <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-16 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-400/20">
+                      <Package className="w-7 h-7 text-blue-300" />
+                    </div>
+                    <p className="text-sm text-gray-400">Nenhum produto cadastrado ainda.</p>
+                  </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
                     {products
                       .filter((product) => {
                         if (productSearch && !product.title.toLowerCase().includes(productSearch.toLowerCase())) {
@@ -9936,43 +9828,147 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         }
                         return true;
                       })
-                      .map((product) => (
-                        <Card key={product.id} className="bg-gray-800 border-gray-700">
-                          <CardContent className="p-6">
-                            {/* Imagem do Produto */}
-                            {product.image && (
-                              <div className="mb-4">
-                                <ImageWithFallback
-                                  src={product.image}
-                                  alt={product.title}
-                                  className="w-full h-48 object-cover rounded-lg border"
-                                  style={{ objectPosition: product.imagePosition || "50% 50%" }}
-                                />
+                      .map((product) => {
+                        const priceValue =
+                          typeof product.price === "string" ? parseFloat(product.price) : Number(product.price) || 0;
+                        const original =
+                          product.originalPrice != null
+                            ? typeof product.originalPrice === "string"
+                              ? parseFloat(product.originalPrice as any)
+                              : Number(product.originalPrice)
+                            : null;
+                        const hasDiscount =
+                          original != null && !Number.isNaN(original) && original > priceValue;
+                        const discountPct = hasDiscount
+                          ? Math.round(((original! - priceValue) / original!) * 100)
+                          : 0;
+                        const ratingValue =
+                          product.rating !== undefined && product.rating !== null
+                            ? typeof product.rating === "string"
+                              ? parseFloat(product.rating)
+                              : Number(product.rating)
+                            : null;
+                        const stockValue =
+                          product.stock !== undefined && product.stock !== null
+                            ? typeof product.stock === "string"
+                              ? parseInt(product.stock, 10)
+                              : Number(product.stock)
+                            : 0;
+                        const isPhysical = product.type === "physical";
+
+                        return (
+                        <article
+                          key={product.id}
+                          className={`group flex flex-col overflow-hidden ${adminSurfaceCardHover}`}
+                        >
+                          <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-[#0b1220] via-[#060a14] to-[#04060c]">
+                            {product.image ? (
+                              <ImageWithFallback
+                                src={product.image}
+                                alt={product.title}
+                                className="h-full w-full object-contain p-3 transition-transform duration-700 group-hover:scale-[1.03]"
+                                style={{ objectPosition: product.imagePosition || "50% 50%" }}
+                              />
+                            ) : (
+                              <div className="flex h-full flex-col items-center justify-center gap-2">
+                                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-400/20">
+                                  <Package className="w-6 h-6 text-blue-300" />
+                                </span>
+                                <span className="text-xs text-gray-500">Sem imagem</span>
                               </div>
                             )}
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <h3 className="font-bold text-lg mb-2 text-white">{product.title}</h3>
-                                <div className="flex gap-2 mb-2">
-                                  <Badge className={product.type === 'physical' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}>
-                                    {product.type === 'physical' ? 'Físico' : 'Digital'}
-                                  </Badge>
-                                  {!product.active && <Badge variant="outline" className="border-gray-600 text-gray-300">Inativo</Badge>}
-                                </div>
-                                <p className="text-green-400 text-sm mb-2 font-semibold">
-                                  R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0d1422] via-transparent to-black/20" />
+                            <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                              <span className="rounded-full border border-blue-400/30 bg-blue-500/20 px-2.5 py-1 text-[11px] font-medium text-blue-100 backdrop-blur-md">
+                                {isPhysical ? "Físico" : "Digital"}
+                              </span>
+                              {hasDiscount && (
+                                <span className="rounded-full border border-emerald-400/30 bg-emerald-500/20 px-2.5 py-1 text-[11px] font-medium text-emerald-200 backdrop-blur-md">
+                                  −{discountPct}%
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className={`absolute right-3 top-3 rounded-full border px-2.5 py-1 text-[11px] font-medium backdrop-blur-md ${
+                                product.active
+                                  ? "border-emerald-400/25 bg-emerald-500/15 text-emerald-200"
+                                  : "border-white/15 bg-black/50 text-gray-300"
+                              }`}
+                            >
+                              {product.active ? "Ativo" : "Inativo"}
+                            </span>
+                            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-400">Preço</p>
+                                <p className="text-lg font-semibold text-emerald-300 tabular-nums drop-shadow">
+                                  R$ {priceValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                 </p>
-                                {product.type === 'physical' && (
-                                  <p className="text-sm text-gray-300">Estoque: {product.stock || 0}</p>
-                                )}
+                              </div>
+                              {hasDiscount && (
+                                <p className="text-xs text-gray-400 line-through tabular-nums pb-0.5">
+                                  R$ {original!.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-1 flex-col p-4 sm:p-5">
+                            <h3 className="text-lg font-semibold text-white tracking-tight leading-snug line-clamp-2">
+                              {product.title}
+                            </h3>
+                            {product.description ? (
+                              <p className="mt-1.5 text-sm text-gray-400 leading-relaxed line-clamp-2">
+                                {product.description}
+                              </p>
+                            ) : (
+                              <p className="mt-1.5 text-sm text-gray-600">Sem descrição</p>
+                            )}
+
+                            <div className="mt-4 grid grid-cols-2 gap-px rounded-xl overflow-hidden border border-white/10 bg-white/10">
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Tipo</p>
+                                <p className="mt-0.5 text-sm font-medium text-white inline-flex items-center gap-1.5">
+                                  {isPhysical ? (
+                                    <Package className="w-3.5 h-3.5 text-blue-400" />
+                                  ) : (
+                                    <Download className="w-3.5 h-3.5 text-blue-400" />
+                                  )}
+                                  {isPhysical ? "Físico" : "Digital"}
+                                </p>
+                              </div>
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">
+                                  {isPhysical ? "Estoque" : "Entrega"}
+                                </p>
+                                <p className="mt-0.5 text-sm font-medium text-white tabular-nums">
+                                  {isPhysical ? stockValue : "Imediata"}
+                                </p>
+                              </div>
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Nota</p>
+                                <p className="mt-0.5 text-sm font-medium text-amber-300 tabular-nums inline-flex items-center gap-1">
+                                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                  {ratingValue != null && !Number.isNaN(ratingValue)
+                                    ? ratingValue.toFixed(1)
+                                    : "—"}
+                                </p>
+                              </div>
+                              <div className="bg-[#0b1220] px-3 py-2.5">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Status</p>
+                                <p
+                                  className={`mt-0.5 text-sm font-medium ${
+                                    product.active ? "text-emerald-300" : "text-gray-400"
+                                  }`}
+                                >
+                                  {product.active ? "À venda" : "Oculto"}
+                                </p>
                               </div>
                             </div>
-                            <div className="flex gap-2">
+
+                            <div className="mt-auto flex gap-2 pt-5 border-t border-white/10 mt-5">
                               <Button
-                                variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  // Garantir que valores numéricos sejam números válidos
                                   setEditingProduct({
                                     ...product,
                                     price: product.price ? (typeof product.price === 'string' ? parseFloat(product.price) : product.price) : undefined,
@@ -9983,12 +9979,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                   });
                                   setIsDialogOpen(true);
                                 }}
-                                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
+                                className="flex-1 h-9 bg-blue-600 hover:bg-blue-500 text-white"
                               >
-                                <Edit className="w-4 h-4 mr-1" />
+                                <Edit className="w-4 h-4 mr-2" />
                                 Editar
                               </Button>
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={async () => {
@@ -10002,15 +9999,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     }
                                   }
                                 }}
-                                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-red-600 hover:text-white"
+                                className="h-9 w-9 p-0 border-red-500/25 bg-red-500/[0.08] text-red-300 hover:bg-red-500/20"
+                                aria-label={`Excluir ${product.title}`}
                               >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Remover
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                          </div>
+                        </article>
+                        );
+                      })}
                   </div>
                 )}
 
@@ -10444,19 +10442,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                       </div>
                   </DialogContent>
                 </Dialog>
-              </section>
+              </AdminPageShell>
             )}
 
             {/* Sales View - Gerenciar Vendas e Rastreamento */}
             {mainView === "sales" && (
-              <section className="container mx-auto px-4 py-6 sm:py-12">
-                <div className="mb-6 sm:mb-8">
-                  <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">Gerenciar Vendas</h2>
-                  <p className="text-sm sm:text-base text-gray-400">
-                    Visualize vendas com produtos físicos e adicione códigos de rastreamento
-                  </p>
-                </div>
-
+        <AdminPageShell
+          eyebrow="Comercial"
+          title="Gerenciar vendas"
+          description="Visualize vendas com produtos físicos e códigos de rastreamento."
+        >
                 {salesLoading ? (
                   <div className="flex justify-center items-center py-20">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
@@ -10471,7 +10466,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 ) : (
                   <>
                     {/* Busca, Filtros e Ordenação */}
-                    <Card className="mb-6 bg-gray-800 border-gray-700">
+                    <Card className={`mb-6 ${adminSurfaceCard}`}>
                       <CardContent className="p-4 sm:p-6">
                         <div className="space-y-4">
                           {/* Busca */}
@@ -11086,22 +11081,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     </div>
                   </DialogContent>
                 </Dialog>
-              </section>
+              </AdminPageShell>
             )}
 
             {mainView === "sale-email" && (
-              <section className="container mx-auto px-4 py-6">
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <Mail className="w-5 h-5" />
-                      Emails de Notificação de Vendas
-                    </CardTitle>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Configure os emails que receberão notificações sempre que uma venda for confirmada.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
+        <AdminPageShell
+          eyebrow="Comercial"
+          title="Emails de notificação de vendas"
+          description="Configure os emails que recebem alertas quando uma venda for confirmada."
+        >
+                <Card className={adminSurfaceCard}>
+                  <CardContent className="space-y-6 p-5 sm:p-6">
                     {saleEmailLoading ? (
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
@@ -11245,22 +11235,17 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     )}
                   </CardContent>
                 </Card>
-              </section>
+              </AdminPageShell>
             )}
 
             {mainView === "theme" && (
-              <section className="container mx-auto px-4 py-6">
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <Palette className="w-5 h-5" />
-                      Gerenciar Paleta de Cores
-                    </CardTitle>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Personalize as cores do seu site. As alterações serão aplicadas em tempo real.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
+        <AdminPageShell
+          eyebrow="Configuração"
+          title="Paleta de cores"
+          description="Personalize as cores do site. As alterações são aplicadas em tempo real."
+        >
+                <Card className={adminSurfaceCard}>
+                  <CardContent className="space-y-6 p-5 sm:p-6">
                     {themeLoading ? (
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
@@ -11594,7 +11579,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                     )}
                   </CardContent>
                 </Card>
-              </section>
+              </AdminPageShell>
             )}
           </div>
         </main>

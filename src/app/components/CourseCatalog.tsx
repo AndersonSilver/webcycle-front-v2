@@ -102,7 +102,7 @@ export function CourseCatalog({ onViewDetails }: CourseCatalogProps) {
             Catálogo Completo
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-blue-200 to-white bg-clip-text text-transparent">
-            Explore Nossos Cursos de Psicologia
+            Explore nossos cursos de desenvolvimento humano
           </h2>
           <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
             Escolha o curso ideal para sua jornada de autoconhecimento e desenvolvimento pessoal
