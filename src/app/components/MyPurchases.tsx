@@ -96,8 +96,8 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
     const Icon = config.icon;
 
     return (
-      <Badge className={`${config.color} text-white flex items-center gap-1 px-3 py-1`}>
-        <Icon className="w-3 h-3" />
+      <Badge className={`${config.color} border-0 px-2.5 py-1 text-xs font-medium text-white`}>
+        <Icon className="mr-1 h-3 w-3" />
         {config.label}
       </Badge>
     );
@@ -105,17 +105,15 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
 
   if (loading) {
     return (
-      <div 
+      <div
         className="min-h-screen"
         style={{
-          background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-          minHeight: '100vh'
+          background:
+            "linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)",
         }}
       >
-        <div className="container mx-auto px-4 py-12">
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
-          </div>
+        <div className="flex items-center justify-center py-40">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400" />
         </div>
       </div>
     );
@@ -216,260 +214,220 @@ export function MyPurchases({ onBack }: MyPurchasesProps) {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen"
       style={{
-        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-        minHeight: '100vh'
+        background:
+          "linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)",
+        minHeight: "100vh",
       }}
     >
-      {/* Header */}
-      <section 
-        className="relative text-white overflow-hidden pt-24 pb-12"
-        style={{
-          background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
-        }}
-      >
-        <div className="absolute inset-0 bg-black/20"></div>
-        
-        {/* Decorative elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}></div>
-        
-        <div className="relative container mx-auto px-4">
-          <Button
-            variant="ghost"
-            className="text-white hover:bg-white/10 mb-6"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
+        <Button
+          variant="ghost"
+          className="mb-8 text-white/70 hover:bg-white/10 hover:text-white"
+          onClick={onBack}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar
+        </Button>
 
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Minhas Compras</h1>
-          <p className="text-xl" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+        <header className="mb-12 border-b border-white/[0.07] pb-10 lg:mb-14 lg:pb-12">
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-violet-300/60">
+            Pedidos
+          </p>
+          <h1 className="mb-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            Minhas compras
+          </h1>
+          <p className="max-w-xl text-base text-white/45">
             Acompanhe seus pedidos e produtos adquiridos
           </p>
-        </div>
-      </section>
 
-      <div className="container mx-auto px-4 py-8" style={{ background: 'transparent' }}>
-        {/* Estatísticas */}
+          {hasPurchases && (
+            <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-6">
+                <p className="text-3xl font-light tracking-tight text-white tabular-nums sm:text-4xl">
+                  R$ {totalSpent.toFixed(2)}
+                </p>
+                <p className="mt-2 text-xs text-white/40">Total gasto</p>
+              </div>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-6">
+                <p className="text-3xl font-light tracking-tight text-white tabular-nums sm:text-4xl">
+                  {totalPurchases}
+                </p>
+                <p className="mt-2 text-xs text-white/40">Compras pagas</p>
+              </div>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-6">
+                <p className="text-2xl font-light tracking-tight text-white sm:text-3xl">
+                  {lastPurchase
+                    ? new Date(lastPurchase.createdAt).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "—"}
+                </p>
+                <p className="mt-2 text-xs text-white/40">Última compra</p>
+              </div>
+            </div>
+          )}
+        </header>
+
         {hasPurchases && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-300 mb-1">Total Gasto</p>
-                    <p className="text-2xl font-bold text-white">
-                      R$ {totalSpent.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-white/10">
-                    <TrendingUp className="w-6 h-6 text-gray-300" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-300 mb-1">Total de Compras</p>
-                    <p className="text-2xl font-bold text-white">
-                      {totalPurchases}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-white/10">
-                    <Package className="w-6 h-6 text-gray-300" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-300 mb-1">Última Compra</p>
-                    <p className="text-lg font-semibold text-white">
-                      {lastPurchase 
-                        ? new Date(lastPurchase.createdAt).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })
-                        : 'N/A'}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-white/10">
-                    <Calendar className="w-6 h-6 text-gray-300" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mb-8 space-y-4 border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+              <Input
+                placeholder="Buscar por ID, produto ou curso..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 rounded-xl border-white/10 bg-black/30 pl-10 text-sm text-white placeholder:text-gray-500 focus-visible:border-violet-400/50 focus-visible:ring-2 focus-visible:ring-violet-500/25"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                <SelectTrigger className="h-11 rounded-xl border-white/10 bg-black/30 text-white">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="border-white/20 bg-gray-900 text-white">
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="paid">Pago</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="failed">Falhou</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
+                <SelectTrigger className="h-11 rounded-xl border-white/10 bg-black/30 text-white">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent className="border-white/20 bg-gray-900 text-white">
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="courses">Cursos</SelectItem>
+                  <SelectItem value="products">Produtos</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
+                <SelectTrigger className="h-11 rounded-xl border-white/10 bg-black/30 text-white">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent className="border-white/20 bg-gray-900 text-white">
+                  <SelectItem value="all">Todo período</SelectItem>
+                  <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                  <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                  <SelectItem value="90d">Últimos 90 dias</SelectItem>
+                  <SelectItem value="year">Último ano</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="h-11 rounded-xl border-white/10 bg-black/30 text-white">
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent className="border-white/20 bg-gray-900 text-white">
+                  <SelectItem value="date">Data</SelectItem>
+                  <SelectItem value="amount">Valor</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+                <SelectTrigger className="h-11 rounded-xl border-white/10 bg-black/30 text-white">
+                  <SelectValue placeholder="Ordem" />
+                </SelectTrigger>
+                <SelectContent className="border-white/20 bg-gray-900 text-white">
+                  <SelectItem value="desc">Decrescente</SelectItem>
+                  <SelectItem value="asc">Crescente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-4">
+                <p className="text-sm text-white/40">
+                  Mostrando {filteredAndSortedPurchases.length} de {purchases.length} compras
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="gap-2 border-white/15 bg-transparent text-white hover:bg-white/10"
+                >
+                  <X className="h-4 w-4" />
+                  Limpar filtros
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Filtros e Busca */}
-        {hasPurchases && (
-          <Card className="mb-6 bg-white/5 backdrop-blur-sm border border-white/10">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {/* Busca */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <Input
-                    placeholder="Buscar por ID da compra, nome do produto ou curso..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
-                  />
-                </div>
-
-                {/* Filtros em linha */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
-                      <SelectItem value="all" className="text-white hover:bg-white/10">Todos os Status</SelectItem>
-                      <SelectItem value="paid" className="text-white hover:bg-white/10">Pago</SelectItem>
-                      <SelectItem value="pending" className="text-white hover:bg-white/10">Pendente</SelectItem>
-                      <SelectItem value="failed" className="text-white hover:bg-white/10">Falhou</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
-                      <SelectItem value="all" className="text-white hover:bg-white/10">Todos</SelectItem>
-                      <SelectItem value="courses" className="text-white hover:bg-white/10">Cursos</SelectItem>
-                      <SelectItem value="products" className="text-white hover:bg-white/10">Produtos</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
-                      <SelectValue placeholder="Período" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
-                      <SelectItem value="all" className="text-white hover:bg-white/10">Todo Período</SelectItem>
-                      <SelectItem value="7d" className="text-white hover:bg-white/10">Últimos 7 dias</SelectItem>
-                      <SelectItem value="30d" className="text-white hover:bg-white/10">Últimos 30 dias</SelectItem>
-                      <SelectItem value="90d" className="text-white hover:bg-white/10">Últimos 90 dias</SelectItem>
-                      <SelectItem value="year" className="text-white hover:bg-white/10">Último ano</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
-                      <SelectValue placeholder="Ordenar por" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
-                      <SelectItem value="date" className="text-white hover:bg-white/10">Data</SelectItem>
-                      <SelectItem value="amount" className="text-white hover:bg-white/10">Valor</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40">
-                      <SelectValue placeholder="Ordem" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border border-white/20 text-white">
-                      <SelectItem value="desc" className="text-white hover:bg-white/10">Decrescente</SelectItem>
-                      <SelectItem value="asc" className="text-white hover:bg-white/10">Crescente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Botão limpar filtros */}
-                {hasActiveFilters && (
-                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                    <p className="text-sm text-gray-300">
-                      Mostrando {filteredAndSortedPurchases.length} de {purchases.length} compras
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="flex items-center gap-2 border-white/20 text-white hover:bg-white/10"
-                    >
-                      <X className="w-4 h-4" />
-                      Limpar Filtros
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {!hasPurchases ? (
-          <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-            <CardContent className="p-12 text-center">
-              <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-bold mb-2 text-white">Nenhuma compra encontrada</h3>
-              <p className="text-gray-300 mb-6">
-                Você ainda não realizou nenhuma compra.
-              </p>
-              <Button onClick={onBack} className="bg-white text-black hover:bg-gray-200">
-                Explorar Produtos
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="border border-white/[0.08] bg-white/[0.03] px-6 py-14 sm:px-10">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.24em] text-violet-300/60">
+              Pedidos
+            </p>
+            <h3 className="mb-2 text-2xl font-semibold text-white">Nenhuma compra ainda</h3>
+            <p className="mb-8 max-w-md text-white/45">
+              Você ainda não realizou nenhuma compra.
+            </p>
+            <Button
+              onClick={onBack}
+              className="h-11 rounded-lg bg-violet-600 px-6 text-sm font-semibold text-white hover:bg-violet-500"
+            >
+              Explorar catálogo
+            </Button>
+          </div>
         ) : filteredAndSortedPurchases.length === 0 ? (
-          <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-            <CardContent className="p-12 text-center">
-              <Filter className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-bold mb-2 text-white">Nenhuma compra encontrada</h3>
-              <p className="text-gray-300 mb-6">
-                Não há compras que correspondam aos filtros selecionados.
-              </p>
-              <Button onClick={clearFilters} className="bg-white text-black hover:bg-gray-200">
-                Limpar Filtros
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="border border-white/[0.08] bg-white/[0.03] px-6 py-14 sm:px-10">
+            <h3 className="mb-2 text-2xl font-semibold text-white">Nenhum resultado</h3>
+            <p className="mb-8 max-w-md text-white/45">
+              Não há compras que correspondam aos filtros selecionados.
+            </p>
+            <Button
+              onClick={clearFilters}
+              className="h-11 rounded-lg bg-violet-600 px-6 text-sm font-semibold text-white hover:bg-violet-500"
+            >
+              Limpar filtros
+            </Button>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {filteredAndSortedPurchases.map((purchase) => (
-              <Card key={purchase.id} className="hover:shadow-md transition-shadow bg-white/5 backdrop-blur-sm border border-white/10">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        {getStatusBadge(purchase.paymentStatus)}
-                      </div>
-                      <p className="text-sm text-gray-300">
-                        {new Date(purchase.createdAt).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                      <p className="text-lg font-bold mt-2 text-white">
-                        Total: R$ {(typeof purchase.finalAmount === 'string' ? parseFloat(purchase.finalAmount) : purchase.finalAmount).toFixed(2)}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => {
-                        setSelectedPurchase(purchase);
-                        setModalOpen(true);
-                      }}
-                      className="shadow-2xl text-black border-0 hover:scale-105 transition-transform bg-white hover:bg-gray-200"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Ver Detalhes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div
+                key={purchase.id}
+                className="flex flex-col gap-4 border border-white/[0.08] bg-white/[0.03] p-5 transition-colors hover:border-white/15 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-6"
+              >
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div>{getStatusBadge(purchase.paymentStatus)}</div>
+                  <p className="text-sm text-white/45">
+                    {new Date(purchase.createdAt).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p className="text-xl font-light tracking-tight text-white">
+                    R${" "}
+                    {(typeof purchase.finalAmount === "string"
+                      ? parseFloat(purchase.finalAmount)
+                      : purchase.finalAmount
+                    ).toFixed(2)}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    setSelectedPurchase(purchase);
+                    setModalOpen(true);
+                  }}
+                  className="h-11 shrink-0 gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-slate-100 sm:w-auto"
+                >
+                  <Eye className="h-4 w-4" />
+                  Ver detalhes
+                </Button>
+              </div>
             ))}
           </div>
         )}

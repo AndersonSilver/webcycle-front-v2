@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { ArrowLeft, Save, Loader2, User, Mail, Phone, FileText, MapPin } from "lucide-react";
+import { ArrowLeft, Save, Loader2, User, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "../../services/apiClient";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
@@ -26,6 +25,14 @@ interface ProfileData {
   addressState?: string;
   addressZipCode?: string;
 }
+
+const PAGE_BG =
+  "linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)";
+
+const fieldInput =
+  "h-11 rounded-xl border-white/10 bg-black/30 text-sm text-white placeholder:text-gray-500 shadow-none focus-visible:border-violet-400/50 focus-visible:ring-2 focus-visible:ring-violet-500/25";
+
+const fieldLabel = "text-sm text-white/50";
 
 export function MyProfile({ onBack }: MyProfileProps) {
   const [loading, setLoading] = useState(true);
@@ -103,240 +110,281 @@ export function MyProfile({ onBack }: MyProfileProps) {
 
   if (loading) {
     return (
-      <div 
-        className="min-h-screen"
-        style={{
-          background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-          minHeight: '100vh'
-        }}
-      >
-        <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-          </div>
+      <div className="min-h-screen" style={{ background: PAGE_BG }}>
+        <div className="flex items-center justify-center py-40">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-300/70" />
         </div>
       </div>
     );
   }
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-        minHeight: '100vh'
-      }}
-    >
-      <div className="container mx-auto px-4 pt-24 pb-12 max-w-4xl">
+    <div className="min-h-screen" style={{ background: PAGE_BG }}>
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
         <Button
           variant="ghost"
-          className="mb-6 text-white hover:text-gray-200 hover:bg-white/10"
+          className="mb-8 text-white/70 hover:bg-white/10 hover:text-white"
           onClick={onBack}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-white">
-            Meu Perfil
-          </h1>
-          <p className="text-gray-300">
-            Gerencie suas informações pessoais e endereço
-          </p>
-        </div>
+        <header className="mb-12 grid gap-8 border-b border-white/[0.07] pb-10 lg:grid-cols-12 lg:items-end lg:pb-12">
+          <div className="lg:col-span-8">
+            <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-violet-300/60">
+              Conta
+            </p>
+            <h1 className="mb-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              Meu perfil
+            </h1>
+            <p className="max-w-xl text-base text-white/45">
+              Gerencie suas informações pessoais e endereço
+            </p>
+          </div>
+          <div className="lg:col-span-4 lg:flex lg:justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={saving || !profile.name}
+              className="h-11 w-full rounded-lg bg-violet-600 px-6 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50 lg:w-auto"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar alterações
+                </>
+              )}
+            </Button>
+          </div>
+        </header>
 
-        <div className="space-y-6">
-          {/* Informações Básicas */}
-          <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <User className="w-5 h-5 text-gray-400" />
-                Informações Básicas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 mb-4">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src={profile.avatar} alt={profile.name} />
-                  <AvatarFallback className="text-xl bg-gradient-to-br from-gray-600 to-gray-700 text-white border border-white/20">
-                    {profile.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+        <div className="space-y-8">
+          <section className="border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8 lg:p-10">
+            <div className="mb-8 flex items-center gap-3 border-b border-white/[0.07] pb-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/25 bg-violet-500/10 text-violet-300">
+                <User className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-medium tracking-tight text-white">
+                  Informações básicas
+                </h2>
+                <p className="text-sm text-white/40">Dados da sua conta</p>
+              </div>
+            </div>
+
+            <div className="mb-8 flex items-center gap-5">
+              <Avatar className="h-20 w-20 border border-white/10">
+                <AvatarImage src={profile.avatar} alt={profile.name} />
+                <AvatarFallback className="bg-violet-600/30 text-xl text-white">
+                  {profile.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium text-white">{profile.name || "Seu nome"}</p>
+                <p className="text-sm text-white/40">{profile.email}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name" className={fieldLabel}>
+                  Nome completo *
+                </Label>
+                <Input
+                  id="name"
+                  value={profile.name}
+                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  placeholder="Seu nome completo"
+                  required
+                  className={fieldInput}
+                />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-300">Nome Completo *</Label>
-                  <Input
-                    id="name"
-                    value={profile.name}
-                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    placeholder="Seu nome completo"
-                    required
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center gap-2 text-gray-300">
-                    <Mail className="w-4 h-4" />
-                    E-mail
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profile.email}
-                    disabled
-                    className="bg-gray-800/50 border-gray-600/40 text-gray-400"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">O e-mail não pode ser alterado</p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className={fieldLabel}>
+                  E-mail
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  className={`${fieldInput} opacity-60`}
+                />
+                <p className="text-xs text-white/30">O e-mail não pode ser alterado</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="flex items-center gap-2 text-gray-300">
-                    <Phone className="w-4 h-4" />
-                    Telefone
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={profile.phone || ""}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="document" className="flex items-center gap-2 text-gray-300">
-                    <FileText className="w-4 h-4" />
-                    CPF/CNPJ
-                  </Label>
-                  <Input
-                    id="document"
-                    value={profile.document || ""}
-                    onChange={(e) => setProfile({ ...profile, document: e.target.value })}
-                    placeholder="000.000.000-00"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className={fieldLabel}>
+                  Telefone
+                </Label>
+                <Input
+                  id="phone"
+                  value={profile.phone || ""}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                  className={fieldInput}
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Endereço */}
-          <Card className="bg-white/5 backdrop-blur-sm border border-white/10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <MapPin className="w-5 h-5 text-gray-400" />
-                Endereço
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="addressStreet" className="text-gray-300">Rua</Label>
+              <div className="space-y-2">
+                <Label htmlFor="document" className={fieldLabel}>
+                  CPF/CNPJ
+                </Label>
+                <Input
+                  id="document"
+                  value={profile.document || ""}
+                  onChange={(e) => setProfile({ ...profile, document: e.target.value })}
+                  placeholder="000.000.000-00"
+                  className={fieldInput}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8 lg:p-10">
+            <div className="mb-8 flex items-center gap-3 border-b border-white/[0.07] pb-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/25 bg-violet-500/10 text-violet-300">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-medium tracking-tight text-white">Endereço</h2>
+                <p className="text-sm text-white/40">Usado em compras de produtos físicos</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="addressStreet" className={fieldLabel}>
+                    Rua
+                  </Label>
                   <Input
                     id="addressStreet"
                     value={profile.addressStreet || ""}
-                    onChange={(e) => setProfile({ ...profile, addressStreet: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, addressStreet: e.target.value })
+                    }
                     placeholder="Nome da rua"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                    className={fieldInput}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="addressNumber" className="text-gray-300">Número</Label>
+                  <Label htmlFor="addressNumber" className={fieldLabel}>
+                    Número
+                  </Label>
                   <Input
                     id="addressNumber"
                     value={profile.addressNumber || ""}
-                    onChange={(e) => setProfile({ ...profile, addressNumber: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, addressNumber: e.target.value })
+                    }
                     placeholder="123"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                    className={fieldInput}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="addressComplement" className="text-gray-300">Complemento</Label>
+                <Label htmlFor="addressComplement" className={fieldLabel}>
+                  Complemento
+                </Label>
                 <Input
                   id="addressComplement"
                   value={profile.addressComplement || ""}
-                  onChange={(e) => setProfile({ ...profile, addressComplement: e.target.value })}
-                  placeholder="Apto, Bloco, etc."
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                  onChange={(e) =>
+                    setProfile({ ...profile, addressComplement: e.target.value })
+                  }
+                  placeholder="Apto, bloco, etc."
+                  className={fieldInput}
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="addressNeighborhood" className="text-gray-300">Bairro</Label>
+                  <Label htmlFor="addressNeighborhood" className={fieldLabel}>
+                    Bairro
+                  </Label>
                   <Input
                     id="addressNeighborhood"
                     value={profile.addressNeighborhood || ""}
-                    onChange={(e) => setProfile({ ...profile, addressNeighborhood: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, addressNeighborhood: e.target.value })
+                    }
                     placeholder="Nome do bairro"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                    className={fieldInput}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="addressZipCode" className="text-gray-300">CEP</Label>
+                  <Label htmlFor="addressZipCode" className={fieldLabel}>
+                    CEP
+                  </Label>
                   <Input
                     id="addressZipCode"
                     value={profile.addressZipCode || ""}
-                    onChange={(e) => setProfile({ ...profile, addressZipCode: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, addressZipCode: e.target.value })
+                    }
                     placeholder="00000-000"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                    className={fieldInput}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="addressCity" className="text-gray-300">Cidade</Label>
+                  <Label htmlFor="addressCity" className={fieldLabel}>
+                    Cidade
+                  </Label>
                   <Input
                     id="addressCity"
                     value={profile.addressCity || ""}
-                    onChange={(e) => setProfile({ ...profile, addressCity: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, addressCity: e.target.value })
+                    }
                     placeholder="Nome da cidade"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                    className={fieldInput}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="addressState" className="text-gray-300">Estado</Label>
+                  <Label htmlFor="addressState" className={fieldLabel}>
+                    Estado
+                  </Label>
                   <Input
                     id="addressState"
                     value={profile.addressState || ""}
-                    onChange={(e) => setProfile({ ...profile, addressState: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, addressState: e.target.value })
+                    }
                     placeholder="UF"
                     maxLength={2}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus:border-white/40"
+                    className={fieldInput}
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          {/* Botão Salvar */}
-          <div className="flex justify-end">
+          <div className="flex justify-end border-t border-white/[0.07] pt-8">
             <Button
               onClick={handleSave}
               disabled={saving || !profile.name}
-              className="min-w-[150px] bg-white text-black hover:bg-gray-200"
+              className="h-11 rounded-lg bg-violet-600 px-8 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
             >
               {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar Alterações
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar alterações
                 </>
               )}
             </Button>
@@ -346,4 +394,3 @@ export function MyProfile({ onBack }: MyProfileProps) {
     </div>
   );
 }
-

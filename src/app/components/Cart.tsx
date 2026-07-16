@@ -125,39 +125,13 @@ export function Cart({ items, onRemoveItem, onCheckout, onContinueShopping, open
       <SheetTrigger asChild>
         <Button 
           variant="ghost" 
-          className="relative transition-all duration-300 rounded-lg group border-0"
-          style={{
-            backgroundColor: 'transparent',
-            color: 'white',
-            width: '48px',
-            height: '48px',
-            padding: '0'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-            e.currentTarget.style.transform = 'translateY(-1px) scale(1.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          }}
+          aria-label="Abrir carrinho"
+          className="relative h-10 w-10 shrink-0 rounded-full border border-white/15 bg-white/5 p-0 text-white hover:bg-white/10 hover:border-white/25 transition-colors"
         >
-          <ShoppingCart 
-            className="text-white transition-all duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" 
-            style={{ 
-              color: 'rgba(255, 255, 255, 0.9)',
-              width: '28px',
-              height: '28px'
-            }}
-          />
+          <ShoppingCart className="h-5 w-5 text-white/90" />
           {(items.length > 0 || cartProducts.length > 0) && (
             <Badge 
-              className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0 text-white border-2 shadow-lg font-bold text-xs transition-all duration-300 group-hover:scale-110 group-hover:animate-pulse"
-              style={{
-                background: 'linear-gradient(135deg, #ef4444, #ec4899)',
-                borderColor: 'rgba(26, 26, 26, 0.8)',
-                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.5), 0 0 0 2px rgba(239, 68, 68, 0.2)'
-              }}
+              className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-500 p-0 text-[10px] font-semibold text-white hover:bg-violet-500"
             >
               {items.length + cartProducts.length}
             </Badge>

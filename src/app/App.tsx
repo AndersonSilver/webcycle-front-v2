@@ -25,7 +25,7 @@ import mentoriaImg from "./components/laminas/mentoria.png";
 import iconImg from "./components/laminas/icon.png";
 import { Button } from "./components/ui/button";
 import { Toaster } from "./components/ui/sonner";
-import { Menu, X, BookOpen, Mail, Phone, User, LogOut, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2, Package } from "lucide-react";
+import { Menu, X, BookOpen, Mail, Phone, User, LogOut, LogIn, Settings, Award, TrendingUp, Sparkles, Star, Quote, Send, CheckCircle2, Brain, Heart, Shield, ArrowRight, Loader2, Package } from "lucide-react";
 import { Course } from "./data/courses";
 import { toast } from "sonner";
 import { API_ORIGIN_URL } from "../config/apiUrl";
@@ -977,7 +977,7 @@ export default function App() {
               </button>
 
               {/* User Menu */}
-              <div className="hidden md:flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2.5">
                 <Cart
                   items={cartItems}
                   onRemoveItem={handleRemoveFromCart}
@@ -1134,22 +1134,9 @@ export default function App() {
                 ) : (
                   <Button
                     onClick={() => setShowLogin(true)}
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300 rounded-lg px-6 font-medium backdrop-blur-sm"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
+                    className="h-10 gap-2 rounded-lg bg-violet-600 px-5 text-sm font-semibold text-white shadow-none hover:bg-violet-500"
                   >
+                    <LogIn className="h-4 w-4" />
                     Entrar
                   </Button>
                 )}
@@ -1288,20 +1275,9 @@ export default function App() {
                         setShowLogin(true);
                         setMobileMenuOpen(false);
                       }}
-                      variant="outline"
-                      className="w-full justify-start border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300 rounded-lg font-medium backdrop-blur-sm"
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
+                      className="h-11 w-full justify-center gap-2 rounded-lg bg-violet-600 text-sm font-semibold text-white hover:bg-violet-500"
                     >
+                      <LogIn className="h-4 w-4" />
                       Entrar
                     </Button>
                   )}
@@ -1313,7 +1289,7 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <main style={{ paddingTop: (currentView !== "admin" && currentView !== "image-landing") ? '45px' : '0' }}>
+      <main style={{ paddingTop: (currentView !== "admin" && currentView !== "image-landing") ? '80px' : '0' }}>
         {(currentView === "home" || currentView === "checkout") && (
           <div
             className="relative"
@@ -2025,7 +2001,7 @@ export default function App() {
               </div>
             </div>
             <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-              <p>© 2025 Culture Builders. Todos os direitos reservados.</p>
+              <p>© 2026 Culture Builders. Todos os direitos reservados.</p>
             </div>
           </div>
         </footer>

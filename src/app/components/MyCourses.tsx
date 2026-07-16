@@ -1,12 +1,11 @@
 import { Course } from "../data/courses";
 import { Button } from "./ui/button";
-import { Card, CardContent } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { PlayCircle, Clock, CheckCircle2, BookOpen, ArrowLeft, Headphones } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface PurchasedCourse extends Course {
-  progress: number; // 0-100
+  progress: number;
   lastWatched?: string;
   completedLessons: number;
 }
@@ -29,42 +28,55 @@ interface MyCoursesProps {
   onBack: () => void;
 }
 
-export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWatchPodcast, onBack }: MyCoursesProps) {
+const PAGE_BG =
+  "linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)";
+
+export function MyCourses({
+  purchasedCourses,
+  podcasts = [],
+  onWatchCourse,
+  onWatchPodcast,
+  onBack,
+}: MyCoursesProps) {
   const hasContent = purchasedCourses.length > 0 || podcasts.length > 0;
-  
+
+  const totalProgress =
+    purchasedCourses.length > 0
+      ? purchasedCourses.reduce((acc, course) => acc + course.progress, 0) /
+        purchasedCourses.length
+      : 0;
+  const completedCourses = purchasedCourses.filter((c) => c.progress === 100).length;
+  const lessonsWatched = purchasedCourses.reduce((acc, c) => acc + c.completedLessons, 0);
+
   if (!hasContent) {
     return (
-      <div 
-        className="min-h-screen"
-        style={{
-          background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-          minHeight: '100vh'
-        }}
-      >
-        <div className="container mx-auto px-4 pt-24 pb-12">
+      <div className="min-h-screen" style={{ background: PAGE_BG }}>
+        <div className="mx-auto max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
-            className="mb-6 text-white hover:text-gray-200 hover:bg-white/10"
+            className="mb-10 text-white/70 hover:bg-white/10 hover:text-white"
             onClick={onBack}
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
 
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/20">
-              <BookOpen className="w-12 h-12 text-gray-400" />
-            </div>
-            <h2 className="text-3xl font-bold mb-4 text-white">Você ainda não tem cursos</h2>
-            <p className="text-gray-300 mb-8 max-w-md mx-auto">
-              Explore nosso catálogo e comece sua jornada de transformação pessoal hoje mesmo!
+          <div className="border border-white/[0.08] bg-white/[0.03] px-6 py-16 sm:px-10">
+            <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-violet-300/60">
+              Biblioteca
+            </p>
+            <h1 className="mb-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Você ainda não tem cursos
+            </h1>
+            <p className="mb-8 max-w-lg text-base text-white/45">
+              Explore o catálogo e comece sua jornada de transformação.
             </p>
             <Button
               size="lg"
               onClick={onBack}
-              className="bg-white text-black hover:bg-gray-200"
+              className="h-11 rounded-lg bg-violet-600 px-6 text-sm font-semibold text-white hover:bg-violet-500"
             >
-              Explorar Cursos
+              Explorar cursos
             </Button>
           </div>
         </div>
@@ -72,221 +84,186 @@ export function MyCourses({ purchasedCourses, podcasts = [], onWatchCourse, onWa
     );
   }
 
-  const totalProgress = purchasedCourses.length > 0 
-    ? purchasedCourses.reduce((acc, course) => acc + course.progress, 0) / purchasedCourses.length 
-    : 0;
-  const completedCourses = purchasedCourses.filter(c => c.progress === 100).length;
+  const stats = [
+    { value: purchasedCourses.length, label: "Cursos" },
+    { value: podcasts.length, label: "Podcasts" },
+    { value: completedCourses, label: "Concluídos" },
+    { value: `${Math.round(totalProgress)}%`, label: "Progresso" },
+    { value: lessonsWatched, label: "Aulas assistidas" },
+  ];
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0f2e 15%, #0f1a2e 30%, #1a0f2e 45%, #0f1a2e 60%, #1a0f2e 75%, #0a0a1a 100%)',
-        minHeight: '100vh'
-      }}
-    >
-      {/* Header */}
-      <section 
-        className="relative text-white overflow-hidden pt-24 pb-12"
-        style={{
-          background: `linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 50%, var(--theme-primary-dark) 100%)`
-        }}
-      >
-        <div className="absolute inset-0 bg-black/20"></div>
-        
-        {/* Decorative elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-primary-light)', opacity: 0.3 }}></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--theme-secondary)', opacity: 0.3 }}></div>
-        
-        <div className="relative container mx-auto px-4" style={{ paddingTop: '6rem' }}>
-          <Button
-            variant="ghost"
-            className="text-white hover:bg-white/10 mb-6"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
+    <div className="min-h-screen" style={{ background: PAGE_BG }}>
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
+        <Button
+          variant="ghost"
+          className="mb-8 text-white/70 hover:bg-white/10 hover:text-white"
+          onClick={onBack}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar
+        </Button>
 
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Meus Cursos</h1>
-          <p className="text-xl mb-8" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-            Continue sua jornada de aprendizado e transformação
-          </p>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{purchasedCourses.length}</div>
-              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Cursos Adquiridos</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{podcasts.length}</div>
-              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Podcasts</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{completedCourses}</div>
-              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Cursos Concluídos</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">{Math.round(totalProgress)}%</div>
-              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Progresso Médio</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="font-bold text-3xl mb-1">
-                {purchasedCourses.reduce((acc, c) => acc + c.completedLessons, 0)}
-              </div>
-              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Aulas Assistidas</div>
+        <header className="mb-12 border-b border-white/[0.07] pb-10 lg:mb-14 lg:pb-12">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-7">
+              <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-violet-300/60">
+                Biblioteca
+              </p>
+              <h1 className="mb-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+                Meus cursos
+              </h1>
+              <p className="max-w-xl text-base text-white/45">
+                Continue sua jornada de aprendizado e transformação.
+              </p>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Course List */}
-      <section className="container mx-auto px-4 py-12" style={{ background: 'transparent' }}>
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-5 sm:px-5"
+              >
+                <p className="text-3xl font-light tracking-tight text-white tabular-nums sm:text-4xl">
+                  {stat.value}
+                </p>
+                <p className="mt-2 text-xs text-white/40">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </header>
+
         {purchasedCourses.length > 0 && (
-          <>
+          <section className="mb-16">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2 text-white">Continue Aprendendo</h2>
-              <p className="text-gray-300">Retome de onde parou</p>
+              <h2 className="mb-1 text-2xl font-semibold tracking-tight text-white">
+                Continue aprendendo
+              </h2>
+              <p className="text-sm text-white/40">Retome de onde parou</p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {purchasedCourses.map((course) => (
-                <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white/5 backdrop-blur-sm border border-white/10">
-                  <CardContent className="p-4 flex flex-col h-full">
-                    <div className="flex flex-col gap-4 h-full">
-                      {/* Course Image */}
-                      <div className="relative w-full h-40 flex-shrink-0">
-                        <ImageWithFallback
-                          src={course.image}
-                          alt={course.title}
-                          className="w-full h-full object-cover rounded-lg"
-                          style={{ objectPosition: course.imagePosition || "50% 50%" }}
-                        />
-                      </div>
+                <article
+                  key={course.id}
+                  className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] transition-colors hover:border-white/15"
+                >
+                  <div className="relative h-44 w-full shrink-0">
+                    <ImageWithFallback
+                      src={course.image}
+                      alt={course.title}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: course.imagePosition || "50% 50%" }}
+                    />
+                    {course.progress === 100 && (
+                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-emerald-500/90 px-2 py-1 text-[11px] font-medium text-white">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Concluído
+                      </span>
+                    )}
+                  </div>
 
-                      {/* Course Info */}
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <div className="min-w-0 flex-1">
-                              <span className="text-xs text-purple-400 font-semibold">{course.category}</span>
-                              <h3 className="font-bold mt-0.5 line-clamp-1 text-white">{course.title}</h3>
-                            </div>
-                            {course.progress === 100 && (
-                              <div className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Concluído
-                              </div>
-                            )}
-                          </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-violet-300/70">
+                      {course.category}
+                    </p>
+                    <h3 className="mb-2 text-lg font-medium tracking-tight text-white line-clamp-2">
+                      {course.title}
+                    </h3>
+                    <p className="mb-4 text-sm text-white/40 line-clamp-2">{course.description}</p>
 
-                          <p className="text-gray-300 text-sm mb-2 line-clamp-1">{course.description}</p>
-
-                          <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-2">
-                            <div className="flex items-center gap-1">
-                              <BookOpen className="w-3 h-3" />
-                              <span>{course.completedLessons}/{course.lessons} aulas</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>{course.duration}</span>
-                            </div>
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div className="mb-3">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-gray-300">Progresso do Curso</span>
-                              <span className="text-purple-400 font-bold">{course.progress}%</span>
-                            </div>
-                            <Progress value={course.progress} className="h-2" />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Button
-                            onClick={() => onWatchCourse(course)}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                            size="sm"
-                          >
-                            <PlayCircle className="w-4 h-4 mr-2" />
-                            {course.progress === 0 ? "Começar Curso" : "Continuar Assistindo"}
-                          </Button>
-                        </div>
-                      </div>
+                    <div className="mb-3 flex flex-wrap gap-3 text-xs text-white/35">
+                      <span className="inline-flex items-center gap-1.5">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {course.completedLessons}/{course.lessons} aulas
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
+                        {course.duration}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
+
+                    <div className="mb-5">
+                      <div className="mb-1.5 flex justify-between text-xs">
+                        <span className="text-white/40">Progresso</span>
+                        <span className="font-medium text-violet-300">{course.progress}%</span>
+                      </div>
+                      <Progress value={course.progress} className="h-1.5" />
+                    </div>
+
+                    <Button
+                      onClick={() => onWatchCourse(course)}
+                      className="mt-auto h-11 w-full rounded-lg bg-violet-600 text-sm font-semibold text-white hover:bg-violet-500"
+                    >
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      {course.progress === 0 ? "Começar curso" : "Continuar"}
+                    </Button>
+                  </div>
+                </article>
               ))}
             </div>
-          </>
+          </section>
         )}
 
         {podcasts.length > 0 && (
-          <>
+          <section>
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2 text-white">Meus Podcasts</h2>
-              <p className="text-gray-300">Assista seus podcasts gratuitos</p>
+              <h2 className="mb-1 text-2xl font-semibold tracking-tight text-white">
+                Meus podcasts
+              </h2>
+              <p className="text-sm text-white/40">Assista seus podcasts gratuitos</p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {podcasts.map((podcast) => (
-                <Card key={podcast.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white/5 backdrop-blur-sm border border-white/10">
-                  <CardContent className="p-4 flex flex-col h-full">
-                    <div className="flex flex-col gap-4 h-full">
-                      {/* Podcast Image */}
-                      <div className="relative w-full h-40 flex-shrink-0">
-                        {podcast.image ? (
-                          <img
-                            src={podcast.image}
-                            alt={podcast.title}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                            <Headphones className="w-12 h-12 text-white" />
-                          </div>
-                        )}
+                <article
+                  key={podcast.id}
+                  className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] transition-colors hover:border-white/15"
+                >
+                  <div className="relative h-44 w-full shrink-0">
+                    {podcast.image ? (
+                      <img
+                        src={podcast.image}
+                        alt={podcast.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-700 to-blue-800">
+                        <Headphones className="h-12 w-12 text-white/80" />
                       </div>
+                    )}
+                  </div>
 
-                      {/* Podcast Info */}
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3 className="font-bold text-lg mb-1 line-clamp-2 text-white">{podcast.title}</h3>
-                          {podcast.description && (
-                            <p className="text-gray-300 text-sm mb-3 line-clamp-2">{podcast.description}</p>
-                          )}
-
-                          <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-3">
-                            {podcast.duration && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{podcast.duration}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div>
-                          <Button
-                            onClick={() => onWatchPodcast?.(podcast)}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                            size="sm"
-                          >
-                            <PlayCircle className="w-4 h-4 mr-2" />
-                            Assistir Podcast
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <div className="flex flex-1 flex-col p-5">
+                    <h3 className="mb-2 text-lg font-medium tracking-tight text-white line-clamp-2">
+                      {podcast.title}
+                    </h3>
+                    {podcast.description && (
+                      <p className="mb-4 text-sm text-white/40 line-clamp-2">
+                        {podcast.description}
+                      </p>
+                    )}
+                    {podcast.duration && (
+                      <p className="mb-5 inline-flex items-center gap-1.5 text-xs text-white/35">
+                        <Clock className="h-3.5 w-3.5" />
+                        {podcast.duration}
+                      </p>
+                    )}
+                    <Button
+                      onClick={() => onWatchPodcast?.(podcast)}
+                      className="mt-auto h-11 w-full rounded-lg bg-violet-600 text-sm font-semibold text-white hover:bg-violet-500"
+                    >
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      Assistir podcast
+                    </Button>
+                  </div>
+                </article>
               ))}
             </div>
-          </>
+          </section>
         )}
-      </section>
+      </div>
     </div>
   );
 }
